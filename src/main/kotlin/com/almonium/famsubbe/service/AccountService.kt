@@ -16,7 +16,7 @@ class AccountService(
     fun createAdmin(email: String, password: String): Account {
         val account = Account().apply {
             this.email = email
-            this.password = passwordEncoder.encode(password)
+            this.passwordHash = passwordEncoder.encode(password)
             this.roles = mutableSetOf(Role.ADMIN)
         }
         return accountRepository.save(account)
@@ -25,7 +25,7 @@ class AccountService(
     fun createSubscriber(email: String, password: String): Account {
         val account = Account().apply {
             this.email = email
-            this.password = passwordEncoder.encode(password)
+            this.passwordHash = passwordEncoder.encode(password)
             this.roles = mutableSetOf(Role.SUBSCRIBER)
         }
         return accountRepository.save(account)
