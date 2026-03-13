@@ -1,6 +1,8 @@
 package com.almonium.famsubbe.entity
 
 import jakarta.persistence.*
+import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
 import java.util.*
 
 @Entity
@@ -16,4 +18,11 @@ class Subscriber {
     @Column(nullable = false, unique = true)
     var email: String? = null
 
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    var createdAt: Date? = null
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Date? = null
 }

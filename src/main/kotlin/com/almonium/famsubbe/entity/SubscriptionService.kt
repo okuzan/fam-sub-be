@@ -1,6 +1,8 @@
 package com.almonium.famsubbe.entity
 
 import jakarta.persistence.*
+import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
 import java.math.BigDecimal
 import java.util.*
 
@@ -16,4 +18,12 @@ class SubscriptionService {
 
     @Column(nullable = false)
     var price: BigDecimal? = null
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    var createdAt: Date? = null
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Date? = null
 }

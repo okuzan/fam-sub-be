@@ -1,6 +1,8 @@
 package com.almonium.famsubbe.entity
 
 import jakarta.persistence.*
+import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
@@ -24,6 +26,14 @@ class Account : UserDetails {
     @Column(name = "role")
     @Enumerated(EnumType.STRING)
     var roles: MutableSet<Role> = mutableSetOf()
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    var createdAt: Date? = null
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Date? = null
 
     override fun getAuthorities(): Collection<GrantedAuthority> {
         return roles.map { SimpleGrantedAuthority("ROLE_${it.name}") }
