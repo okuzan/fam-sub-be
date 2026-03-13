@@ -1,0 +1,51 @@
+# Git
+.git/
+.gitignore
+
+# Gradle
+.gradle/
+build/
+!build/libs/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (should use GHA secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Documentation
+README.md
+HELP.md
+docs/
+
+# Test files
+test-results/
+reports/
+src/test/
+
+# Docker files (not needed in image)
+Dockerfile
+.dockerignore
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+
+# Temporary files
+*.tmp
+*.temp
+*~
