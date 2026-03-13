@@ -15,12 +15,11 @@ permissions:
   packages: write
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment: production
-    permissions:
-      contents: read
-      packages: write
+    outputs:
+      image_tag: ${{ steps.get_tag.outputs.tag }}
+      build_needed: ${{ steps.get_tag.outputs.build_needed }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,6 +71,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: always() && (needs.build.result == 'success' || github.event_name == 'workflow_dispatch')
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    steps:
       - name: Checkout almonium-infra repository
         uses: actions/checkout@v4
         with:
@@ -110,6 +118,6 @@ jobs:
             --limit almonium \
             --vault-id fam_sub_prod@vault_pass_fam_sub_env.txt \
             --extra-vars "deploy_environment=prod" \
-            --extra-vars "deploy_image_tag=${{ steps.get_tag.outputs.tag }}" \
+            --extra-vars "deploy_image_tag=${{ needs.build.outputs.image_tag }}" \
             --extra-vars "deploy_gh_actor=${{ github.actor }}" \
             --extra-vars "deploy_gh_token=${{ secrets.GITHUB_TOKEN }}"
