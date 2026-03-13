@@ -3,18 +3,18 @@ package com.almonium.famsubbe.dto
 import java.time.YearMonth
 import java.util.*
 
-data class SubscriptionMembershipCreateRequest(
+data class MembershipCreateRequest(
     val subscriptionServiceId: UUID,
     val accountId: UUID,
     val membershipMonth: YearMonth,
     val shareWeight: Int = 1
 )
 
-data class SubscriptionMembershipUpdateRequest(
+data class MembershipUpdateRequest(
     val shareWeight: Int
 )
 
-data class SubscriptionMembershipResponse(
+data class MembershipResponse(
     val id: UUID,
     val subscriptionServiceId: UUID,
     val subscriptionServiceName: String,

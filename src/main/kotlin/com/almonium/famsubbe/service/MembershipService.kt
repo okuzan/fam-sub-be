@@ -1,11 +1,11 @@
 package com.almonium.famsubbe.service
 
-import com.almonium.famsubbe.dto.SubscriptionMembershipCreateRequest
-import com.almonium.famsubbe.dto.SubscriptionMembershipResponse
-import com.almonium.famsubbe.dto.SubscriptionMembershipUpdateRequest
-import com.almonium.famsubbe.entity.SubscriptionMembership
+import com.almonium.famsubbe.dto.MembershipCreateRequest
+import com.almonium.famsubbe.dto.MembershipResponse
+import com.almonium.famsubbe.dto.MembershipUpdateRequest
+import com.almonium.famsubbe.entity.Membership
 import com.almonium.famsubbe.repository.AccountRepository
-import com.almonium.famsubbe.repository.SubscriptionMembershipRepository
+import com.almonium.famsubbe.repository.MembershipRepository
 import com.almonium.famsubbe.repository.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -14,13 +14,13 @@ import java.util.*
 
 @Service
 @Transactional
-class SubscriptionMembershipService(
-    private val membershipRepository: SubscriptionMembershipRepository,
+class MembershipService(
+    private val membershipRepository: MembershipRepository,
     private val accountRepository: AccountRepository,
     private val subscriptionServiceRepository: SubscriptionServiceRepository
 ) {
 
-    fun createMembership(request: SubscriptionMembershipCreateRequest): SubscriptionMembershipResponse {
+    fun createMembership(request: MembershipCreateRequest): MembershipResponse {
         val account = accountRepository.findById(request.accountId)
             .orElseThrow { IllegalArgumentException("Account not found: ${request.accountId}") }
 
@@ -37,7 +37,7 @@ class SubscriptionMembershipService(
             )
         }
 
-        val membership = SubscriptionMembership().apply {
+        val membership = Membership().apply {
             this.subscriptionService = subscriptionService
             this.account = account
             this.membershipMonth = request.membershipMonth
@@ -48,7 +48,7 @@ class SubscriptionMembershipService(
         return mapToResponse(savedMembership)
     }
 
-    fun updateMembership(membershipId: UUID, request: SubscriptionMembershipUpdateRequest): SubscriptionMembershipResponse {
+    fun updateMembership(membershipId: UUID, request: MembershipUpdateRequest): MembershipResponse {
         val membership = membershipRepository.findById(membershipId)
             .orElseThrow { IllegalArgumentException("Membership not found: $membershipId") }
 
@@ -58,7 +58,7 @@ class SubscriptionMembershipService(
         return mapToResponse(updatedMembership)
     }
 
-    fun getMembership(membershipId: UUID): SubscriptionMembershipResponse {
+    fun getMembership(membershipId: UUID): MembershipResponse {
         val membership = membershipRepository.findById(membershipId)
             .orElseThrow { IllegalArgumentException("Membership not found: $membershipId") }
         return mapToResponse(membership)
@@ -67,7 +67,7 @@ class SubscriptionMembershipService(
     fun getMembershipsByServiceAndMonth(
         subscriptionServiceId: UUID,
         membershipMonth: YearMonth
-    ): List<SubscriptionMembershipResponse> {
+    ): List<MembershipResponse> {
         val subscriptionService = subscriptionServiceRepository.findById(subscriptionServiceId)
             .orElseThrow { IllegalArgumentException("Subscription service not found: $subscriptionServiceId") }
 
@@ -75,14 +75,14 @@ class SubscriptionMembershipService(
             .map { mapToResponse(it) }
     }
 
-    fun getMembershipsByAccount(accountId: UUID): List<SubscriptionMembershipResponse> {
+    fun getMembershipsByAccount(accountId: UUID): List<MembershipResponse> {
         val account = accountRepository.findById(accountId)
             .orElseThrow { IllegalArgumentException("Account not found: $accountId") }
 
         return membershipRepository.findByAccount(account).map { mapToResponse(it) }
     }
 
-    fun getMembershipsByService(subscriptionServiceId: UUID): List<SubscriptionMembershipResponse> {
+    fun getMembershipsByService(subscriptionServiceId: UUID): List<MembershipResponse> {
         val subscriptionService = subscriptionServiceRepository.findById(subscriptionServiceId)
             .orElseThrow { IllegalArgumentException("Subscription service not found: $subscriptionServiceId") }
 
@@ -96,8 +96,8 @@ class SubscriptionMembershipService(
         membershipRepository.deleteById(membershipId)
     }
 
-    private fun mapToResponse(membership: SubscriptionMembership): SubscriptionMembershipResponse {
-        return SubscriptionMembershipResponse(
+    private fun mapToResponse(membership: Membership): MembershipResponse {
+        return MembershipResponse(
             id = membership.id!!,
             subscriptionServiceId = membership.subscriptionService!!.id!!,
             subscriptionServiceName = membership.subscriptionService!!.name ?: "",

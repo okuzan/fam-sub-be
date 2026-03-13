@@ -1,10 +1,10 @@
 package com.almonium.famsubbe.service
 
-import com.almonium.famsubbe.dto.SubscriptionChargeCreateRequest
-import com.almonium.famsubbe.dto.SubscriptionChargeResponse
-import com.almonium.famsubbe.dto.SubscriptionChargeUpdateRequest
-import com.almonium.famsubbe.entity.SubscriptionCharge
-import com.almonium.famsubbe.repository.SubscriptionChargeRepository
+import com.almonium.famsubbe.dto.ChargeCreateRequest
+import com.almonium.famsubbe.dto.ChargeResponse
+import com.almonium.famsubbe.dto.ChargeUpdateRequest
+import com.almonium.famsubbe.entity.Charge
+import com.almonium.famsubbe.repository.ChargeRepository
 import com.almonium.famsubbe.repository.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -12,12 +12,12 @@ import java.util.*
 
 @Service
 @Transactional
-class SubscriptionChargeService(
-    private val chargeRepository: SubscriptionChargeRepository,
+class ChargeService(
+    private val chargeRepository: ChargeRepository,
     private val subscriptionServiceRepository: SubscriptionServiceRepository
 ) {
 
-    fun createCharge(request: SubscriptionChargeCreateRequest): SubscriptionChargeResponse {
+    fun createCharge(request: ChargeCreateRequest): ChargeResponse {
         val subscriptionService = subscriptionServiceRepository.findById(request.subscriptionServiceId)
             .orElseThrow { IllegalArgumentException("Subscription service not found: ${request.subscriptionServiceId}") }
 
@@ -29,7 +29,7 @@ class SubscriptionChargeService(
             throw IllegalArgumentException("Charge already exists for ${subscriptionService.name} in ${request.chargeDate}")
         }
 
-        val charge = SubscriptionCharge().apply {
+        val charge = Charge().apply {
             this.subscriptionService = subscriptionService
             this.amount = request.amount
             this.chargeDate = request.chargeDate
@@ -39,7 +39,7 @@ class SubscriptionChargeService(
         return mapToResponse(savedCharge)
     }
 
-    fun updateCharge(chargeId: UUID, request: SubscriptionChargeUpdateRequest): SubscriptionChargeResponse {
+    fun updateCharge(chargeId: UUID, request: ChargeUpdateRequest): ChargeResponse {
         val charge = chargeRepository.findById(chargeId)
             .orElseThrow { IllegalArgumentException("Charge not found: $chargeId") }
 
@@ -49,13 +49,13 @@ class SubscriptionChargeService(
         return mapToResponse(updatedCharge)
     }
 
-    fun getCharge(chargeId: UUID): SubscriptionChargeResponse {
+    fun getCharge(chargeId: UUID): ChargeResponse {
         val charge = chargeRepository.findById(chargeId)
             .orElseThrow { IllegalArgumentException("Charge not found: $chargeId") }
         return mapToResponse(charge)
     }
 
-    fun getChargesByService(subscriptionServiceId: UUID): List<SubscriptionChargeResponse> {
+    fun getChargesByService(subscriptionServiceId: UUID): List<ChargeResponse> {
         val subscriptionService = subscriptionServiceRepository.findById(subscriptionServiceId)
             .orElseThrow { IllegalArgumentException("Subscription service not found: $subscriptionServiceId") }
         
@@ -69,8 +69,8 @@ class SubscriptionChargeService(
         chargeRepository.deleteById(chargeId)
     }
 
-    private fun mapToResponse(charge: SubscriptionCharge): SubscriptionChargeResponse {
-        return SubscriptionChargeResponse(
+    private fun mapToResponse(charge: Charge): ChargeResponse {
+        return ChargeResponse(
             id = charge.id!!,
             subscriptionServiceId = charge.subscriptionService!!.id!!,
             subscriptionServiceName = charge.subscriptionService!!.name ?: "",
