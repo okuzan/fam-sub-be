@@ -38,4 +38,24 @@ class AccountService(
     fun findById(id: UUID): Account? {
         return accountRepository.findById(id).orElse(null)
     }
+
+    fun findOrCreateGoogleSubscriber(email: String): Account {
+        val normalizedEmail = email.trim().lowercase()
+        val existing = accountRepository.findByEmail(normalizedEmail)
+        if (existing != null) {
+            return existing
+        }
+
+        val account = Account().apply {
+            this.email = normalizedEmail
+            this.passwordHash = passwordEncoder.encode(UUID.randomUUID().toString())
+            this.roles = mutableSetOf(Role.SUBSCRIBER)
+        }
+        val saved = accountRepository.save(account)
+
+        // TODO: Try matching a preexisting admin-prepared subscriber by email.
+        // TODO: If there is no match, create a new subscriber with no memberships.
+
+        return saved
+    }
 }

@@ -1,3 +1,7 @@
+app:
+  web-domain: http://localhost:9000
+  api-domain: http://localhost:${server.port}
+
 server:
   port: ${LOCAL_PORT}
   servlet:
@@ -30,3 +34,15 @@ spring:
       auth: true
       starttls.enable: true
       timeout: 3000
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_OAUTH_CLIENT_ID}
+            client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET}
+            scope:
+              - openid
+              - profile
+              - email
+            redirect-uri: ${app.api-domain}${server.servlet.context-path}/login/oauth2/code/google
