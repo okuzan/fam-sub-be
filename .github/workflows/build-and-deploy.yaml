@@ -109,14 +109,18 @@ jobs:
           source ansible_venv/bin/activate
           cd almonium-infra/ansible
           
-          echo -n "$VAULT_PASS_FAM_SUB_PROD" > vault_pass_fam_sub_env.txt
+          test -n "${VAULT_PASS_FAM_SUB_PROD:-}" || { echo "Vault secret is empty/missing"; exit 1; }
           
-          chmod 600 vault_pass_*.txt
+          VAULT_FILE="vault_pass_fam_sub_env.txt"
+          trap 'rm -f "$VAULT_FILE"' EXIT
+          
+          printf "%s" "$VAULT_PASS_FAM_SUB_PROD" > "$VAULT_FILE"
+          chmod 600 "$VAULT_FILE"
           
           ansible-playbook playbook-deploy-fam-sub-be.yaml \
             -i inventory/hosts.ini \
             --limit almonium \
-            --vault-id fam_sub_prod@vault_pass_fam_sub_env.txt \
+            --vault-id fam_sub_prod@"$VAULT_FILE" \
             --extra-vars "deploy_environment=prod" \
             --extra-vars "deploy_image_tag=${{ needs.build.outputs.image_tag }}" \
             --extra-vars "deploy_gh_actor=${{ github.actor }}" \
