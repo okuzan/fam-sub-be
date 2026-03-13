@@ -117,15 +117,34 @@ jobs:
           printf "%s" "$VAULT_PASS_FAM_SUB_PROD" > "$VAULT_FILE"
           chmod 600 "$VAULT_FILE"
           
-          # Debug: check vault file content (remove after fixing)
-          echo "Vault file exists: $(test -f "$VAULT_FILE" && echo yes || echo no)"
-          echo "Vault file size: $(wc -c < "$VAULT_FILE")"
+          echo "Repo commit:"
+          git -C .. rev-parse HEAD
+          git -C .. log -1 --oneline
+          
+          echo "Vault password byte length:"
+          wc -c < "$VAULT_FILE"
+          
+          echo "Vaulted files:"
+          find . -type f \( -name "*.yml" -o -name "*.yaml" \) -exec sh -c '
+          for f do
+          if head -n 1 "$f" | grep -q "^\$ANSIBLE_VAULT;"; then
+          echo "=== $f ==="
+          head -n 1 "$f"
+          fi
+          done
+          ' sh {} +
+          
+          echo "Testing direct decrypt of target file..."
+          ansible-vault view vars/apps/fam_sub/vault.prod.yaml \
+          --vault-id fam_sub_prod@"$VAULT_FILE" >/dev/null
+          
+          echo "Direct decrypt OK, starting playbook..."
           
           ansible-playbook playbook-deploy-fam-sub-be.yaml \
-            -i inventory/hosts.ini \
-            --limit almonium \
-            --vault-id fam_sub_prod@"$VAULT_FILE" \
-            --extra-vars "deploy_environment=prod" \
-            --extra-vars "deploy_image_tag=${{ needs.build.outputs.image_tag }}" \
-            --extra-vars "deploy_gh_actor=${{ github.actor }}" \
-            --extra-vars "deploy_gh_token=${{ secrets.GITHUB_TOKEN }}"
+          -i inventory/hosts.ini \
+          --limit almonium \
+          --vault-id fam_sub_prod@"$VAULT_FILE" \
+          --extra-vars "deploy_environment=prod" \
+          --extra-vars "deploy_image_tag=${{ needs.build.outputs.image_tag }}" \
+          --extra-vars "deploy_gh_actor=${{ github.actor }}" \
+          --extra-vars "deploy_gh_token=${{ secrets.GITHUB_TOKEN }}"
