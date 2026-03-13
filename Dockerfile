@@ -1,16 +1,16 @@
-# ---- Builder Stage (Only for layertools extraction) ----
-FROM eclipse-temurin:21-jdk-alpine AS layertools-extractor
+# ---- Builder Stage ----
+FROM eclipse-temurin:21-jre-alpine AS builder
 WORKDIR /app
 COPY build/libs/*.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract
+RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
 # ---- Runtime Stage ----
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-COPY --from=layertools-extractor /app/dependencies/ ./
-COPY --from=layertools-extractor /app/spring-boot-loader/ ./
-COPY --from=layertools-extractor /app/snapshot-dependencies/ ./
-COPY --from=layertools-extractor /app/application/ ./
+COPY --from=builder /app/extracted/dependencies/ ./
+COPY --from=builder /app/extracted/spring-boot-loader/ ./
+COPY --from=builder /app/extracted/snapshot-dependencies/ ./
+COPY --from=builder /app/extracted/application/ ./
 
-ENTRYPOINT ["java", "-Djava.net.preferIPv4Stack=true", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
