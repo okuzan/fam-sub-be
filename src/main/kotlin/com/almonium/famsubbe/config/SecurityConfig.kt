@@ -13,6 +13,21 @@ import org.springframework.security.web.SecurityFilterChain
 @EnableWebSecurity
 class SecurityConfig {
 
+    companion object {
+        val PUBLIC_URL_PATTERNS = arrayOf(
+            // Swagger
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            // OAuth2
+            "/oauth2/authorization/**",
+            // Public endpoints
+            "/public/**",
+            // Actuator
+            "/actuator/health/**",
+            "/actuator/info"
+        )
+    }
+
     @Bean
     fun passwordEncoder(): PasswordEncoder {
         return BCryptPasswordEncoder()
@@ -26,7 +41,7 @@ class SecurityConfig {
                 authz
                     .requestMatchers("/admin/**").hasRole(Role.ADMIN.name)
                     .requestMatchers("/subscriber/**").hasRole(Role.SUBSCRIBER.name)
-                    .requestMatchers("/public/**").permitAll()
+                    .requestMatchers(*PUBLIC_URL_PATTERNS).permitAll()
                     .anyRequest().authenticated()
             }
             .httpBasic { }
