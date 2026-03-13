@@ -1,4 +1,11 @@
+server:
+  port: ${LOCAL_PORT}
+  servlet:
+    context-path: ${CONTEXT_PATH}
+  forward-headers-strategy: framework
+
 spring:
+  profiles.active: ${SPRING_PROFILE}
   application:
     name: fam-sub-be
   datasource:
@@ -14,3 +21,12 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  mail:
+    host: smtp.zoho.eu
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties.mail.smtp:
+      auth: true
+      starttls.enable: true
+      timeout: 3000
