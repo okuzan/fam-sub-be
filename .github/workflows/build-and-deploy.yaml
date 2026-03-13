@@ -68,7 +68,7 @@ jobs:
           context: .
           platforms: linux/arm64
           push: true
-          tags: ghcr.io/almonium-platform/almonium-be:${{ steps.get_tag.outputs.tag }}
+          tags: ghcr.io/okuzan/fam-sub-be:${{ steps.get_tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
