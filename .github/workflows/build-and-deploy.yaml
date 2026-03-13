@@ -109,7 +109,7 @@ jobs:
           source ansible_venv/bin/activate
           cd almonium-infra/ansible
           
-          echo -n "VAULT_PASS_FAM_SUB_PROD" > vault_pass_fam_sub_env.txt
+          echo -n "$VAULT_PASS_FAM_SUB_PROD" > vault_pass_fam_sub_env.txt
           
           chmod 600 vault_pass_*.txt
           
