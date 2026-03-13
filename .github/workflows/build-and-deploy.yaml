@@ -117,6 +117,10 @@ jobs:
           printf "%s" "$VAULT_PASS_FAM_SUB_PROD" > "$VAULT_FILE"
           chmod 600 "$VAULT_FILE"
           
+          # Debug: check vault file content (remove after fixing)
+          echo "Vault file exists: $(test -f "$VAULT_FILE" && echo yes || echo no)"
+          echo "Vault file size: $(wc -c < "$VAULT_FILE")"
+          
           ansible-playbook playbook-deploy-fam-sub-be.yaml \
             -i inventory/hosts.ini \
             --limit almonium \
