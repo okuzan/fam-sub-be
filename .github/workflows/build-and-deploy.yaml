@@ -1,0 +1,112 @@
+name: Deploy FamSub Backend
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'OPTIONAL: Specify an existing image tag to re-deploy.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up JDK 21 and Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Build JAR with Maven
+        run: mvn -B package -Dmaven.test.skip=true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image tag
+        id: get_tag
+        run: |
+          if [[ -n "${{ inputs.image_tag }}" ]]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+            echo "build_needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "build_needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push Docker image
+        if: steps.get_tag.outputs.build_needed == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/almonium-platform/almonium-be:${{ steps.get_tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Checkout almonium-infra repository
+        uses: actions/checkout@v4
+        with:
+          repository: almonium-platform/almonium-infra
+          path: almonium-infra
+          ssh-key: ${{ secrets.INFRA_REPO_CHECKOUT_KEY }}
+
+      - name: Set up SSH Agent for Ansible to connect to VM
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.CLOUD_KEY }}
+
+      - name: Install Ansible and Docker collection
+        run: |
+          python -m venv ansible_venv
+          source ansible_venv/bin/activate
+          pip install ansible
+          ansible-galaxy collection install community.docker
+
+      - name: Run Ansible Playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          VAULT_PASS_FAM_SUB_PROD: ${{ secrets.ANSIBLE_VAULT_PASSWORD_FAM_SUB_PROD }}
+        run: |
+          set -euo pipefail
+          
+          source ansible_venv/bin/activate
+          cd almonium-infra/ansible
+          
+          echo -n "VAULT_PASS_FAM_SUB_PROD" > vault_pass_fam_sub_env.txt
+          
+          chmod 600 vault_pass_*.txt
+          
+          ansible-playbook playbook-deploy-fam-sub-be.yaml \
+            -i inventory/hosts.ini \
+            --limit almonium \
+            --vault-id fam_sub_prod@vault_pass_fam_sub_env.txt \
+            --extra-vars "deploy_environment=prod" \
+            --extra-vars "deploy_image_tag=${{ steps.get_tag.outputs.tag }}" \
+            --extra-vars "deploy_gh_actor=${{ github.actor }}" \
+            --extra-vars "deploy_gh_token=${{ secrets.GITHUB_TOKEN }}"
