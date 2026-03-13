@@ -1,22 +1,7 @@
-# ---- Builder Stage ----
-FROM gradle:8.5.0-jdk21 AS builder
-WORKDIR /builder
-
-# Copy gradle files first for better caching
-COPY build.gradle.kts settings.gradle.kts gradlew gradlew.bat ./
-COPY gradle ./gradle
-RUN ./gradlew --version --no-daemon --max-workers=1
-
-# Copy source code
-COPY src ./src
-
-# Build with optimizations
-RUN ./gradlew bootJar -x test --no-daemon --max-workers=1 --parallel
-
-# ---- Layer Extraction Stage ----
+# ---- Builder Stage (Only for layertools extraction) ----
 FROM eclipse-temurin:21-jdk-alpine AS layertools-extractor
 WORKDIR /app
-COPY --from=builder /builder/build/libs/*.jar app.jar
+COPY build/libs/*.jar app.jar
 RUN java -Djarmode=layertools -jar app.jar extract
 
 # ---- Runtime Stage ----
