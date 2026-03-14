@@ -31,7 +31,6 @@ class SecurityConfig(
             "/login/oauth2/**",
             // Auth endpoints
             "/auth/**",
-            "/v1/auth/**",
             // Public endpoints
             "/public/**",
             // Actuator
