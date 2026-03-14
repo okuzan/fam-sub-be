@@ -84,6 +84,17 @@ class SecurityConfig(
             .sessionManagement { sessions ->
                 sessions.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             }
+            .logout { logout ->
+                logout.logoutUrl("/auth/logout")
+                    .invalidateHttpSession(true)
+                    .clearAuthentication(true)
+                    .deleteCookies("JSESSIONID")
+                    .logoutSuccessHandler { _, response, _ ->
+                        response.status = 200
+                        response.contentType = "application/json"
+                        response.writer.write("{\"message\":\"Logged out successfully\"}")
+                    }
+            }
             .httpBasic { }
         return http.build()
     }
