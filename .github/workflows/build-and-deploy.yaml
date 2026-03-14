@@ -94,9 +94,9 @@ jobs:
           playbook: playbook-deploy-fam-sub-be.yaml
           directory: almonium-infra/ansible
           key: ${{ secrets.CLOUD_KEY }}
-          inventory: inventory/hosts.ini
           vault_password: ${{ secrets.ANSIBLE_VAULT_PASSWORD_FAM_SUB_PROD }}
           options: |
+            -i inventory/hosts.ini
             --limit almonium
             --extra-vars "deploy_environment=prod"
             --extra-vars "deploy_image_tag=${{ needs.setup.outputs.image_tag }}"
