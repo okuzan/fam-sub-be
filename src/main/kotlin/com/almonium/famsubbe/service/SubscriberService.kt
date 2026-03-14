@@ -8,6 +8,7 @@ import com.almonium.famsubbe.repository.SubscriberRepository
 import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 import java.util.*
 
 @Service
@@ -29,6 +30,7 @@ class SubscriberService(
         val subscriber = Subscriber().apply {
             name = request.name
             email = request.email.lowercase().trim()
+            balance = request.balance
         }
         val savedSubscriber = subscriberRepository.save(subscriber)
         return savedSubscriber.toResponse()
@@ -41,6 +43,7 @@ class SubscriberService(
         subscriber.apply {
             name = request.name
             email = request.email.lowercase().trim()
+            balance = request.balance
         }
         
         val updatedSubscriber = subscriberRepository.save(subscriber)
@@ -59,6 +62,7 @@ class SubscriberService(
             id = this.id!!,
             name = this.name!!,
             email = this.email!!,
+            balance = this.balance ?: BigDecimal.ZERO,
             createdAt = this.createdAt!!,
             updatedAt = this.updatedAt!!
         )
