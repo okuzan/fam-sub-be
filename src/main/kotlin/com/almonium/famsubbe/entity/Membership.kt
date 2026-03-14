@@ -11,8 +11,8 @@ import java.util.*
     name = "membership",
     uniqueConstraints = [
         UniqueConstraint(
-            name = "uk_subscription_service_account_month",
-            columnNames = ["subscription_service_id", "account_id", "membership_month"]
+            name = "uk_subscription_service_subscriber_month",
+            columnNames = ["subscription_service_id", "subscriber_id", "membership_month"]
         )
     ]
 )
@@ -26,8 +26,8 @@ class Membership {
     var subscriptionService: SubscriptionService? = null
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false)
-    var account: Account? = null
+    @JoinColumn(name = "subscriber_id", nullable = false)
+    var subscriber: Subscriber? = null
 
     @Column(nullable = false, name = "membership_month")
     var membershipMonth: YearMonth? = null

@@ -4,7 +4,7 @@ import com.almonium.famsubbe.dto.MembershipCreateRequest
 import com.almonium.famsubbe.dto.MembershipResponse
 import com.almonium.famsubbe.dto.MembershipUpdateRequest
 import com.almonium.famsubbe.entity.Membership
-import com.almonium.famsubbe.repository.AccountRepository
+import com.almonium.famsubbe.repository.SubscriberRepository
 import com.almonium.famsubbe.repository.MembershipRepository
 import com.almonium.famsubbe.repository.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
@@ -16,30 +16,30 @@ import java.util.*
 @Transactional
 class MembershipService(
     private val membershipRepository: MembershipRepository,
-    private val accountRepository: AccountRepository,
+    private val subscriberRepository: SubscriberRepository,
     private val subscriptionServiceRepository: SubscriptionServiceRepository
 ) {
 
     fun createMembership(request: MembershipCreateRequest): MembershipResponse {
-        val account = accountRepository.findById(request.accountId)
-            .orElseThrow { IllegalArgumentException("Account not found: ${request.accountId}") }
+        val subscriber = subscriberRepository.findById(request.subscriberId)
+            .orElseThrow { IllegalArgumentException("Subscriber not found: ${request.subscriberId}") }
 
         val subscriptionService = subscriptionServiceRepository.findById(request.subscriptionServiceId)
             .orElseThrow { IllegalArgumentException("Subscription service not found: ${request.subscriptionServiceId}") }
 
-        // Check if membership already exists for this service/account/month combination
-        val existingMembership = membershipRepository.findBySubscriptionServiceAndAccountAndMembershipMonth(
-            subscriptionService, account, request.membershipMonth
+        // Check if membership already exists for this service/subscriber/month combination
+        val existingMembership = membershipRepository.findBySubscriptionServiceAndSubscriberAndMembershipMonth(
+            subscriptionService, subscriber, request.membershipMonth
         )
         if (existingMembership != null) {
             throw IllegalArgumentException(
-                "Membership already exists for account ${account.email} in ${subscriptionService.name} for ${request.membershipMonth}"
+                "Membership already exists for subscriber ${subscriber.name} in ${subscriptionService.name} for ${request.membershipMonth}"
             )
         }
 
         val membership = Membership().apply {
             this.subscriptionService = subscriptionService
-            this.account = account
+            this.subscriber = subscriber
             this.membershipMonth = request.membershipMonth
             this.shareWeight = request.shareWeight
         }
@@ -75,11 +75,11 @@ class MembershipService(
             .map { mapToResponse(it) }
     }
 
-    fun getMembershipsByAccount(accountId: UUID): List<MembershipResponse> {
-        val account = accountRepository.findById(accountId)
-            .orElseThrow { IllegalArgumentException("Account not found: $accountId") }
+    fun getMembershipsBySubscriber(subscriberId: UUID): List<MembershipResponse> {
+        val subscriber = subscriberRepository.findById(subscriberId)
+            .orElseThrow { IllegalArgumentException("Subscriber not found: $subscriberId") }
 
-        return membershipRepository.findByAccount(account).map { mapToResponse(it) }
+        return membershipRepository.findBySubscriber(subscriber).map { mapToResponse(it) }
     }
 
     fun getMembershipsByService(subscriptionServiceId: UUID): List<MembershipResponse> {
@@ -101,8 +101,9 @@ class MembershipService(
             id = membership.id!!,
             subscriptionServiceId = membership.subscriptionService!!.id!!,
             subscriptionServiceName = membership.subscriptionService!!.name ?: "",
-            accountId = membership.account!!.id!!,
-            accountEmail = membership.account!!.email,
+            subscriberId = membership.subscriber!!.id!!,
+            subscriberName = membership.subscriber!!.name ?: "",
+            subscriberEmail = membership.subscriber!!.email ?: "",
             membershipMonth = membership.membershipMonth!!,
             shareWeight = membership.shareWeight,
             createdAt = membership.createdAt!!,

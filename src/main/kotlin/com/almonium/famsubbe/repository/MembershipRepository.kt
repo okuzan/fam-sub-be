@@ -1,6 +1,6 @@
 package com.almonium.famsubbe.repository
 
-import com.almonium.famsubbe.entity.Account
+import com.almonium.famsubbe.entity.Subscriber
 import com.almonium.famsubbe.entity.Membership
 import com.almonium.famsubbe.entity.SubscriptionService
 import org.springframework.data.jpa.repository.JpaRepository
@@ -10,9 +10,9 @@ import java.util.*
 
 @Repository
 interface MembershipRepository : JpaRepository<Membership, UUID> {
-    fun findBySubscriptionServiceAndAccountAndMembershipMonth(
+    fun findBySubscriptionServiceAndSubscriberAndMembershipMonth(
         subscriptionService: SubscriptionService,
-        account: Account,
+        subscriber: Subscriber,
         membershipMonth: YearMonth
     ): Membership?
 
@@ -23,5 +23,5 @@ interface MembershipRepository : JpaRepository<Membership, UUID> {
 
     fun findBySubscriptionService(subscriptionService: SubscriptionService): List<Membership>
 
-    fun findByAccount(account: Account): List<Membership>
+    fun findBySubscriber(subscriber: Subscriber): List<Membership>
 }

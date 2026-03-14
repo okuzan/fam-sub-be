@@ -5,7 +5,7 @@ import java.util.*
 
 data class MembershipCreateRequest(
     val subscriptionServiceId: UUID,
-    val accountId: UUID,
+    val subscriberId: UUID,
     val membershipMonth: YearMonth,
     val shareWeight: Int = 1
 )
@@ -18,8 +18,9 @@ data class MembershipResponse(
     val id: UUID,
     val subscriptionServiceId: UUID,
     val subscriptionServiceName: String,
-    val accountId: UUID,
-    val accountEmail: String,
+    val subscriberId: UUID,
+    val subscriberName: String,
+    val subscriberEmail: String,
     val membershipMonth: YearMonth,
     val shareWeight: Int,
     val createdAt: Date,

@@ -47,9 +47,9 @@ class AdminMembershipController(
         return ResponseEntity.ok(memberships)
     }
 
-    @GetMapping("/account/{accountId}")
-    fun getMembershipsByAccount(@PathVariable accountId: UUID): ResponseEntity<List<MembershipResponse>> {
-        val memberships = membershipService.getMembershipsByAccount(accountId)
+    @GetMapping("/subscriber/{subscriberId}")
+    fun getMembershipsBySubscriber(@PathVariable subscriberId: UUID): ResponseEntity<List<MembershipResponse>> {
+        val memberships = membershipService.getMembershipsBySubscriber(subscriberId)
         return ResponseEntity.ok(memberships)
     }
 
