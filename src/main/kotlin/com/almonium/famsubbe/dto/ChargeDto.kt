@@ -4,13 +4,6 @@ import java.math.BigDecimal
 import java.time.YearMonth
 import java.util.*
 
-data class ChargeDto(
-    val id: UUID?,
-    val subscriptionServiceId: UUID,
-    val amount: BigDecimal,
-    val chargeDate: YearMonth
-)
-
 data class ChargeCreateRequest(
     val subscriptionServiceId: UUID,
     val amount: BigDecimal,
