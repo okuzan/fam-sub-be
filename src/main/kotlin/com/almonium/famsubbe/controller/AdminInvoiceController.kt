@@ -66,4 +66,14 @@ class AdminInvoiceController(
         val updatedInvoice = invoiceService.markAsPaid(invoiceId)
         return ResponseEntity.ok(updatedInvoice)
     }
+
+    @PostMapping("/outstanding-balance")
+    fun generateOutstandingBalanceInvoice(
+        @RequestBody request: OutstandingBalanceInvoiceRequest,
+        authentication: Authentication
+    ): ResponseEntity<InvoiceResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoice = invoiceService.generateOutstandingBalanceInvoice(request, performedByAccountId)
+        return ResponseEntity.ok(invoice)
+    }
 }

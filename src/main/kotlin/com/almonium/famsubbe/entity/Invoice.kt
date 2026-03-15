@@ -53,4 +53,8 @@ class Invoice {
 
     @Column(name = "notes")
     var notes: String? = null
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origin", nullable = false)
+    var origin: InvoiceOrigin = InvoiceOrigin.SUBSCRIPTION_LEDGER
 }

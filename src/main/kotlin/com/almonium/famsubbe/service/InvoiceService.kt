@@ -2,12 +2,12 @@ package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.*
 import com.almonium.famsubbe.entity.Invoice
+import com.almonium.famsubbe.entity.InvoiceOrigin
 import com.almonium.famsubbe.entity.InvoiceStatus
 import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.SubscriberRepository
-import com.itextpdf.io.font.constants.StandardFonts
 import com.itextpdf.kernel.font.PdfFont
 import com.itextpdf.kernel.font.PdfFontFactory
 import com.itextpdf.kernel.pdf.PdfDocument
@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.io.ByteArrayOutputStream
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.YearMonth
 import java.util.*
 
 @Service
@@ -74,6 +75,7 @@ class InvoiceService(
                     this.sentAt = if (request.sendEmail) now else null
                     this.emailSent = request.sendEmail
                     this.notes = "generated_by=$performedByAccountId"
+                    this.origin = InvoiceOrigin.SUBSCRIPTION_LEDGER
                 }
             )
 
@@ -156,7 +158,8 @@ class InvoiceService(
             createdByAccountId = requireNotNull(createdByAccountId),
             sentAt = sentAt,
             emailSent = emailSent,
-            notes = notes
+            notes = notes,
+            origin = origin.name
         )
 
     private fun LedgerEntry.toInvoiceLedgerEntryResponse(): InvoiceLedgerEntryResponse =
@@ -221,5 +224,44 @@ class InvoiceService(
 
         document.close()
         return outputStream.toByteArray()
+    }
+
+    fun generateOutstandingBalanceInvoice(
+        request: OutstandingBalanceInvoiceRequest,
+        performedByAccountId: UUID
+    ): InvoiceResponse {
+        val subscriber = subscriberRepository.findById(request.subscriberId)
+            .orElseThrow { IllegalArgumentException("Subscriber not found: ${request.subscriberId}") }
+
+        // Check if subscriber has negative balance
+        val currentBalance = subscriber.balance?: BigDecimal.ZERO
+        check(currentBalance < BigDecimal.ZERO) {
+            "Subscriber must have negative balance to generate outstanding balance invoice. Current balance: $currentBalance" 
+        }
+
+        // Calculate the amount needed to zero the balance (absolute value of negative balance)
+        val zeroingAmount = currentBalance.abs()
+        
+        val now = Instant.now()
+        
+        // Create invoice with zeroing amount
+        val invoice = invoiceRepository.save(
+            Invoice().apply {
+                this.subscriber = subscriber
+                this.fromMonth = YearMonth.now()
+                this.toMonth = YearMonth.now()
+                this.totalAmount = zeroingAmount
+                this.status = if (request.sendEmail) InvoiceStatus.SENT else InvoiceStatus.DRAFT
+                this.createdAt = now
+                this.createdByAccountId = performedByAccountId
+                this.sentAt = if (request.sendEmail) now else null
+                this.emailSent = request.sendEmail
+                this.notes = request.notes ?: "outstanding_balance_invoice_generated_by=$performedByAccountId"
+                this.origin = InvoiceOrigin.OUTSTANDING_BALANCE
+            }
+        )
+        subscriber.balance = BigDecimal.ZERO
+        subscriberRepository.save(subscriber)
+        return invoice.toResponse()
     }
 }

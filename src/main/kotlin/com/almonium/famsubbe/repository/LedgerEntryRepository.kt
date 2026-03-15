@@ -63,5 +63,4 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
         where le.invoice is null
     """)
     fun findLatestUninvoicedMonth(): YearMonth?
-
 }

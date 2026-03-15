@@ -17,5 +17,6 @@ data class InvoiceResponse(
     val createdByAccountId: UUID,
     val sentAt: Instant?,
     val emailSent: Boolean,
-    val notes: String?
+    val notes: String?,
+    val origin: String
 )
