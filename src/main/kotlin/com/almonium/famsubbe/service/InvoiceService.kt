@@ -181,23 +181,32 @@ class InvoiceService(
         val writer = PdfWriter(outputStream)
         val pdf = PdfDocument(writer)
         val document = Document(pdf)
-        
-        // Use a font that supports Ukrainian characters
-        val font: PdfFont = PdfFontFactory.createFont(StandardFonts.TIMES_ROMAN)
-        
-        // Simple invoice content
+
+        // Put this font file into src/main/resources/fonts/
+        // For example: DejaVuSans.ttf or NotoSans-Regular.ttf
+        val fontStream = javaClass.classLoader.getResource("fonts/NotoSans.ttf")
+            ?: throw IllegalStateException("Font file not found")
+
+        val font: PdfFont = PdfFontFactory.createFont(
+            fontStream.toURI().path,
+            com.itextpdf.io.font.PdfEncodings.IDENTITY_H,
+            PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED
+        )
+
         document.add(Paragraph("Invoice #${invoice.id}").setFont(font))
-        document.add(Paragraph("Subscriber: ${invoice.subscriber?.name}").setFont(font))
+        document.add(Paragraph("Subscriber: ${invoice.subscriber?.name ?: ""}").setFont(font))
         document.add(Paragraph("Period: ${invoice.fromMonth} - ${invoice.toMonth}").setFont(font))
         document.add(Paragraph("Total: ₴${invoice.totalAmount}").setFont(font))
         document.add(Paragraph(" ").setFont(font))
-        
-        // Add entries
+
         document.add(Paragraph("Ledger Entries:").setFont(font))
         entries.forEach { entry ->
-            document.add(Paragraph("- ${entry.subscriptionService?.name}: ₴${entry.amount} (${entry.recordedMonth})").setFont(font))
+            document.add(
+                Paragraph("- ${entry.subscriptionService?.name ?: ""}: ₴${entry.amount} (${entry.recordedMonth})")
+                    .setFont(font)
+            )
         }
-        
+
         document.close()
         return outputStream.toByteArray()
     }
