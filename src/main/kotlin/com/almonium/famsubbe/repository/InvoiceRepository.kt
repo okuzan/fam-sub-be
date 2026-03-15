@@ -1,6 +1,8 @@
 package com.almonium.famsubbe.repository
 
 import com.almonium.famsubbe.entity.Invoice
+import com.almonium.famsubbe.entity.InvoiceStatus
+import com.almonium.famsubbe.entity.Subscriber
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Query
@@ -26,4 +28,6 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
         where i.status != 'PAID'
     """)
     fun findSubscriberIdsWithUnpaidInvoices(): List<UUID>
+    
+    fun findBySubscriberAndStatusNot(subscriber: Subscriber, status: InvoiceStatus): List<Invoice>
 }

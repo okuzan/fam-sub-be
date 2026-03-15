@@ -6,6 +6,7 @@ import com.almonium.famsubbe.dto.SubscriberResponse
 import com.almonium.famsubbe.dto.SubscriberUpdateRequest
 import com.almonium.famsubbe.service.InvoiceEmailService
 import com.almonium.famsubbe.service.InvoiceService
+import com.almonium.famsubbe.service.PinnedPostService
 import com.almonium.famsubbe.service.SubscriberService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -18,7 +19,8 @@ import java.util.*
 class AdminSubscriberController(
     private val subscriberService: SubscriberService,
     private val invoiceService: InvoiceService,
-    private val invoiceEmailService: InvoiceEmailService
+    private val invoiceEmailService: InvoiceEmailService,
+    private val pinnedPostService: PinnedPostService
 ) {
 
     @GetMapping
@@ -90,5 +92,15 @@ class AdminSubscriberController(
     fun deleteSubscriber(@PathVariable id: UUID): ResponseEntity<Void> {
         subscriberService.deleteSubscriber(id)
         return ResponseEntity.noContent().build()
+    }
+
+    @PostMapping("/generate-pinned-post")
+    fun generatePinnedPost(): ResponseEntity<Map<String, String>> {
+        return try {
+            val pinnedPost = pinnedPostService.generatePinnedPost()
+            ResponseEntity.ok(mapOf("content" to pinnedPost))
+        } catch (e: Exception) {
+            ResponseEntity.internalServerError().body(mapOf("error" to "Failed to generate pinned post: ${e.message}"))
+        }
     }
 }

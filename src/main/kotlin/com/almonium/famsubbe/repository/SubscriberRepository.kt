@@ -8,4 +8,5 @@ import java.util.*
 @Repository
 interface SubscriberRepository : JpaRepository<Subscriber, UUID> {
     fun findByNameIgnoreCaseStartingWith(namePrefix: String): List<Subscriber>
+    fun findAllByOrderByName(): List<Subscriber>
 }
