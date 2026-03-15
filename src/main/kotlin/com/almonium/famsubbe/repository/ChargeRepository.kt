@@ -9,9 +9,9 @@ import java.util.*
 
 @Repository
 interface ChargeRepository : JpaRepository<Charge, UUID> {
-    fun findBySubscriptionServiceAndChargeDate(
+    fun findBySubscriptionServiceAndChargeMonth(
         subscriptionService: SubscriptionService, 
-        chargeDate: YearMonth
+        chargeMonth: YearMonth
     ): Charge?
     
     fun findBySubscriptionService(subscriptionService: SubscriptionService): List<Charge>

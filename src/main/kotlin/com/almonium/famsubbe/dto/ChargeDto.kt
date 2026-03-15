@@ -7,7 +7,7 @@ import java.util.*
 data class ChargeCreateRequest(
     val subscriptionServiceId: UUID,
     val amount: BigDecimal,
-    val chargeDate: YearMonth
+    val chargeMonth: YearMonth
 )
 
 data class ChargeUpdateRequest(
@@ -19,7 +19,7 @@ data class ChargeResponse(
     val subscriptionServiceId: UUID,
     val subscriptionServiceName: String,
     val amount: BigDecimal,
-    val chargeDate: YearMonth,
+    val chargeMonth: YearMonth,
     val createdAt: Date,
     val updatedAt: Date
 )

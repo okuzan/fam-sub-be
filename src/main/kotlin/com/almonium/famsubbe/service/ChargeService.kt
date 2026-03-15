@@ -22,17 +22,17 @@ class ChargeService(
             .orElseThrow { IllegalArgumentException("Subscription service not found: ${request.subscriptionServiceId}") }
 
         // Check if charge already exists for this service and month
-        val existingCharge = chargeRepository.findBySubscriptionServiceAndChargeDate(
-            subscriptionService, request.chargeDate
+        val existingCharge = chargeRepository.findBySubscriptionServiceAndChargeMonth(
+            subscriptionService, request.chargeMonth
         )
         if (existingCharge != null) {
-            throw IllegalArgumentException("Charge already exists for ${subscriptionService.name} in ${request.chargeDate}")
+            throw IllegalArgumentException("Charge already exists for ${subscriptionService.name} in ${request.chargeMonth}")
         }
 
         val charge = Charge().apply {
             this.subscriptionService = subscriptionService
             this.amount = request.amount
-            this.chargeDate = request.chargeDate
+            this.chargeMonth = request.chargeMonth
         }
 
         val savedCharge = chargeRepository.save(charge)
@@ -75,7 +75,7 @@ class ChargeService(
             subscriptionServiceId = charge.subscriptionService!!.id!!,
             subscriptionServiceName = charge.subscriptionService!!.name ?: "",
             amount = charge.amount!!,
-            chargeDate = charge.chargeDate!!,
+            chargeMonth = charge.chargeMonth!!,
             createdAt = charge.createdAt ?: Date(), // Fallback to current time if null
             updatedAt = charge.updatedAt ?: Date()  // Fallback to current time if null
         )

@@ -22,7 +22,7 @@ class Charge {
     var amount: BigDecimal? = null
 
     @Column(nullable = false)
-    var chargeDate: YearMonth? = null
+    var chargeMonth: YearMonth? = null
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
