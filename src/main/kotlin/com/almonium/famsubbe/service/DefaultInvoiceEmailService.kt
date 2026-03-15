@@ -2,6 +2,7 @@ package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.entity.Invoice
 import com.almonium.famsubbe.entity.LedgerEntry
+import com.almonium.famsubbe.util.HtmlFileWriter
 import org.springframework.context.annotation.Profile
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.MimeMessageHelper
@@ -15,7 +16,9 @@ import org.springframework.beans.factory.annotation.Value
 class DefaultInvoiceEmailService(
     private val mailSender: JavaMailSender,
     private val templateEngine: TemplateEngine,
-    @Value("\${spring.mail.username}") private val fromEmail: String
+    private val htmlFileWriter: HtmlFileWriter,
+    @Value("\${spring.mail.username}") private val fromEmail: String,
+    @Value("\${app.email.dry-run:false}") private val isDryRun: Boolean
 ) : InvoiceEmailService {
 
     private val log = LoggerFactory.getLogger(DefaultInvoiceEmailService::class.java)
@@ -29,6 +32,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("invoice", invoice)
             context.setVariable("subscriber", subscriber)
             context.setVariable("entries", entries)
+            context.setVariable("origin", invoice.origin)
 
             val htmlContent = templateEngine.process("invoice-email", context)
 
@@ -40,7 +44,12 @@ class DefaultInvoiceEmailService(
             helper.setSubject("Your Invoice for ${invoice.fromMonth} - ${invoice.toMonth}")
             helper.setText(htmlContent, true)
 
-            mailSender.send(mimeMessage)
+            if (isDryRun) {
+                log.info("Email sending is disabled. Skipping sending email to {}", toEmail)
+                htmlFileWriter.saveMimeMessageToFile(mimeMessage)
+            } else {
+                mailSender.send(mimeMessage)
+            }
             true
         } catch (e: Exception) {
             log.error("Failed to send invoice email to {}", toEmail, e)
@@ -72,7 +81,12 @@ class DefaultInvoiceEmailService(
             helper.setSubject("Your Subscription Account Status")
             helper.setText(htmlContent, true)
 
-            mailSender.send(mimeMessage)
+            if (isDryRun) {
+                log.info("Email sending is disabled. Skipping sending situation email to {}", toEmail)
+                htmlFileWriter.saveMimeMessageToFile(mimeMessage)
+            } else {
+                mailSender.send(mimeMessage)
+            }
             true
         } catch (e: Exception) {
             log.error("Failed to send situation email to {}", toEmail, e)

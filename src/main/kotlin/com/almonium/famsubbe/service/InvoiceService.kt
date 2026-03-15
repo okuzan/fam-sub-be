@@ -13,6 +13,7 @@ import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.layout.Document
 import com.itextpdf.layout.element.Paragraph
 import jakarta.persistence.criteria.Predicate
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -29,7 +30,9 @@ class InvoiceService(
     private val invoiceRepository: InvoiceRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val subscriberRepository: SubscriberRepository,
-    private val membershipRepository: MembershipRepository
+    private val membershipRepository: MembershipRepository,
+    private val invoiceEmailService: InvoiceEmailService,
+    @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean
 ) {
     fun generateInvoices(
         request: InvoiceGenerationRequest,
@@ -325,6 +328,25 @@ class InvoiceService(
 
         return invoiceRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"))
             .map { it.toResponse() }
+    }
+
+    @Transactional
+    fun sendInvoiceEmail(invoiceId: UUID): Boolean {
+        val invoice = invoiceRepository.findById(invoiceId)
+            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+        
+        val entries = ledgerEntryRepository.findByInvoice(invoice)
+            .sortedBy { it.recordedMonth }
+        val success = invoiceEmailService.sendInvoiceEmail(invoice, entries)
+        
+        if (success && !isDryRun && invoice.status == InvoiceStatus.DRAFT) {
+            invoice.emailSent = true
+            invoice.sentAt = Instant.now()
+            invoice.status = InvoiceStatus.SENT
+            invoiceRepository.save(invoice)
+        }
+        
+        return success
     }
 
     @Transactional(readOnly = true)

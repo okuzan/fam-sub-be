@@ -5,50 +5,78 @@
     <title>Your Invoice</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #f8f9fa; padding: 20px; text-align: center; border-bottom: 2px solid #007bff; }
+        .header { padding: 20px; text-align: center; border-bottom: 2px solid #007bff; }
+        .header.unpaid { background-color: #f8f9fa; border-bottom: 2px solid #007bff; }
+        .header.paid { background-color: #d4edda; border-bottom: 2px solid #28a745; }
+        .status-badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-top: 10px; }
+        .status-paid { background-color: #28a745; color: white; }
+        .status-unpaid { background-color: #ffc107; color: #333; }
         .content { padding: 20px 0; }
+        .invoice-details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
         .footer { font-size: 12px; color: #6c757d; text-align: center; margin-top: 20px; border-top: 1px solid #dee2e6; padding-top: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .total { font-weight: bold; font-size: 1.2em; text-align: right; margin-top: 20px; }
+        .notes { margin-top: 20px; padding: 10px; border-left: 4px solid #17a2b8; background-color: #f8f9fa; font-style: italic; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2>Invoice for <span th:text="${invoice.fromMonth}"></span> to <span th:text="${invoice.toMonth}"></span></h2>
+    <div th:class="${invoice.status.name() == 'PAID'} ? 'header paid' : 'header unpaid'">
+        <h2 th:if="${origin.name() == 'OUTSTANDING_BALANCE'}">Outstanding Balance Invoice</h2>
+        <h2 th:if="${origin.name() != 'OUTSTANDING_BALANCE'}">Invoice for <span th:text="${invoice.fromMonth}"></span> to <span th:text="${invoice.toMonth}"></span></h2>
+        <div th:if="${invoice.status.name() == 'PAID'}" class="status-badge status-paid">PAID</div>
+        <div th:if="${invoice.status.name() != 'PAID'}" class="status-badge status-unpaid">UNPAID</div>
     </div>
     
     <div class="content">
         <p>Dear <span th:text="${subscriber.name}">Customer</span>,</p>
         
-        <p>Please find the details of your recent invoice below.</p>
+        <div class="invoice-details">
+            <p><strong>Invoice ID:</strong> <span th:text="${invoice.id}"></span></p>
+            <p><strong>Date Issued:</strong> <span th:text="${#temporals.format(invoice.createdAt, 'MMM dd, yyyy HH:mm')}"></span></p>
+            <p th:if="${invoice.status.name() == 'PAID'}"><strong>Payment Date:</strong> <span th:text="${invoice.sentAt != null ? #temporals.format(invoice.sentAt, 'MMM dd, yyyy HH:mm') : #dates.format(#dates.createNow(), 'MMM dd, yyyy HH:mm')}"></span></p>
+        </div>
+
+        <p th:if="${origin.name() == 'OUTSTANDING_BALANCE'}">This invoice represents your outstanding balance that has been carried forward from previous periods.</p>
+        <p th:if="${origin.name() != 'OUTSTANDING_BALANCE' && invoice.status.name() != 'PAID'}">Please find the details of your recent invoice below.</p>
+        <p th:if="${origin.name() != 'OUTSTANDING_BALANCE' && invoice.status.name() == 'PAID'}">Below is the breakdown of your paid invoice for your records.</p>
         
-        <table>
+        <table th:if="${not #lists.isEmpty(entries)}">
             <thead>
                 <tr>
                     <th>Date</th>
                     <th>Description</th>
+                    <th>Type</th>
                     <th>Amount</th>
                 </tr>
             </thead>
             <tbody>
                 <tr th:each="entry : ${entries}">
-                    <td th:text="${#temporals.format(entry.createdAt, 'MMM dd, yyyy')}">Date</td>
-                    <td th:text="${entry.description}">Description</td>
+                    <td th:text="${#temporals.format(entry.recordedMonth.atDay(1), 'MMM yyyy')}">Date</td>
+                    <td th:text="${entry.subscriptionService.name}">Description</td>
+                    <td th:text="${entry.notes ?: 'Subscription Charge'}">Notes</td>
                     <td th:text="${'₴' + entry.amount}">₴0.00</td>
                 </tr>
             </tbody>
         </table>
+        <p th:if="${#lists.isEmpty(entries)}"><em>No ledger entries found for this invoice.</em></p>
         
         <div class="total">
             Total Amount: <span th:text="${'₴' + invoice.totalAmount}">₴0.00</span>
         </div>
         
-        <p th:if="${invoice.notes}" th:text="${invoice.notes}"></p>
+        <div class="notes" th:if="${invoice.notes}">
+            <strong>Notes:</strong> <span th:text="${invoice.notes}"></span>
+        </div>
         
-        <p>Please ensure payment is made at your earliest convenience.</p>
-        <p>Thank you for your business!</p>
+        <div th:if="${invoice.status.name() != 'PAID'}">
+            <p>Please ensure payment is made at your earliest convenience.</p>
+            <p>Thank you for your business!</p>
+        </div>
+        <div th:if="${invoice.status.name() == 'PAID'}">
+            <p>Thank you for your payment!</p>
+        </div>
     </div>
     
     <div class="footer">

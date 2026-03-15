@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.repository
 
+import com.almonium.famsubbe.entity.Invoice
 import com.almonium.famsubbe.entity.LedgerEntry
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -63,4 +64,6 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
         where le.invoice is null
     """)
     fun findLatestUninvoicedMonth(): YearMonth?
+
+    fun findByInvoice(invoice: Invoice): List<LedgerEntry>
 }

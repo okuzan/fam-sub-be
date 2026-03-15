@@ -1,7 +1,3 @@
-app:
-  web-domain: http://localhost:9000
-  api-domain: http://localhost:${server.port}
-
 server:
   port: ${LOCAL_PORT}
   servlet:

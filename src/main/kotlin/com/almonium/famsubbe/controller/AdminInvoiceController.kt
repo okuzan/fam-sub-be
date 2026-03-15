@@ -91,4 +91,16 @@ class AdminInvoiceController(
         val updatedInvoice = invoiceService.payFromBalance(invoiceId)
         return ResponseEntity.ok(updatedInvoice)
     }
+
+    @PostMapping("/{invoiceId}/email")
+    fun sendInvoiceEmail(
+        @PathVariable invoiceId: UUID
+    ): ResponseEntity<Map<String, String>> {
+        val success = invoiceService.sendInvoiceEmail(invoiceId)
+        return if (success) {
+            ResponseEntity.ok(mapOf("message" to "Invoice email sent successfully"))
+        } else {
+            ResponseEntity.internalServerError().body(mapOf("error" to "Failed to send invoice email"))
+        }
+    }
 }

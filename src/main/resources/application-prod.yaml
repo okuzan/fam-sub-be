@@ -1,3 +1,4 @@
 app:
   web-domain: https://famsub.almonium.com
   api-domain: https://api.famsub.almonium.com
+  email.dry-run: false

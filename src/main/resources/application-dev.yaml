@@ -1,0 +1,6 @@
+app:
+  web-domain: http://localhost:9000
+  api-domain: http://localhost:${server.port}
+  email.dry-run: true
+spring.config.import:
+  - optional:file:.env[.properties]
