@@ -157,12 +157,23 @@ class CostCalculationService(
     }
 
     private fun splitEvenly(total: BigDecimal, participants: Int): List<BigDecimal> {
-        val base = total.divide(BigDecimal(participants), 2, RoundingMode.DOWN)
-        val result = MutableList(participants) { base }
-        val assigned = base.multiply(BigDecimal(participants))
-        val remainder = total.subtract(assigned)
-        result[participants - 1] = result[participants - 1].add(remainder)
-        return result
+        require(participants > 0) { "participants must be > 0" }
+
+        val totalCents = total
+            .movePointRight(2)
+            .setScale(0, RoundingMode.HALF_UP)
+            .toLong()
+
+        val baseCents = totalCents / participants
+        val remainderCents = (totalCents % participants).toInt()
+
+        val result = MutableList(participants) { baseCents }
+
+        for (i in 0 until remainderCents) {
+            result[i] = result[i] + 1
+        }
+
+        return result.map { BigDecimal.valueOf(it, 2) }
     }
 
     fun getSuggestedCalculationPeriod(): CostCalculationSuggestion {
