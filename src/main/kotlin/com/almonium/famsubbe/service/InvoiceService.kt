@@ -1,10 +1,7 @@
 package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.*
-import com.almonium.famsubbe.entity.Invoice
-import com.almonium.famsubbe.entity.InvoiceOrigin
-import com.almonium.famsubbe.entity.InvoiceStatus
-import com.almonium.famsubbe.entity.LedgerEntry
+import com.almonium.famsubbe.entity.*
 import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.SubscriberRepository
@@ -14,6 +11,9 @@ import com.itextpdf.kernel.pdf.PdfDocument
 import com.itextpdf.kernel.pdf.PdfWriter
 import com.itextpdf.layout.Document
 import com.itextpdf.layout.element.Paragraph
+import jakarta.persistence.criteria.Predicate
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.io.ByteArrayOutputStream
@@ -288,5 +288,40 @@ class InvoiceService(
         val updatedInvoice = invoiceRepository.save(invoice)
         
         return updatedInvoice.toResponse()
+    }
+
+    @Transactional(readOnly = true)
+    fun getInvoicesWithFilters(filter: InvoiceFilterRequest): List<InvoiceResponse> {
+        val status = filter.status?.let { InvoiceStatus.valueOf(it.uppercase()) }
+        val origin = filter.origin?.let { InvoiceOrigin.valueOf(it.uppercase()) }
+
+        val spec = Specification<Invoice> { root, _, cb ->
+            val predicates = mutableListOf<Predicate>()
+
+            filter.subscriberId?.let {
+                predicates += cb.equal(root.get<Subscriber>("subscriber").get<UUID>("id"), it)
+            }
+
+            status?.let {
+                predicates += cb.equal(root.get<InvoiceStatus>("status"), it)
+            }
+
+            filter.dateFrom?.let {
+                predicates += cb.greaterThanOrEqualTo(root.get("createdAt"), it)
+            }
+
+            filter.dateTo?.let {
+                predicates += cb.lessThanOrEqualTo(root.get("createdAt"), it)
+            }
+
+            origin?.let {
+                predicates += cb.equal(root.get<InvoiceOrigin>("origin"), it)
+            }
+
+            cb.and(*predicates.toTypedArray())
+        }
+
+        return invoiceRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"))
+            .map { it.toResponse() }
     }
 }

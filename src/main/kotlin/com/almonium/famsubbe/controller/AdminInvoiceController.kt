@@ -40,6 +40,13 @@ class AdminInvoiceController(
         return ResponseEntity.ok(invoiceService.getInvoices(subscriberId))
     }
 
+    @PostMapping("/filter")
+    fun filterInvoices(
+        @RequestBody filter: InvoiceFilterRequest
+    ): ResponseEntity<List<InvoiceResponse>> {
+        return ResponseEntity.ok(invoiceService.getInvoicesWithFilters(filter))
+    }
+
     @GetMapping("/{invoiceId}")
     fun getInvoice(
         @PathVariable invoiceId: UUID
