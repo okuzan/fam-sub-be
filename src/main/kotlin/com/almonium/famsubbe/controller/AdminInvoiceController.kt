@@ -51,11 +51,19 @@ class AdminInvoiceController(
     fun getInvoicePdf(
         @PathVariable invoiceId: UUID
     ): ResponseEntity<ByteArrayResource> {
-        val pdfBytes = invoiceService.generateInvoicePdf(invoiceId, )
+        val pdfBytes = invoiceService.generateInvoicePdf(invoiceId)
 
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
             .header("Content-Disposition", "attachment; filename=\"invoice-$invoiceId.pdf\"")
             .body(ByteArrayResource(pdfBytes))
+    }
+
+    @PatchMapping("/{invoiceId}/mark-paid")
+    fun markInvoiceAsPaid(
+        @PathVariable invoiceId: UUID
+    ): ResponseEntity<InvoiceResponse> {
+        val updatedInvoice = invoiceService.markAsPaid(invoiceId)
+        return ResponseEntity.ok(updatedInvoice)
     }
 }
