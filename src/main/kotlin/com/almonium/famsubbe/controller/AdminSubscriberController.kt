@@ -1,8 +1,10 @@
 package com.almonium.famsubbe.controller
 
 import com.almonium.famsubbe.dto.SubscriberCreateRequest
+import com.almonium.famsubbe.dto.SubscriberDetailResponse
 import com.almonium.famsubbe.dto.SubscriberResponse
 import com.almonium.famsubbe.dto.SubscriberUpdateRequest
+import com.almonium.famsubbe.service.InvoiceService
 import com.almonium.famsubbe.service.SubscriberService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -13,7 +15,8 @@ import java.util.*
 @RestController
 @RequestMapping("/admin/subscribers")
 class AdminSubscriberController(
-    private val subscriberService: SubscriberService
+    private val subscriberService: SubscriberService,
+    private val invoiceService: InvoiceService
 ) {
 
     @GetMapping
@@ -26,6 +29,12 @@ class AdminSubscriberController(
     fun getSubscriberById(@PathVariable id: UUID): ResponseEntity<SubscriberResponse> {
         val subscriber = subscriberService.getSubscriberById(id)
         return ResponseEntity.ok(subscriber)
+    }
+
+    @GetMapping("/{id}/details")
+    fun getSubscriberDetails(@PathVariable id: UUID): ResponseEntity<SubscriberDetailResponse> {
+        val subscriberDetails = invoiceService.getSubscriberDetails(id)
+        return ResponseEntity.ok(subscriberDetails)
     }
 
     @PostMapping

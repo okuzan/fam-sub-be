@@ -4,6 +4,7 @@ import com.almonium.famsubbe.dto.*
 import com.almonium.famsubbe.entity.*
 import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
+import com.almonium.famsubbe.repository.MembershipRepository
 import com.almonium.famsubbe.repository.SubscriberRepository
 import com.itextpdf.kernel.font.PdfFont
 import com.itextpdf.kernel.font.PdfFontFactory
@@ -27,7 +28,8 @@ import java.util.*
 class InvoiceService(
     private val invoiceRepository: InvoiceRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
-    private val subscriberRepository: SubscriberRepository
+    private val subscriberRepository: SubscriberRepository,
+    private val membershipRepository: MembershipRepository
 ) {
     fun generateInvoices(
         request: InvoiceGenerationRequest,
@@ -323,5 +325,65 @@ class InvoiceService(
 
         return invoiceRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"))
             .map { it.toResponse() }
+    }
+
+    @Transactional(readOnly = true)
+    fun getSubscriberDetails(subscriberId: UUID): SubscriberDetailResponse {
+        val subscriber = subscriberRepository.findById(subscriberId)
+            .orElseThrow { NoSuchElementException("Subscriber not found with id: $subscriberId") }
+
+        // Get active subscriptions (memberships that are currently active)
+        val currentMonth = YearMonth.now()
+        val activeMemberships = membershipRepository.findActiveBySubscriberAndMonth(subscriberId, currentMonth)
+        
+        val activeSubscriptions = activeMemberships.map { membership ->
+            ActiveSubscriptionDto(
+                id = membership.id!!,
+                serviceName = membership.subscriptionService?.name ?: "",
+                servicePrice = membership.subscriptionService?.price ?: BigDecimal.ZERO,
+                startMonth = membership.startMonth?.toString() ?: "",
+                endMonth = membership.endMonth?.toString()
+            )
+        }
+
+        // Get unpaid invoices (DRAFT and SENT status)
+        val unpaidInvoices = invoiceRepository.findAll(
+            { root, _, cb ->
+                val predicates = mutableListOf<Predicate>()
+                predicates.add(cb.equal(root.get<Subscriber>("subscriber").get<UUID>("id"), subscriberId))
+                predicates.add(cb.notEqual(root.get<InvoiceStatus>("status"), InvoiceStatus.PAID))
+                cb.and(*predicates.toTypedArray())
+            },
+            Sort.by(Sort.Direction.DESC, "createdAt")
+        )
+
+        val unpaidInvoicesDto = unpaidInvoices.map { invoice ->
+            UnpaidInvoiceDto(
+                id = invoice.id!!,
+                totalAmount = invoice.totalAmount ?: BigDecimal.ZERO,
+                fromMonth = invoice.fromMonth?.toString() ?: "",
+                toMonth = invoice.toMonth?.toString() ?: "",
+                createdAt = invoice.createdAt ?: Instant.now(),
+                status = invoice.status.name,
+                notes = invoice.notes
+            )
+        }
+
+        // Calculate total amount owed (sum of unpaid invoices minus balance)
+        val totalUnpaidAmount = unpaidInvoices
+            .map { it.totalAmount ?: BigDecimal.ZERO }
+            .fold(BigDecimal.ZERO) { acc, amount -> acc + amount }
+        
+        val totalAmountOwed = totalUnpaidAmount - (subscriber.balance ?: BigDecimal.ZERO)
+
+        return SubscriberDetailResponse(
+            id = subscriber.id!!,
+            name = subscriber.name ?: "",
+            email = subscriber.email ?: "",
+            balance = subscriber.balance ?: BigDecimal.ZERO,
+            totalAmountOwed = totalAmountOwed,
+            activeSubscriptions = activeSubscriptions,
+            unpaidInvoices = unpaidInvoicesDto
+        )
     }
 }
