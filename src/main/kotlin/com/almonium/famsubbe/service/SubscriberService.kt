@@ -4,6 +4,7 @@ import com.almonium.famsubbe.dto.SubscriberCreateRequest
 import com.almonium.famsubbe.dto.SubscriberResponse
 import com.almonium.famsubbe.dto.SubscriberUpdateRequest
 import com.almonium.famsubbe.entity.Subscriber
+import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.SubscriberRepository
 import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.repository.findByIdOrNull
@@ -13,11 +14,24 @@ import java.util.*
 
 @Service
 class SubscriberService(
-    private val subscriberRepository: SubscriberRepository
+    private val subscriberRepository: SubscriberRepository,
+    private val invoiceRepository: InvoiceRepository
 ) {
 
-    fun getAllSubscribers(): List<SubscriberResponse> {
-        return subscriberRepository.findAll().map { it.toResponse() }
+    fun getAllSubscribers(
+        namePrefix: String? = null
+    ): List<SubscriberResponse> {
+        val subscribers = if (namePrefix != null) {
+            subscriberRepository.findByNameIgnoreCaseStartingWith(namePrefix)
+        } else {
+            subscriberRepository.findAll()
+        }
+        return subscribers.map { it.toResponse() }
+    }
+
+    fun getSubscribersWithDebt(): List<SubscriberResponse> {
+        val debtorIds = invoiceRepository.findSubscriberIdsWithUnpaidInvoices()
+        return subscriberRepository.findAllById(debtorIds).map { it.toResponse() }
     }
 
     fun getSubscriberById(id: UUID): SubscriberResponse {

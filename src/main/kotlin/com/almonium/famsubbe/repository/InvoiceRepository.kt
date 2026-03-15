@@ -19,4 +19,11 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
     fun findAllFiltered(subscriberId: UUID?): List<Invoice>
 
     fun findFirstByOrderByToMonthDesc(): Invoice?
+    
+    @Query("""
+        select distinct i.subscriber.id
+        from Invoice i
+        where i.status != 'PAID'
+    """)
+    fun findSubscriberIdsWithUnpaidInvoices(): List<UUID>
 }

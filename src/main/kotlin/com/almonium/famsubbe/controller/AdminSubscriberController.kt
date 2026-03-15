@@ -22,8 +22,16 @@ class AdminSubscriberController(
 ) {
 
     @GetMapping
-    fun getAllSubscribers(): ResponseEntity<List<SubscriberResponse>> {
-        val subscribers = subscriberService.getAllSubscribers()
+    fun getAllSubscribers(
+        @RequestParam(required = false) namePrefix: String?
+    ): ResponseEntity<List<SubscriberResponse>> {
+        val subscribers = subscriberService.getAllSubscribers(namePrefix)
+        return ResponseEntity.ok(subscribers)
+    }
+
+    @GetMapping("/debtors")
+    fun getSubscribersWithDebt(): ResponseEntity<List<SubscriberResponse>> {
+        val subscribers = subscriberService.getSubscribersWithDebt()
         return ResponseEntity.ok(subscribers)
     }
 
