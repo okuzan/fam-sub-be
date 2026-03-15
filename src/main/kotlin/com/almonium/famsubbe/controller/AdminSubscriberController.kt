@@ -52,7 +52,8 @@ class AdminSubscriberController(
             subscriberName = details.name,
             totalOwed = details.totalAmountOwed,
             unpaidInvoicesCount = details.unpaidInvoices.size,
-            activeSubscriptionsCount = details.activeSubscriptions.size
+            activeSubscriptionsCount = details.activeSubscriptions.size,
+            activeSubscriptionNames = details.activeSubscriptions.map { it.serviceName }
         )
 
         return if (success) {

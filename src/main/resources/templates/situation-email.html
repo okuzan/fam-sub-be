@@ -26,12 +26,23 @@
             <h3>Account Summary</h3>
             <ul>
                 <li>Active Subscriptions: <span th:text="${activeSubscriptionsCount}">0</span></li>
+                <li th:if="${not #lists.isEmpty(activeSubscriptionNames)}">
+                    Subscription Services:
+                    <ul>
+                        <li th:each="name : ${activeSubscriptionNames}" th:text="${name}">Service Name</li>
+                    </ul>
+                </li>
                 <li>Unpaid Invoices: <span th:text="${unpaidInvoicesCount}">0</span></li>
                 <li><span class="alert">Total Balance Owed: <span th:text="${'₴' + totalOwed}">₴0.00</span></span></li>
             </ul>
         </div>
         
-        <p>To ensure uninterrupted access to your active subscriptions, please clear your outstanding balance as soon as possible.</p>
+        <div th:if="${totalOwed gt 0}">
+            <p>To ensure uninterrupted access to your active subscriptions, please clear your outstanding balance as soon as possible.</p>
+        </div>
+        <div th:if="${totalOwed eq 0}">
+            <p>Thank you for keeping your account in good standing! Everything is fully paid for.</p>
+        </div>
         
         <p>If you have any questions or concerns regarding your account, please don't hesitate to reach out.</p>
         

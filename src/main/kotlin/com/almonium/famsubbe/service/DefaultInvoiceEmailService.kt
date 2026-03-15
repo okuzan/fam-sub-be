@@ -62,7 +62,8 @@ class DefaultInvoiceEmailService(
         subscriberName: String,
         totalOwed: java.math.BigDecimal,
         unpaidInvoicesCount: Int,
-        activeSubscriptionsCount: Int
+        activeSubscriptionsCount: Int,
+        activeSubscriptionNames: List<String>
     ): Boolean {
         return try {
             val context = Context()
@@ -70,6 +71,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("totalOwed", totalOwed)
             context.setVariable("unpaidInvoicesCount", unpaidInvoicesCount)
             context.setVariable("activeSubscriptionsCount", activeSubscriptionsCount)
+            context.setVariable("activeSubscriptionNames", activeSubscriptionNames)
 
             val htmlContent = templateEngine.process("situation-email", context)
 

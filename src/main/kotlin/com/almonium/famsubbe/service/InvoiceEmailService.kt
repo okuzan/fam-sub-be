@@ -10,6 +10,7 @@ interface InvoiceEmailService {
         subscriberName: String,
         totalOwed: java.math.BigDecimal,
         unpaidInvoicesCount: Int,
-        activeSubscriptionsCount: Int
+        activeSubscriptionsCount: Int,
+        activeSubscriptionNames: List<String> = emptyList()
     ): Boolean
 }
