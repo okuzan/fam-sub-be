@@ -4,6 +4,7 @@ import com.almonium.famsubbe.dto.SubscriberCreateRequest
 import com.almonium.famsubbe.dto.SubscriberDetailResponse
 import com.almonium.famsubbe.dto.SubscriberResponse
 import com.almonium.famsubbe.dto.SubscriberUpdateRequest
+import com.almonium.famsubbe.service.InvoiceEmailService
 import com.almonium.famsubbe.service.InvoiceService
 import com.almonium.famsubbe.service.SubscriberService
 import jakarta.validation.Valid
@@ -16,7 +17,8 @@ import java.util.*
 @RequestMapping("/admin/subscribers")
 class AdminSubscriberController(
     private val subscriberService: SubscriberService,
-    private val invoiceService: InvoiceService
+    private val invoiceService: InvoiceService,
+    private val invoiceEmailService: InvoiceEmailService
 ) {
 
     @GetMapping
@@ -35,6 +37,29 @@ class AdminSubscriberController(
     fun getSubscriberDetails(@PathVariable id: UUID): ResponseEntity<SubscriberDetailResponse> {
         val subscriberDetails = invoiceService.getSubscriberDetails(id)
         return ResponseEntity.ok(subscriberDetails)
+    }
+
+    @PostMapping("/{id}/email-situation")
+    fun emailSubscriberSituation(@PathVariable id: UUID): ResponseEntity<Map<String, String>> {
+        val details = invoiceService.getSubscriberDetails(id)
+        
+        if (details.email.isEmpty()) {
+            return ResponseEntity.badRequest().body(mapOf("error" to "Subscriber has no email address"))
+        }
+
+        val success = invoiceEmailService.sendSituationEmail(
+            toEmail = details.email,
+            subscriberName = details.name,
+            totalOwed = details.totalAmountOwed,
+            unpaidInvoicesCount = details.unpaidInvoices.size,
+            activeSubscriptionsCount = details.activeSubscriptions.size
+        )
+
+        return if (success) {
+            ResponseEntity.ok(mapOf("message" to "Situation email sent successfully to ${details.email}"))
+        } else {
+            ResponseEntity.internalServerError().body(mapOf("error" to "Failed to send email"))
+        }
     }
 
     @PostMapping
