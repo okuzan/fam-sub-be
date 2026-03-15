@@ -5,11 +5,18 @@ import java.time.Instant
 import java.time.YearMonth
 import java.util.UUID
 
+data class CostCalculationRequest(
+    val fromMonth: YearMonth,
+    val toMonth: YearMonth
+)
+
 data class CostCalculationResult(
-    val calculationBatchId: UUID,
-    val targetMonth: YearMonth,
-    val calculatedAt: Instant,
+    val batchId: UUID,
+    val fromMonth: YearMonth,
+    val toMonth: YearMonth,
+    val createdAt: Instant,
     val createdByAccountId: UUID,
+    val monthsProcessed: Int,
     val chargesProcessed: Int,
     val ledgerEntriesCreated: Int,
     val items: List<CostCalculationItemResult>

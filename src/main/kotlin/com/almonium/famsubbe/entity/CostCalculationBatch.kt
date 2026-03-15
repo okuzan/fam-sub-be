@@ -13,8 +13,11 @@ class CostCalculationBatch {
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null
 
-    @Column(name = "target_month", nullable = false, updatable = false)
-    var targetMonth: YearMonth? = null
+    @Column(name = "from_month", nullable = false, updatable = false)
+    var fromMonth: YearMonth? = null
+
+    @Column(name = "to_month", nullable = false, updatable = false)
+    var toMonth: YearMonth? = null
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -1,16 +1,14 @@
 package com.almonium.famsubbe.controller
 
+import com.almonium.famsubbe.dto.CostCalculationRequest
 import com.almonium.famsubbe.dto.CostCalculationResult
+import com.almonium.famsubbe.dto.CostCalculationSuggestion
 import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.service.CostCalculationService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
-import java.time.YearMonth
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/admin/cost-calculations")
@@ -18,13 +16,23 @@ class AdminCostCalculationController(
     private val costCalculationService: CostCalculationService,
     private val accountService: AccountService
 ) {
-    @PostMapping("/{yearMonth}")
+    @PostMapping
     fun calculate(
-        @PathVariable yearMonth: YearMonth,
+        @RequestBody request: CostCalculationRequest,
         authentication: Authentication
     ): ResponseEntity<CostCalculationResult> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val result = costCalculationService.calculateAndRecordCosts(yearMonth, performedByAccountId)
+        val result = costCalculationService.calculateAndRecordCosts(
+            request.fromMonth,
+            request.toMonth,
+            performedByAccountId
+        )
         return ResponseEntity.ok(result)
+    }
+
+    @GetMapping("/suggested-period")
+    fun getSuggestedPeriod(): ResponseEntity<CostCalculationSuggestion> {
+        val suggestion = costCalculationService.getSuggestedCalculationPeriod()
+        return ResponseEntity.ok(suggestion)
     }
 }
