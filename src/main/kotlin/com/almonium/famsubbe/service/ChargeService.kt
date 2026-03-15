@@ -9,6 +9,7 @@ import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.time.YearMonth
 import java.util.*
 
@@ -39,7 +40,7 @@ class ChargeService(
             this.description = request.description
         }
 
-        val savedCharge = chargeRepository.save(charge)
+        val savedCharge = chargeRepository.saveAndFlush(charge)
         return mapToResponse(savedCharge)
     }
 

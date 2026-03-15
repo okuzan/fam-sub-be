@@ -45,7 +45,7 @@ class MembershipService(
             this.endMonth = request.endMonth
         }
 
-        val savedMembership = membershipRepository.save(membership)
+        val savedMembership = membershipRepository.saveAndFlush(membership)
         return mapToResponse(savedMembership)
     }
 

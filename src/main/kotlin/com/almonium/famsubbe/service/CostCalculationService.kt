@@ -68,7 +68,7 @@ class CostCalculationService(
             this.toMonth = toMonth
             this.createdByAccountId = performedByAccountId
         }
-        val savedBatch = costCalculationBatchRepository.save(batch)
+        val savedBatch = costCalculationBatchRepository.saveAndFlush(batch)
         val calculatedAt = savedBatch.createdAt!!
         
         val items = mutableListOf<CostCalculationItemResult>()
