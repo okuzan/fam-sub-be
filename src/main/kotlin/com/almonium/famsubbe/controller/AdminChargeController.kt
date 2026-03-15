@@ -8,6 +8,7 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.time.YearMonth
 import java.util.*
 
 @RestController
@@ -40,6 +41,12 @@ class AdminChargeController(
     @GetMapping("/service/{serviceId}")
     fun getChargesByService(@PathVariable serviceId: UUID): ResponseEntity<List<ChargeResponse>> {
         val charges = chargeService.getChargesByService(serviceId)
+        return ResponseEntity.ok(charges)
+    }
+
+    @GetMapping("/month/{yearMonth}")
+    fun getChargesByMonth(@PathVariable yearMonth: YearMonth): ResponseEntity<List<ChargeResponse>> {
+        val charges = chargeService.getChargesByMonth(yearMonth)
         return ResponseEntity.ok(charges)
     }
 

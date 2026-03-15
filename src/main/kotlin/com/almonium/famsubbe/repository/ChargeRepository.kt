@@ -15,4 +15,6 @@ interface ChargeRepository : JpaRepository<Charge, UUID> {
     ): Charge?
     
     fun findBySubscriptionService(subscriptionService: SubscriptionService): List<Charge>
+
+    fun findByChargeMonth(chargeMonth: YearMonth): List<Charge>
 }

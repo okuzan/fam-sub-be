@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.controller
 
 import com.almonium.famsubbe.dto.MembershipCreateRequest
+import com.almonium.famsubbe.dto.MembershipEndRequest
 import com.almonium.famsubbe.dto.MembershipResponse
 import com.almonium.famsubbe.dto.MembershipUpdateRequest
 import com.almonium.famsubbe.service.MembershipService
@@ -38,8 +39,17 @@ class AdminMembershipController(
         return ResponseEntity.ok(membership)
     }
 
-    @GetMapping("/service/{serviceId}/month/{yearMonth}")
-    fun getMembershipsByServiceAndMonth(
+    @PostMapping("/{id}/end")
+    fun endMembership(
+        @PathVariable id: UUID,
+        @Valid @RequestBody request: MembershipEndRequest
+    ): ResponseEntity<MembershipResponse> {
+        val membership = membershipService.endMembership(id, request)
+        return ResponseEntity.ok(membership)
+    }
+
+    @GetMapping("/service/{serviceId}/active/{yearMonth}")
+    fun getActiveMembershipsByServiceAndMonth(
         @PathVariable serviceId: UUID,
         @PathVariable yearMonth: YearMonth
     ): ResponseEntity<List<MembershipResponse>> {
@@ -47,9 +57,12 @@ class AdminMembershipController(
         return ResponseEntity.ok(memberships)
     }
 
-    @GetMapping("/subscriber/{subscriberId}")
-    fun getMembershipsBySubscriber(@PathVariable subscriberId: UUID): ResponseEntity<List<MembershipResponse>> {
-        val memberships = membershipService.getMembershipsBySubscriber(subscriberId)
+    @GetMapping("/subscriber/{subscriberId}/active/{yearMonth}")
+    fun getActiveMembershipsBySubscriberAndMonth(
+        @PathVariable subscriberId: UUID,
+        @PathVariable yearMonth: YearMonth
+    ): ResponseEntity<List<MembershipResponse>> {
+        val memberships = membershipService.getMembershipsBySubscriberAndMonth(subscriberId, yearMonth)
         return ResponseEntity.ok(memberships)
     }
 

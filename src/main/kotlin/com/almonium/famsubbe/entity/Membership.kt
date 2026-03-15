@@ -2,18 +2,18 @@ package com.almonium.famsubbe.entity
 
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
-import org.hibernate.annotations.UpdateTimestamp
+import java.time.Instant
 import java.time.YearMonth
-import java.util.*
+import java.util.UUID
 
 @Entity
 @Table(
     name = "membership",
-    uniqueConstraints = [
-        UniqueConstraint(
-            name = "uk_subscription_service_subscriber_month",
-            columnNames = ["subscription_service_id", "subscriber_id", "membership_month"]
-        )
+    indexes = [
+        Index(name = "idx_membership_subscriber", columnList = "subscriber_id"),
+        Index(name = "idx_membership_service", columnList = "subscription_service_id"),
+        Index(name = "idx_membership_start_month", columnList = "start_month"),
+        Index(name = "idx_membership_end_month", columnList = "end_month")
     ]
 )
 class Membership {
@@ -29,17 +29,13 @@ class Membership {
     @JoinColumn(name = "subscriber_id", nullable = false)
     var subscriber: Subscriber? = null
 
-    @Column(nullable = false, name = "membership_month")
-    var membershipMonth: YearMonth? = null
+    @Column(name = "start_month", nullable = false)
+    var startMonth: YearMonth? = null
 
-    @Column(nullable = false)
-    var shareWeight: Int = 1
+    @Column(name = "end_month")
+    var endMonth: YearMonth? = null
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    var createdAt: Date? = null
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    var updatedAt: Date? = null
+    var createdAt: Instant? = null
 }

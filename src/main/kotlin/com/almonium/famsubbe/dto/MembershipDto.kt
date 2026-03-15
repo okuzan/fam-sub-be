@@ -1,17 +1,23 @@
 package com.almonium.famsubbe.dto
 
 import java.time.YearMonth
+import java.time.Instant
 import java.util.*
 
 data class MembershipCreateRequest(
     val subscriptionServiceId: UUID,
     val subscriberId: UUID,
-    val membershipMonth: YearMonth,
-    val shareWeight: Int = 1
+    val startMonth: YearMonth,
+    val endMonth: YearMonth?
 )
 
 data class MembershipUpdateRequest(
-    val shareWeight: Int
+    val startMonth: YearMonth,
+    val endMonth: YearMonth?
+)
+
+data class MembershipEndRequest(
+    val endMonth: YearMonth
 )
 
 data class MembershipResponse(
@@ -20,9 +26,8 @@ data class MembershipResponse(
     val subscriptionServiceName: String,
     val subscriberId: UUID,
     val subscriberName: String,
-    val subscriberEmail: String,
-    val membershipMonth: YearMonth,
-    val shareWeight: Int,
-    val createdAt: Date,
-    val updatedAt: Date
+    val startMonth: YearMonth,
+    val endMonth: YearMonth?,
+    val activeNow: Boolean,
+    val createdAt: Instant
 )

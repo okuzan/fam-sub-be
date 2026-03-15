@@ -5,16 +5,19 @@ import com.almonium.famsubbe.dto.ChargeResponse
 import com.almonium.famsubbe.dto.ChargeUpdateRequest
 import com.almonium.famsubbe.entity.Charge
 import com.almonium.famsubbe.repository.ChargeRepository
+import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.YearMonth
 import java.util.*
 
 @Service
 @Transactional
 class ChargeService(
     private val chargeRepository: ChargeRepository,
-    private val subscriptionServiceRepository: SubscriptionServiceRepository
+    private val subscriptionServiceRepository: SubscriptionServiceRepository,
+    private val ledgerEntryRepository: LedgerEntryRepository
 ) {
 
     fun createCharge(request: ChargeCreateRequest): ChargeResponse {
@@ -33,6 +36,7 @@ class ChargeService(
             this.subscriptionService = subscriptionService
             this.amount = request.amount
             this.chargeMonth = request.chargeMonth
+            this.description = request.description
         }
 
         val savedCharge = chargeRepository.save(charge)
@@ -43,7 +47,16 @@ class ChargeService(
         val charge = chargeRepository.findById(chargeId)
             .orElseThrow { IllegalArgumentException("Charge not found: $chargeId") }
 
+        if (ledgerEntryRepository.existsByChargeId(chargeId)) {
+            throw IllegalStateException("Charge is locked because ledger entries already exist")
+        }
+
+        if (request.amount <= java.math.BigDecimal.ZERO) {
+            throw IllegalArgumentException("Charge amount must be positive")
+        }
+
         charge.amount = request.amount
+        charge.description = request.description
 
         val updatedCharge = chargeRepository.save(charge)
         return mapToResponse(updatedCharge)
@@ -62,6 +75,10 @@ class ChargeService(
         return chargeRepository.findBySubscriptionService(subscriptionService).map { mapToResponse(it) }
     }
 
+    fun getChargesByMonth(chargeMonth: YearMonth): List<ChargeResponse> {
+        return chargeRepository.findByChargeMonth(chargeMonth).map { mapToResponse(it) }
+    }
+
     fun deleteCharge(chargeId: UUID) {
         if (!chargeRepository.existsById(chargeId)) {
             throw IllegalArgumentException("Charge not found: $chargeId")
@@ -76,8 +93,8 @@ class ChargeService(
             subscriptionServiceName = charge.subscriptionService!!.name ?: "",
             amount = charge.amount!!,
             chargeMonth = charge.chargeMonth!!,
-            createdAt = charge.createdAt ?: Date(), // Fallback to current time if null
-            updatedAt = charge.updatedAt ?: Date()  // Fallback to current time if null
+            description = charge.description,
+            createdAt = charge.createdAt!!
         )
     }
 }
