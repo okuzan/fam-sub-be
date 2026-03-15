@@ -264,4 +264,29 @@ class InvoiceService(
         subscriberRepository.save(subscriber)
         return invoice.toResponse()
     }
+
+    fun payFromBalance(invoiceId: UUID): InvoiceResponse {
+        val invoice = invoiceRepository.findById(invoiceId)
+            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+        
+        check(invoice.status != InvoiceStatus.PAID) { "Invoice is already marked as paid" }
+        
+        val subscriber = requireNotNull(invoice.subscriber)
+        val currentBalance = subscriber.balance ?: BigDecimal.ZERO
+        val invoiceAmount = requireNotNull(invoice.totalAmount)
+        
+        check(currentBalance >= invoiceAmount) { 
+            "Insufficient balance. Current balance: $currentBalance, Invoice amount: $invoiceAmount" 
+        }
+        
+        // Deduct from subscriber balance
+        subscriber.balance = currentBalance.subtract(invoiceAmount)
+        subscriberRepository.save(subscriber)
+        
+        // Mark invoice as paid
+        invoice.status = InvoiceStatus.PAID
+        val updatedInvoice = invoiceRepository.save(invoice)
+        
+        return updatedInvoice.toResponse()
+    }
 }

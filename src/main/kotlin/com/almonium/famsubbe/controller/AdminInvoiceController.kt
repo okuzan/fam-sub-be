@@ -76,4 +76,12 @@ class AdminInvoiceController(
         val invoice = invoiceService.generateOutstandingBalanceInvoice(request, performedByAccountId)
         return ResponseEntity.ok(invoice)
     }
+
+    @PostMapping("/{invoiceId}/pay-from-balance")
+    fun payFromBalance(
+        @PathVariable invoiceId: UUID
+    ): ResponseEntity<InvoiceResponse> {
+        val updatedInvoice = invoiceService.payFromBalance(invoiceId)
+        return ResponseEntity.ok(updatedInvoice)
+    }
 }
