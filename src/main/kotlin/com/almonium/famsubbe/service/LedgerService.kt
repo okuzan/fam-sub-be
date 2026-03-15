@@ -28,6 +28,6 @@ class LedgerService(
         amount = amount!!,
         participantCount = participantCount,
         calculatedAt = calculatedAt!!,
-        calculationBatchId = calculationBatchId!!
+        calculationBatchId = calculationBatch!!.id!!
     )
 }
