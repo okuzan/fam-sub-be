@@ -52,7 +52,7 @@ class LedgerEntry {
     var calculatedAt: Instant? = null
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "calculation_batch_id", nullable = false, updatable = false, insertable = false)
+    @JoinColumn(name = "calculation_batch_id", nullable = false, updatable = false)
     var calculationBatch: CostCalculationBatch? = null
 
     @Column(name = "notes", updatable = false)

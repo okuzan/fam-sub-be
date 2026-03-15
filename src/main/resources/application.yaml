@@ -25,6 +25,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          batch_size: 100
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
   mail:
     host: smtp.zoho.eu
     port: 587

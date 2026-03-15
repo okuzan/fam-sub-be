@@ -19,7 +19,6 @@ class CostCalculationBatch {
     @Column(name = "to_month", nullable = false, updatable = false)
     var toMonth: YearMonth? = null
 
-    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant? = null
 

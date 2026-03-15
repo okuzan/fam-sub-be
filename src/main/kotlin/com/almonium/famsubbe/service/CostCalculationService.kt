@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.YearMonth
 import java.util.*
 
@@ -29,75 +30,80 @@ class CostCalculationService(
         toMonth: YearMonth,
         performedByAccountId: UUID
     ): CostCalculationResult {
-        // Validate date range
-        if (fromMonth > toMonth) {
-            throw IllegalArgumentException("fromMonth cannot be after toMonth")
-        }
-        
-        // Validate all months in range have charges before creating batch
-        val monthsToProcess = mutableListOf<YearMonth>()
-        var currentMonth = fromMonth
-        while (currentMonth <= toMonth) {
-            val charges = chargeRepository.findByChargeMonth(currentMonth)
-            if (charges.isEmpty()) {
-                throw IllegalStateException("No charges found for $currentMonth")
+        require(fromMonth <= toMonth) { "fromMonth cannot be after toMonth" }
+
+        val monthsToProcess = generateMonths(fromMonth, toMonth)
+
+        // load all charges once per month
+        val chargesByMonth = monthsToProcess.associateWith { month ->
+            chargeRepository.findByChargeMonth(month).also { charges ->
+                check(charges.isNotEmpty()) { "No charges found for $month" }
             }
-            
-            // Validate charges for this month
-            charges.forEach { charge ->
-                if (ledgerEntryRepository.existsByChargeId(charge.id!!)) {
-                    throw IllegalStateException("Charge ${charge.id} for $currentMonth already has ledger entries")
+        }
+
+        // validation + membership cache
+        val membershipsCache = mutableMapOf<Pair<UUID, YearMonth>, List<com.almonium.famsubbe.entity.Membership>>()
+
+        for ((month, charges) in chargesByMonth) {
+            for (charge in charges) {
+                val chargeId = requireNotNull(charge.id) { "Charge id is null" }
+                val service = requireNotNull(charge.subscriptionService) { "Charge $chargeId has no service" }
+                val serviceId = requireNotNull(service.id) { "Service id is null for charge $chargeId" }
+
+                check(!ledgerEntryRepository.existsByChargeId(chargeId)) {
+                    "Charge $chargeId for $month already has ledger entries"
                 }
-                
-                val activeMemberships = membershipRepository.findActiveByServiceAndMonth(
-                    charge.subscriptionService!!.id!!,
-                    currentMonth
-                )
-                if (activeMemberships.isEmpty()) {
-                    throw IllegalStateException("No active memberships for service ${charge.subscriptionService!!.name} in $currentMonth")
+
+                val memberships = membershipsCache.getOrPut(serviceId to month) {
+                    membershipRepository.findActiveByServiceAndMonth(serviceId, month)
+                }
+
+                check(memberships.isNotEmpty()) {
+                    "No active memberships for service ${service.name} in $month"
                 }
             }
-            
-            monthsToProcess.add(currentMonth)
-            currentMonth = currentMonth.plusMonths(1)
         }
-        
-        // Create batch only after all validation passes
-        val batch = CostCalculationBatch().apply {
-            this.fromMonth = fromMonth
-            this.toMonth = toMonth
-            this.createdByAccountId = performedByAccountId
-        }
-        val savedBatch = costCalculationBatchRepository.saveAndFlush(batch)
-        val calculatedAt = savedBatch.createdAt!!
-        
+
+        val calculatedAt = Instant.now()
+
+        val savedBatch = costCalculationBatchRepository.save(
+            CostCalculationBatch().apply {
+                this.fromMonth = fromMonth
+                this.toMonth = toMonth
+                this.createdByAccountId = performedByAccountId
+                this.createdAt = calculatedAt
+            }
+        )
+
         val items = mutableListOf<CostCalculationItemResult>()
+        val ledgerEntriesToSave = ArrayList<LedgerEntry>(1024)
+
         var totalChargesProcessed = 0
         var totalEntriesCreated = 0
-        
-        // Process each month
-        monthsToProcess.forEach { month ->
-            val charges = chargeRepository.findByChargeMonth(month)
+
+        for ((month, charges) in chargesByMonth) {
             totalChargesProcessed += charges.size
-            
-            charges.forEach { charge ->
-                val activeMemberships = membershipRepository.findActiveByServiceAndMonth(
-                    charge.subscriptionService!!.id!!,
-                    month
-                )
-                
+
+            for (charge in charges) {
+                val chargeId = requireNotNull(charge.id)
+                val service = requireNotNull(charge.subscriptionService)
+                val serviceId = requireNotNull(service.id)
+                val amount = requireNotNull(charge.amount)
+
+                val activeMemberships = membershipsCache.getValue(serviceId to month)
+
                 val subscribers = activeMemberships
-                    .map { it.subscriber!! }
+                    .map { requireNotNull(it.subscriber) }
                     .distinctBy { it.id }
                     .sortedBy { it.id.toString() }
-                
-                val splitAmounts = splitEvenly(charge.amount!!, subscribers.size)
-                
+
+                val splitAmounts = splitEvenly(amount, subscribers.size)
+
                 subscribers.forEachIndexed { index, subscriber ->
-                    val entry = LedgerEntry().apply {
+                    ledgerEntriesToSave += LedgerEntry().apply {
                         this.charge = charge
                         this.subscriber = subscriber
-                        this.subscriptionService = charge.subscriptionService
+                        this.subscriptionService = service
                         this.recordedMonth = month
                         this.amount = splitAmounts[index]
                         this.participantCount = subscribers.size
@@ -105,27 +111,29 @@ class CostCalculationService(
                         this.calculationBatch = savedBatch
                         this.notes = "calculated_by=$performedByAccountId"
                     }
-                    ledgerEntryRepository.save(entry)
                 }
-                
+
                 totalEntriesCreated += subscribers.size
-                
-                items.add(
-                    CostCalculationItemResult(
-                        chargeId = charge.id!!,
-                        serviceId = charge.subscriptionService!!.id!!,
-                        serviceName = charge.subscriptionService!!.name!!,
-                        chargeAmount = charge.amount!!,
-                        participantCount = subscribers.size,
-                        success = true,
-                        message = "Recorded ${subscribers.size} ledger entries for $month"
-                    )
+
+                items += CostCalculationItemResult(
+                    chargeId = chargeId,
+                    serviceId = serviceId,
+                    serviceName = requireNotNull(service.name),
+                    chargeAmount = amount,
+                    participantCount = subscribers.size,
+                    success = true,
+                    message = "Recorded ${subscribers.size} ledger entries for $month"
                 )
             }
         }
-        
+
+        if (ledgerEntriesToSave.isNotEmpty()) {
+            ledgerEntryRepository.saveAll(ledgerEntriesToSave)
+            ledgerEntryRepository.flush()
+        }
+
         return CostCalculationResult(
-            batchId = savedBatch.id!!,
+            batchId = requireNotNull(savedBatch.id),
             fromMonth = fromMonth,
             toMonth = toMonth,
             createdAt = calculatedAt,
@@ -135,6 +143,16 @@ class CostCalculationService(
             ledgerEntriesCreated = totalEntriesCreated,
             items = items
         )
+    }
+
+    private fun generateMonths(fromMonth: YearMonth, toMonth: YearMonth): List<YearMonth> {
+        val result = mutableListOf<YearMonth>()
+        var current = fromMonth
+        while (current <= toMonth) {
+            result += current
+            current = current.plusMonths(1)
+        }
+        return result
     }
 
     private fun splitEvenly(total: BigDecimal, participants: Int): List<BigDecimal> {
@@ -148,10 +166,8 @@ class CostCalculationService(
 
     fun getSuggestedCalculationPeriod(): CostCalculationSuggestion {
         val currentMonth = YearMonth.now()
-        
-        // Find the latest calculated batch
         val latestBatch = costCalculationBatchRepository.findFirstByOrderByToMonthDesc()
-        
+
         return if (latestBatch != null) {
             val suggestedFromMonth = latestBatch.toMonth!!.plusMonths(1)
             CostCalculationSuggestion(
@@ -160,7 +176,6 @@ class CostCalculationService(
                 suggestedToMonth = currentMonth
             )
         } else {
-            // No previous calculations, suggest from current month
             CostCalculationSuggestion(
                 lastCalculatedToMonth = null,
                 suggestedFromMonth = currentMonth,
