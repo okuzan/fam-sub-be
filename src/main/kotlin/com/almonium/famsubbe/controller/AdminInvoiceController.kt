@@ -4,6 +4,8 @@ import com.almonium.famsubbe.dto.*
 import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.service.InvoiceService
 import com.almonium.famsubbe.util.AuthenticationUtil
+import org.springframework.core.io.ByteArrayResource
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
@@ -43,5 +45,17 @@ class AdminInvoiceController(
         @PathVariable invoiceId: UUID
     ): ResponseEntity<InvoiceDetailResponse> {
         return ResponseEntity.ok(invoiceService.getInvoice(invoiceId))
+    }
+
+    @GetMapping("/{invoiceId}/pdf")
+    fun getInvoicePdf(
+        @PathVariable invoiceId: UUID
+    ): ResponseEntity<ByteArrayResource> {
+        val pdfBytes = invoiceService.generateInvoicePdf(invoiceId, )
+
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .header("Content-Disposition", "attachment; filename=\"invoice-$invoiceId.pdf\"")
+            .body(ByteArrayResource(pdfBytes))
     }
 }

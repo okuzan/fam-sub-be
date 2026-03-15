@@ -7,8 +7,16 @@ import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.SubscriberRepository
+import com.itextpdf.io.font.constants.StandardFonts
+import com.itextpdf.kernel.font.PdfFont
+import com.itextpdf.kernel.font.PdfFontFactory
+import com.itextpdf.kernel.pdf.PdfDocument
+import com.itextpdf.kernel.pdf.PdfWriter
+import com.itextpdf.layout.Document
+import com.itextpdf.layout.element.Paragraph
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.io.ByteArrayOutputStream
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.*
@@ -162,4 +170,35 @@ class InvoiceService(
             participantCount = participantCount,
             calculatedAt = requireNotNull(calculatedAt)
         )
+
+    fun generateInvoicePdf(invoiceId: UUID): ByteArray {
+        val invoice = invoiceRepository.findById(invoiceId)
+            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+
+        val entries = ledgerEntryRepository.findByInvoiceId(invoiceId)
+
+        val outputStream = ByteArrayOutputStream()
+        val writer = PdfWriter(outputStream)
+        val pdf = PdfDocument(writer)
+        val document = Document(pdf)
+        
+        // Use a font that supports Ukrainian characters
+        val font: PdfFont = PdfFontFactory.createFont(StandardFonts.TIMES_ROMAN)
+        
+        // Simple invoice content
+        document.add(Paragraph("Invoice #${invoice.id}").setFont(font))
+        document.add(Paragraph("Subscriber: ${invoice.subscriber?.name}").setFont(font))
+        document.add(Paragraph("Period: ${invoice.fromMonth} - ${invoice.toMonth}").setFont(font))
+        document.add(Paragraph("Total: ₴${invoice.totalAmount}").setFont(font))
+        document.add(Paragraph(" ").setFont(font))
+        
+        // Add entries
+        document.add(Paragraph("Ledger Entries:").setFont(font))
+        entries.forEach { entry ->
+            document.add(Paragraph("- ${entry.subscriptionService?.name}: ₴${entry.amount} (${entry.recordedMonth})").setFont(font))
+        }
+        
+        document.close()
+        return outputStream.toByteArray()
+    }
 }
