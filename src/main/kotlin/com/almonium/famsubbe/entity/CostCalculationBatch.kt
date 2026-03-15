@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.entity
 
+import com.almonium.famsubbe.dto.CostCalculationBatchResponse
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
 import java.time.Instant
@@ -24,4 +25,14 @@ class CostCalculationBatch {
 
     @Column(name = "created_by_account_id", nullable = false, updatable = false)
     var createdByAccountId: UUID? = null
+}
+
+fun CostCalculationBatch.toResponse(): CostCalculationBatchResponse {
+    return CostCalculationBatchResponse(
+        id = this.id!!,
+        fromMonth = this.fromMonth.toString(),
+        toMonth = this.toMonth.toString(),
+        createdAt = this.createdAt.toString(),
+        createdByAccountId = this.createdByAccountId!!
+    )
 }

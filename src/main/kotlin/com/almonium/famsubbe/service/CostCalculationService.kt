@@ -9,6 +9,7 @@ import com.almonium.famsubbe.repository.ChargeRepository
 import com.almonium.famsubbe.repository.CostCalculationBatchRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.MembershipRepository
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -182,5 +183,12 @@ class CostCalculationService(
                 suggestedToMonth = currentMonth
             )
         }
+    }
+
+    @Transactional(readOnly = true)
+    fun getRecentCalculationBatches(): List<CostCalculationBatch> {
+        return costCalculationBatchRepository.findAll(
+            Sort.by(Sort.Direction.DESC, "createdAt")
+        ).take(10) // Return last 10 batches
     }
 }

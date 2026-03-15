@@ -1,8 +1,10 @@
 package com.almonium.famsubbe.controller
 
+import com.almonium.famsubbe.dto.CostCalculationBatchResponse
 import com.almonium.famsubbe.dto.CostCalculationRequest
 import com.almonium.famsubbe.dto.CostCalculationResult
 import com.almonium.famsubbe.dto.CostCalculationSuggestion
+import com.almonium.famsubbe.entity.toResponse
 import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.service.CostCalculationService
 import com.almonium.famsubbe.util.AuthenticationUtil
@@ -34,5 +36,11 @@ class AdminCostCalculationController(
     fun getSuggestedPeriod(): ResponseEntity<CostCalculationSuggestion> {
         val suggestion = costCalculationService.getSuggestedCalculationPeriod()
         return ResponseEntity.ok(suggestion)
+    }
+
+    @GetMapping
+    fun getCostCalculations(): ResponseEntity<List<CostCalculationBatchResponse>> {
+        val batches = costCalculationService.getRecentCalculationBatches()
+        return ResponseEntity.ok(batches.map { it.toResponse() })
     }
 }

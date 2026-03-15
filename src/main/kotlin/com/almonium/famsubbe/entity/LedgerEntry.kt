@@ -4,7 +4,7 @@ import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.YearMonth
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(
@@ -19,7 +19,8 @@ import java.util.UUID
         Index(name = "idx_ledger_subscriber", columnList = "subscriber_id"),
         Index(name = "idx_ledger_charge", columnList = "charge_id"),
         Index(name = "idx_ledger_recorded_month", columnList = "recorded_month"),
-        Index(name = "idx_ledger_calculation_batch", columnList = "calculation_batch_id")
+        Index(name = "idx_ledger_calculation_batch", columnList = "calculation_batch_id"),
+        Index(name = "idx_ledger_invoice", columnList = "invoice_id")
     ]
 )
 class LedgerEntry {
@@ -54,6 +55,10 @@ class LedgerEntry {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "calculation_batch_id", nullable = false, updatable = false)
     var calculationBatch: CostCalculationBatch? = null
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice_id")
+    var invoice: Invoice? = null
 
     @Column(name = "notes", updatable = false)
     var notes: String? = null
