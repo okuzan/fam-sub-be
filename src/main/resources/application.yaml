@@ -26,14 +26,11 @@ spring:
         order_updates: true
         batch_versioned_data: true
   mail:
-    host: smtp.zoho.eu
-    port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties.mail.smtp:
-      auth: true
-      starttls.enable: true
-      timeout: 3000
+    zepto:
+      api-url: https://api.zeptomail.eu/v1.1/email
+      api-key: ${ZEPTO_API_KEY}
+      from-address: noreply@almonium.com
+      from-name: FamSub
   security:
     oauth2:
       client:

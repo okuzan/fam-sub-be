@@ -1,27 +1,27 @@
 package com.almonium.famsubbe.service
 
+import com.almonium.famsubbe.config.AppEmailProperties
+import com.almonium.famsubbe.config.ZeptoMailProperties
 import com.almonium.famsubbe.entity.Invoice
 import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.util.HtmlFileWriter
-import org.springframework.context.annotation.Profile
-import org.springframework.mail.javamail.JavaMailSender
-import org.springframework.mail.javamail.MimeMessageHelper
+import org.slf4j.LoggerFactory
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
+import org.springframework.web.client.RestClient
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 
 @Service
 class DefaultInvoiceEmailService(
-    private val mailSender: JavaMailSender,
     private val templateEngine: TemplateEngine,
     private val htmlFileWriter: HtmlFileWriter,
-    @Value("\${spring.mail.username}") private val fromEmail: String,
-    @Value("\${app.email.dry-run:false}") private val isDryRun: Boolean
+    private val zeptoProperties: ZeptoMailProperties,
+    private val appEmailProperties: AppEmailProperties
 ) : InvoiceEmailService {
 
     private val log = LoggerFactory.getLogger(DefaultInvoiceEmailService::class.java)
+    private val restClient = RestClient.create()
 
     override fun sendInvoiceEmail(invoice: Invoice, entries: List<LedgerEntry>): Boolean {
         val subscriber = invoice.subscriber ?: return false
@@ -35,22 +35,9 @@ class DefaultInvoiceEmailService(
             context.setVariable("origin", invoice.origin)
 
             val htmlContent = templateEngine.process("invoice-email", context)
+            val subject = "Your Invoice for ${invoice.fromMonth} - ${invoice.toMonth}"
 
-            val mimeMessage = mailSender.createMimeMessage()
-            val helper = MimeMessageHelper(mimeMessage, true, "UTF-8")
-
-            helper.setFrom(fromEmail)
-            helper.setTo(toEmail)
-            helper.setSubject("Your Invoice for ${invoice.fromMonth} - ${invoice.toMonth}")
-            helper.setText(htmlContent, true)
-
-            if (isDryRun) {
-                log.info("Email sending is disabled. Skipping sending email to {}", toEmail)
-                htmlFileWriter.saveMimeMessageToFile(mimeMessage)
-            } else {
-                mailSender.send(mimeMessage)
-            }
-            true
+            sendEmail(toEmail, subscriber.name, subject, htmlContent)
         } catch (e: Exception) {
             log.error("Failed to send invoice email to {}", toEmail, e)
             false
@@ -74,24 +61,57 @@ class DefaultInvoiceEmailService(
             context.setVariable("activeSubscriptionNames", activeSubscriptionNames)
 
             val htmlContent = templateEngine.process("situation-email", context)
+            val subject = "Your Subscription Account Status"
 
-            val mimeMessage = mailSender.createMimeMessage()
-            val helper = MimeMessageHelper(mimeMessage, true, "UTF-8")
-
-            helper.setFrom(fromEmail)
-            helper.setTo(toEmail)
-            helper.setSubject("Your Subscription Account Status")
-            helper.setText(htmlContent, true)
-
-            if (isDryRun) {
-                log.info("Email sending is disabled. Skipping sending situation email to {}", toEmail)
-                htmlFileWriter.saveMimeMessageToFile(mimeMessage)
-            } else {
-                mailSender.send(mimeMessage)
-            }
-            true
+            sendEmail(toEmail, subscriberName, subject, htmlContent)
         } catch (e: Exception) {
             log.error("Failed to send situation email to {}", toEmail, e)
+            false
+        }
+    }
+
+    private fun sendEmail(toEmail: String, toName: String?, subject: String, htmlContent: String): Boolean {
+        if (appEmailProperties.dryRun) {
+            log.info("Email sending is disabled. Skipping sending email to {}", toEmail)
+            htmlFileWriter.saveHtmlToFile(htmlContent)
+            return true
+        }
+
+        val requestBody = mapOf(
+            "from" to mapOf(
+                "address" to zeptoProperties.fromAddress,
+                "name" to zeptoProperties.fromName
+            ),
+            "to" to listOf(
+                mapOf(
+                    "email_address" to mapOf(
+                        "address" to toEmail,
+                        "name" to (toName ?: toEmail)
+                    )
+                )
+            ),
+            "subject" to subject,
+            "htmlbody" to htmlContent
+        )
+
+        return try {
+            val response = restClient.post()
+                .uri(zeptoProperties.apiUrl)
+                .header("Authorization", "Zoho-enczapikey ${zeptoProperties.apiKey}")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .retrieve()
+                .toBodilessEntity()
+
+            val success = response.statusCode.is2xxSuccessful
+            if (success) {
+                log.info("Successfully sent email to {}", toEmail)
+            } else {
+                log.error("Failed to send email to {}. Status code: {}", toEmail, response.statusCode)
+            }
+            success
+        } catch (e: Exception) {
+            log.error("Error calling ZeptoMail API for {}", toEmail, e)
             false
         }
     }
