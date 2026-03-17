@@ -12,8 +12,8 @@
 ————————————————————————
 💳 **PAYMENT METHODS** 💳
 ————————————————————————
-**Mono** ₴
-`4441111068471360` 
+**{{MONO_NAME}}** {{MONO_CURRENCY}}
+`{{MONO_NUMBER}}` 
 
-**Privat** ₴
-`5169360022967743`
+**{{PRIVAT_NAME}}** {{PRIVAT_CURRENCY}}
+`{{PRIVAT_NUMBER}}`

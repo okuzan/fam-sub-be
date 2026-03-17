@@ -10,6 +10,14 @@
         .footer { font-size: 12px; color: #6c757d; text-align: center; margin-top: 20px; border-top: 1px solid #dee2e6; padding-top: 20px; }
         .summary-box { background-color: #f1f3f5; padding: 15px; border-radius: 5px; margin: 20px 0; }
         .alert { color: #dc3545; font-weight: bold; }
+        .payment-methods { margin-top: 20px; padding: 15px; background-color: #e9ecef; border-radius: 5px; border: 1px solid #ced4da; }
+        .payment-methods h3 { margin-top: 0; color: #495057; }
+        .payment-method { margin: 10px 0; padding: 10px; background-color: white; border-radius: 4px; border: 1px solid #dee2e6; }
+        .payment-method .name { font-weight: bold; color: #495057; }
+        .payment-method .number { font-family: monospace; background-color: #f8f9fa; padding: 4px 8px; border-radius: 3px; cursor: pointer; user-select: all; transition: background-color 0.2s; }
+        .payment-method .number:hover { background-color: #e9ecef; }
+        .payment-method .copy-hint { font-size: 11px; color: #6c757d; font-style: italic; }
+        .payment-method .copy-success { font-size: 11px; color: #28a745; font-style: italic; }
     </style>
 </head>
 <body>
@@ -39,6 +47,21 @@
         
         <div th:if="${totalOwed gt 0}">
             <p>To ensure uninterrupted access to your active subscriptions, please clear your outstanding balance as soon as possible.</p>
+            
+            <div class="payment-methods">
+                <h3>💳 Payment Methods</h3>
+                <p>Please use one of the following payment methods to settle your balance:</p>
+                <div class="payment-method">
+                    <div class="name">Mono <span th:text="${paymentMethods['mono'].currency}"></span></div>
+                    <div class="number" onclick="copyToClipboard(this, '4441111068471360')" th:text="${paymentMethods['mono'].number}">4441111068471360</div>
+                    <div class="copy-hint">Click to copy card number</div>
+                </div>
+                <div class="payment-method">
+                    <div class="name">Privat <span th:text="${paymentMethods['privat'].currency}"></span></div>
+                    <div class="number" onclick="copyToClipboard(this, '5169360022967743')" th:text="${paymentMethods['privat'].number}">5169360022967743</div>
+                    <div class="copy-hint">Click to copy card number</div>
+                </div>
+            </div>
         </div>
         <div th:if="${totalOwed eq 0}">
             <p>Thank you for keeping your account in good standing! Everything is fully paid for.</p>
@@ -52,5 +75,39 @@
     <div class="footer">
         This is an automated message. Please do not reply to this email.
     </div>
+
+    <script>
+        function copyToClipboard(element, text) {
+            navigator.clipboard.writeText(text).then(function() {
+                const hint = element.nextElementSibling;
+                const originalText = hint.textContent;
+                hint.textContent = 'Copied!';
+                hint.className = 'copy-success';
+                
+                setTimeout(function() {
+                    hint.textContent = originalText;
+                    hint.className = 'copy-hint';
+                }, 2000);
+            }).catch(function(err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                const hint = element.nextElementSibling;
+                const originalText = hint.textContent;
+                hint.textContent = 'Copied!';
+                hint.className = 'copy-success';
+                
+                setTimeout(function() {
+                    hint.textContent = originalText;
+                    hint.className = 'copy-hint';
+                }, 2000);
+            });
+        }
+    </script>
 </body>
 </html>

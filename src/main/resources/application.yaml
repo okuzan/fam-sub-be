@@ -31,6 +31,7 @@ spring:
       api-key: ${ZEPTO_API_KEY}
       from-address: noreply@almonium.com
       from-name: FamSub
+
   security:
     oauth2:
       client:
@@ -43,3 +44,15 @@ spring:
               - profile
               - email
             redirect-uri: ${app.api-domain}${server.servlet.context-path}/login/oauth2/code/google
+
+app:
+  payment:
+    methods:
+      mono:
+        name: Mono
+        currency: ₴
+        number: "4441111068471360"
+      privat:
+        name: Privat
+        currency: ₴
+        number: "5169360022967743"

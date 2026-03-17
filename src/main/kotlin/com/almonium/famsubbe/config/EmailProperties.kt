@@ -14,3 +14,14 @@ data class ZeptoMailProperties(
 data class AppEmailProperties(
     val dryRun: Boolean = false
 )
+
+@ConfigurationProperties(prefix = "app.payment")
+data class PaymentProperties(
+    val methods: Map<String, PaymentMethod>
+)
+
+data class PaymentMethod(
+    val name: String,
+    val currency: String,
+    val number: String
+)

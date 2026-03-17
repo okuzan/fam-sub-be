@@ -13,7 +13,7 @@ class HtmlFileWriter {
             Files.createDirectory(tempDir)
         }
         
-        val filename = "${prefix}_${System.currentTimeMillis()}.html"
+        val filename = "${prefix}.html"
         Files.writeString(tempDir.resolve(filename), htmlContent)
     }
 }

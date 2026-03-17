@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.config.AppEmailProperties
+import com.almonium.famsubbe.config.PaymentProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties
 import com.almonium.famsubbe.entity.Invoice
 import com.almonium.famsubbe.entity.LedgerEntry
@@ -17,7 +18,8 @@ class DefaultInvoiceEmailService(
     private val templateEngine: TemplateEngine,
     private val htmlFileWriter: HtmlFileWriter,
     private val zeptoProperties: ZeptoMailProperties,
-    private val appEmailProperties: AppEmailProperties
+    private val appEmailProperties: AppEmailProperties,
+    private val paymentProperties: PaymentProperties
 ) : InvoiceEmailService {
 
     private val log = LoggerFactory.getLogger(DefaultInvoiceEmailService::class.java)
@@ -33,6 +35,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("subscriber", subscriber)
             context.setVariable("entries", entries)
             context.setVariable("origin", invoice.origin)
+            context.setVariable("paymentMethods", paymentProperties.methods)
 
             val htmlContent = templateEngine.process("invoice-email", context)
             val subject = "Your Invoice for ${invoice.fromMonth} - ${invoice.toMonth}"
@@ -59,6 +62,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("unpaidInvoicesCount", unpaidInvoicesCount)
             context.setVariable("activeSubscriptionsCount", activeSubscriptionsCount)
             context.setVariable("activeSubscriptionNames", activeSubscriptionNames)
+            context.setVariable("paymentMethods", paymentProperties.methods)
 
             val htmlContent = templateEngine.process("situation-email", context)
             val subject = "Your Subscription Account Status"

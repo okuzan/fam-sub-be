@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.service
 
+import com.almonium.famsubbe.config.PaymentProperties
 import com.almonium.famsubbe.entity.InvoiceStatus
 import com.almonium.famsubbe.entity.Subscriber
 import com.almonium.famsubbe.repository.InvoiceRepository
@@ -15,7 +16,8 @@ import java.time.format.DateTimeFormatter
 @Service
 class PinnedPostService(
     private val subscriberRepository: SubscriberRepository,
-    private val invoiceRepository: InvoiceRepository
+    private val invoiceRepository: InvoiceRepository,
+    private val paymentProperties: PaymentProperties
 ) {
     companion object {
         const val PINNED_POST_TEMPLATE = "src/main/resources/templates/pinned.md"
@@ -42,7 +44,21 @@ class PinnedPostService(
         val currentDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern(TIMESTAMP_PATTERN))
         
         // Read template
-        val template = Files.readString(Paths.get(PINNED_POST_TEMPLATE))
+        var template = Files.readString(Paths.get(PINNED_POST_TEMPLATE))
+        
+        // Replace payment method placeholders with a clean map-based approach
+        val replacements = mapOf(
+            "{{MONO_NAME}}" to (paymentProperties.methods["mono"]?.name ?: ""),
+            "{{MONO_CURRENCY}}" to (paymentProperties.methods["mono"]?.currency ?: ""),
+            "{{MONO_NUMBER}}" to (paymentProperties.methods["mono"]?.number ?: ""),
+            "{{PRIVAT_NAME}}" to (paymentProperties.methods["privat"]?.name ?: ""),
+            "{{PRIVAT_CURRENCY}}" to (paymentProperties.methods["privat"]?.currency ?: ""),
+            "{{PRIVAT_NUMBER}}" to (paymentProperties.methods["privat"]?.number ?: "")
+        )
+        
+        replacements.forEach { (placeholder, value) ->
+            template = template.replace(placeholder, value)
+        }
         
         val negativeBalances = StringBuilder()
         val zeroBalances = StringBuilder()
