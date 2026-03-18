@@ -25,12 +25,6 @@ spring:
         order_inserts: true
         order_updates: true
         batch_versioned_data: true
-  mail:
-    zepto:
-      api-url: https://api.zeptomail.eu/v1.1/email
-      api-key: ${ZEPTO_API_KEY}
-      from-address: noreply@almonium.com
-      from-name: FamSub
 
   security:
     oauth2:
@@ -46,6 +40,12 @@ spring:
             redirect-uri: ${app.api-domain}${server.servlet.context-path}/login/oauth2/code/google
 
 app:
+  mail:
+    zepto:
+      api-url: https://api.zeptomail.eu/v1.1/email
+      api-key: ${ZEPTO_API_KEY}
+      from-address: noreply@almonium.com
+      from-name: FamSub
   payment:
     methods:
       mono:

@@ -2,7 +2,7 @@ package com.almonium.famsubbe.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 
-@ConfigurationProperties(prefix = "spring.mail.zepto")
+@ConfigurationProperties(prefix = "app.mail.zepto")
 data class ZeptoMailProperties(
     val apiUrl: String,
     val apiKey: String,
