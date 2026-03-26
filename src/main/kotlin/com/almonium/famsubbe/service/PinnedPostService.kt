@@ -22,7 +22,7 @@ class PinnedPostService(
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(PinnedPostService::class.java)
-        const val PINNED_POST_TEMPLATE = "src/main/resources/templates/pinned.md"
+        const val PINNED_POST_TEMPLATE = "/templates/pinned.md"
         const val TIMESTAMP_PATTERN = "MMM dd HH:mm"
         const val LINE = "————————————————————————\n"
     }
@@ -58,9 +58,10 @@ class PinnedPostService(
         val currentDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern(TIMESTAMP_PATTERN))
         logger.info("Current date formatted: {}", currentDate)
         
-        logger.info("Reading template from file: {}", PINNED_POST_TEMPLATE)
-        // Read template
-        var template = Files.readString(Paths.get(PINNED_POST_TEMPLATE))
+        logger.info("Reading template from classpath: {}", PINNED_POST_TEMPLATE)
+        val templateStream = this::class.java.getResourceAsStream(PINNED_POST_TEMPLATE)
+            ?: throw IllegalStateException("Cannot find template resource at: $PINNED_POST_TEMPLATE")
+        var template = templateStream.bufferedReader().use { it.readText() }
         logger.info("Template read successfully, length: {}", template.length)
         
         // Replace payment method placeholders with a clean map-based approach
