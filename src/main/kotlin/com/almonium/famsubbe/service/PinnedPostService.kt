@@ -5,12 +5,10 @@ import com.almonium.famsubbe.entity.InvoiceStatus
 import com.almonium.famsubbe.entity.Subscriber
 import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.SubscriberRepository
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import org.slf4j.LoggerFactory
 import java.math.BigDecimal
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 

@@ -5,7 +5,7 @@ import com.almonium.famsubbe.security.AccountPrincipal
 import com.almonium.famsubbe.service.AccountService
 import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.core.user.OAuth2User
-import java.util.UUID
+import java.util.*
 
 object AuthenticationUtil {
     

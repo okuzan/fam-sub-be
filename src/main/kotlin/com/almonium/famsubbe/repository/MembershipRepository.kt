@@ -1,7 +1,7 @@
 package com.almonium.famsubbe.repository
 
-import com.almonium.famsubbe.entity.Subscriber
 import com.almonium.famsubbe.entity.Membership
+import com.almonium.famsubbe.entity.Subscriber
 import com.almonium.famsubbe.entity.SubscriptionService
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query

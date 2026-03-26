@@ -2,7 +2,7 @@ package com.almonium.famsubbe.dto
 
 import java.math.BigDecimal
 import java.time.YearMonth
-import java.util.UUID
+import java.util.*
 
 data class InvoiceGenerationResult(
     val invoicesCreated: Int,

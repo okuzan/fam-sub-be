@@ -10,7 +10,6 @@ import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Service
-import java.util.LinkedHashMap
 
 @Service
 class AccountOAuth2UserService(

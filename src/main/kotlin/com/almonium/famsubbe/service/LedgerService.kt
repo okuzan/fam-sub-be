@@ -5,7 +5,7 @@ import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import org.springframework.stereotype.Service
 import java.time.YearMonth
-import java.util.UUID
+import java.util.*
 
 @Service
 class LedgerService(
