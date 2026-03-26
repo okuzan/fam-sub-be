@@ -12,6 +12,7 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.slf4j.LoggerFactory
 import java.util.*
 
 @RestController
@@ -22,6 +23,9 @@ class AdminSubscriberController(
     private val invoiceEmailService: InvoiceEmailService,
     private val pinnedPostService: PinnedPostService
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(AdminSubscriberController::class.java)
+    }
 
     @GetMapping
     fun getAllSubscribers(
@@ -96,10 +100,14 @@ class AdminSubscriberController(
 
     @PostMapping("/generate-pinned-post")
     fun generatePinnedPost(): ResponseEntity<Map<String, String>> {
+        logger.info("Starting generatePinnedPost request")
         return try {
+            logger.info("Calling pinnedPostService.generatePinnedPost()")
             val pinnedPost = pinnedPostService.generatePinnedPost()
+            logger.info("Successfully generated pinned post with length: {}", pinnedPost.length)
             ResponseEntity.ok(mapOf("content" to pinnedPost))
         } catch (e: Exception) {
+            logger.error("Failed to generate pinned post", e)
             ResponseEntity.internalServerError().body(mapOf("error" to "Failed to generate pinned post: ${e.message}"))
         }
     }
