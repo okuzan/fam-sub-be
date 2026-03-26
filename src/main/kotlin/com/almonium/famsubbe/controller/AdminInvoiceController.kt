@@ -4,6 +4,7 @@ import com.almonium.famsubbe.dto.InvoiceDetailResponse
 import com.almonium.famsubbe.dto.InvoiceFilterRequest
 import com.almonium.famsubbe.dto.InvoiceGenerationRequest
 import com.almonium.famsubbe.dto.InvoiceGenerationResult
+import com.almonium.famsubbe.dto.InvoiceNotesUpdateRequest
 import com.almonium.famsubbe.dto.InvoiceResponse
 import com.almonium.famsubbe.dto.InvoiceSuggestion
 import com.almonium.famsubbe.dto.OutstandingBalanceInvoiceRequest
@@ -115,5 +116,14 @@ class AdminInvoiceController(
         } else {
             ResponseEntity.internalServerError().body(mapOf("error" to "Failed to send invoice email"))
         }
+    }
+
+    @PatchMapping("/{invoiceId}/notes")
+    fun updateInvoiceNotes(
+        @PathVariable invoiceId: UUID,
+        @RequestBody request: InvoiceNotesUpdateRequest
+    ): ResponseEntity<InvoiceResponse> {
+        val updatedInvoice = invoiceService.updateInvoiceNotes(invoiceId, request.notes)
+        return ResponseEntity.ok(updatedInvoice)
     }
 }

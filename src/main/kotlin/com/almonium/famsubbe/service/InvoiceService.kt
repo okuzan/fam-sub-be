@@ -364,6 +364,16 @@ class InvoiceService(
         return success
     }
 
+    fun updateInvoiceNotes(invoiceId: UUID, notes: String?): InvoiceResponse {
+        val invoice = invoiceRepository.findById(invoiceId)
+            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+        
+        invoice.notes = notes
+        val updatedInvoice = invoiceRepository.save(invoice)
+        
+        return updatedInvoice.toResponse()
+    }
+
     @Transactional(readOnly = true)
     fun getSubscriberDetails(subscriberId: UUID): SubscriberDetailResponse {
         val subscriber = subscriberRepository.findById(subscriberId)
