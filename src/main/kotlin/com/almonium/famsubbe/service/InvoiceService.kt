@@ -367,11 +367,35 @@ class InvoiceService(
     fun updateInvoiceNotes(invoiceId: UUID, notes: String?): InvoiceResponse {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
-        
+
         invoice.notes = notes
         val updatedInvoice = invoiceRepository.save(invoice)
-        
+
         return updatedInvoice.toResponse()
+    }
+
+
+    fun deleteInvoice(invoiceId: UUID, addToBalance: Boolean = true) {
+        val invoice = invoiceRepository.findById(invoiceId)
+            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+
+        check(invoice.status == InvoiceStatus.DRAFT) {
+            "Only DRAFT invoices can be deleted"
+        }
+
+        check(invoice.origin == InvoiceOrigin.OUTSTANDING_BALANCE) {
+            "Only outstanding balance invoices can be deleted"
+        }
+
+        // Restore subscriber balance if addToBalance is true
+        if (addToBalance) {
+            val subscriber = requireNotNull(invoice.subscriber)
+            val invoiceAmount = requireNotNull(invoice.totalAmount)
+            subscriber.balance = subscriber.balance?.subtract(invoiceAmount) ?: invoiceAmount.negate()
+            subscriberRepository.save(subscriber)
+        }
+
+        invoiceRepository.delete(invoice)
     }
 
     @Transactional(readOnly = true)

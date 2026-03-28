@@ -15,6 +15,7 @@ import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -116,6 +117,20 @@ class AdminInvoiceController(
         } else {
             ResponseEntity.internalServerError().body(mapOf("error" to "Failed to send invoice email"))
         }
+    }
+
+    @DeleteMapping("/{invoiceId}")
+    fun deleteInvoice(
+        @PathVariable invoiceId: UUID,
+        @RequestParam(required = false, defaultValue = "true") addToBalance: Boolean
+    ): ResponseEntity<Map<String, String>> {
+        invoiceService.deleteInvoice(invoiceId, addToBalance)
+        val message = if (addToBalance) {
+            "Invoice deleted and balance restored to subscriber"
+        } else {
+            "Invoice deleted without balance adjustment"
+        }
+        return ResponseEntity.ok(mapOf("message" to message))
     }
 
     @PatchMapping("/{invoiceId}/notes")
