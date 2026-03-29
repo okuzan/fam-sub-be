@@ -282,6 +282,12 @@ class InvoiceService(
         )
         subscriber.balance = BigDecimal.ZERO
         subscriberRepository.save(subscriber)
+
+        // Send email if requested
+        if (request.sendEmail) {
+            invoiceEmailService.sendInvoiceEmail(invoice, emptyList())
+        }
+
         return invoice.toResponse()
     }
 
