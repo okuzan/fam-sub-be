@@ -216,6 +216,7 @@ class InvoiceService(
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
         
         check(invoice.status != InvoiceStatus.PAID) { "Invoice is already marked as paid" }
+        check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be marked as paid" }
         
         invoice.status = InvoiceStatus.PAID
         val updatedInvoice = invoiceRepository.save(invoice)
@@ -352,6 +353,7 @@ class InvoiceService(
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
         
         check(invoice.status != InvoiceStatus.PAID) { "Invoice is already marked as paid" }
+        check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be paid from balance" }
         
         val subscriber = requireNotNull(invoice.subscriber)
         val currentBalance = subscriber.balance ?: BigDecimal.ZERO
@@ -411,6 +413,8 @@ class InvoiceService(
     fun sendInvoiceEmail(invoiceId: UUID): Boolean {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+
+        check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be emailed" }
         
         val entries = ledgerEntryRepository.findByInvoice(invoice)
             .sortedBy { it.recordedMonth }
@@ -434,6 +438,23 @@ class InvoiceService(
         val updatedInvoice = invoiceRepository.save(invoice)
 
         return updatedInvoice.toResponse()
+    }
+
+    fun voidInvoice(invoiceId: UUID, reason: String?): InvoiceResponse {
+        val invoice = invoiceRepository.findById(invoiceId)
+            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+
+        check(invoice.status != InvoiceStatus.VOID) { "Invoice is already voided" }
+        check(invoice.status != InvoiceStatus.PAID) { "PAID invoices cannot be voided" }
+
+        val normalizedReason = reason?.trim()?.takeIf { it.isNotEmpty() }
+        if (normalizedReason != null) {
+            invoice.notes = listOfNotNull(invoice.notes, "void_reason=$normalizedReason")
+                .joinToString("\n")
+        }
+        invoice.status = InvoiceStatus.VOID
+
+        return invoiceRepository.save(invoice).toResponse()
     }
 
 
@@ -489,7 +510,7 @@ class InvoiceService(
             { root, _, cb ->
                 val predicates = mutableListOf<Predicate>()
                 predicates.add(cb.equal(root.get<Subscriber>("subscriber").get<UUID>("id"), subscriberId))
-                predicates.add(cb.notEqual(root.get<InvoiceStatus>("status"), InvoiceStatus.PAID))
+                predicates.add(root.get<InvoiceStatus>("status").`in`(InvoiceStatus.DRAFT, InvoiceStatus.SENT))
                 cb.and(*predicates.toTypedArray())
             },
             Sort.by(Sort.Direction.DESC, "createdAt")

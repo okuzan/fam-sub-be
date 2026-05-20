@@ -7,6 +7,7 @@ import com.almonium.famsubbe.dto.InvoiceGenerationResult
 import com.almonium.famsubbe.dto.InvoiceNotesUpdateRequest
 import com.almonium.famsubbe.dto.InvoiceResponse
 import com.almonium.famsubbe.dto.InvoiceSuggestion
+import com.almonium.famsubbe.dto.InvoiceVoidRequest
 import com.almonium.famsubbe.dto.ManualInvoiceCreateRequest
 import com.almonium.famsubbe.dto.OutstandingBalanceInvoiceRequest
 import com.almonium.famsubbe.entity.AdminActionTargetType
@@ -269,6 +270,32 @@ class AdminInvoiceController(
             fromMonth = updatedInvoice.fromMonth,
             toMonth = updatedInvoice.toMonth,
             summary = "Updated notes for invoice $invoiceId"
+        )
+        return ResponseEntity.ok(updatedInvoice)
+    }
+
+    @PatchMapping("/{invoiceId}/void")
+    fun voidInvoice(
+        @PathVariable invoiceId: UUID,
+        @RequestBody(required = false) request: InvoiceVoidRequest?,
+        authentication: Authentication
+    ): ResponseEntity<InvoiceResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val updatedInvoice = invoiceService.voidInvoice(invoiceId, request?.reason)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.INVOICE_VOIDED,
+            targetType = AdminActionTargetType.INVOICE,
+            targetId = invoiceId,
+            subscriberId = updatedInvoice.subscriberId,
+            fromMonth = updatedInvoice.fromMonth,
+            toMonth = updatedInvoice.toMonth,
+            summary = "Voided invoice $invoiceId",
+            metadata = mapOf(
+                "origin" to updatedInvoice.origin,
+                "totalAmount" to updatedInvoice.totalAmount,
+                "reason" to request?.reason
+            )
         )
         return ResponseEntity.ok(updatedInvoice)
     }

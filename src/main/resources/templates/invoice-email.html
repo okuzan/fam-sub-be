@@ -8,9 +8,11 @@
         .header { padding: 20px; text-align: center; border-bottom: 2px solid #007bff; }
         .header.unpaid { background-color: #f8f9fa; border-bottom: 2px solid #007bff; }
         .header.paid { background-color: #d4edda; border-bottom: 2px solid #28a745; }
+        .header.void { background-color: #f1f3f5; border-bottom: 2px solid #6c757d; }
         .status-badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-top: 10px; }
         .status-paid { background-color: #28a745; color: white; }
         .status-unpaid { background-color: #ffc107; color: #333; }
+        .status-void { background-color: #6c757d; color: white; }
         .content { padding: 20px 0; }
         .invoice-details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
         .footer { font-size: 12px; color: #6c757d; text-align: center; margin-top: 20px; border-top: 1px solid #dee2e6; padding-top: 20px; }
@@ -30,12 +32,13 @@
     </style>
 </head>
 <body>
-    <div th:class="${invoice.status.name() == 'PAID'} ? 'header paid' : 'header unpaid'">
+    <div th:class="${invoice.status.name() == 'PAID'} ? 'header paid' : (${invoice.status.name() == 'VOID'} ? 'header void' : 'header unpaid')">
         <h2 th:if="${origin.name() == 'OUTSTANDING_BALANCE'}">Outstanding Balance Invoice</h2>
         <h2 th:if="${origin.name() == 'MANUAL'}">Manual Invoice for <span th:text="${invoice.fromMonth}"></span></h2>
         <h2 th:if="${origin.name() == 'SUBSCRIPTION_LEDGER'}">Invoice for <span th:text="${invoice.fromMonth}"></span> to <span th:text="${invoice.toMonth}"></span></h2>
         <div th:if="${invoice.status.name() == 'PAID'}" class="status-badge status-paid">PAID</div>
-        <div th:if="${invoice.status.name() != 'PAID'}" class="status-badge status-unpaid">UNPAID</div>
+        <div th:if="${invoice.status.name() == 'VOID'}" class="status-badge status-void">VOID</div>
+        <div th:if="${invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}" class="status-badge status-unpaid">UNPAID</div>
     </div>
     
     <div class="content">
@@ -47,10 +50,11 @@
             <p th:if="${invoice.status.name() == 'PAID'}"><strong>Payment Date:</strong> <span th:text="${invoice.sentAt != null ? #temporals.format(invoice.sentAt, 'MMM dd, yyyy HH:mm') : #dates.format(#dates.createNow(), 'MMM dd, yyyy HH:mm')}"></span></p>
         </div>
 
-        <p th:if="${origin.name() == 'OUTSTANDING_BALANCE'}">This invoice represents your outstanding balance that has been carried forward from previous periods.</p>
-        <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() != 'PAID'}">Please find the details of your one-off invoice below.</p>
+        <p th:if="${invoice.status.name() == 'VOID'}">This invoice has been voided and should not be paid.</p>
+        <p th:if="${origin.name() == 'OUTSTANDING_BALANCE' && invoice.status.name() != 'VOID'}">This invoice represents your outstanding balance that has been carried forward from previous periods.</p>
+        <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">Please find the details of your one-off invoice below.</p>
         <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() == 'PAID'}">Below is your paid one-off invoice for your records.</p>
-        <p th:if="${origin.name() == 'SUBSCRIPTION_LEDGER' && invoice.status.name() != 'PAID'}">Please find the details of your recent invoice below.</p>
+        <p th:if="${origin.name() == 'SUBSCRIPTION_LEDGER' && invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">Please find the details of your recent invoice below.</p>
         <p th:if="${origin.name() == 'SUBSCRIPTION_LEDGER' && invoice.status.name() == 'PAID'}">Below is the breakdown of your paid invoice for your records.</p>
         
         <table th:if="${not #lists.isEmpty(entries)}">
@@ -81,7 +85,7 @@
             <strong>Notes:</strong> <span th:text="${invoice.notes}"></span>
         </div>
         
-        <div th:if="${invoice.status.name() != 'PAID'}" class="payment-methods">
+        <div th:if="${invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}" class="payment-methods">
             <h3>💳 Payment Methods</h3>
             <p>Please use one of the following payment methods to settle your invoice:</p>
             <div class="payment-method">
@@ -96,7 +100,7 @@
             </div>
         </div>
         
-        <div th:if="${invoice.status.name() != 'PAID'}">
+        <div th:if="${invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">
             <p>Please ensure payment is made at your earliest convenience.</p>
             <p>Thank you for your business!</p>
         </div>

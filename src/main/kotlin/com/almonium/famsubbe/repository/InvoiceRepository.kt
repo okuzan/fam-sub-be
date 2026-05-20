@@ -26,11 +26,13 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
     @Query("""
         select distinct i.subscriber.id
         from Invoice i
-        where i.status != 'PAID'
+        where i.status in ('DRAFT', 'SENT')
     """)
     fun findSubscriberIdsWithUnpaidInvoices(): List<UUID>
     
     fun findBySubscriberAndStatusNot(subscriber: Subscriber, status: InvoiceStatus): List<Invoice>
+
+    fun findBySubscriberAndStatusIn(subscriber: Subscriber, statuses: Collection<InvoiceStatus>): List<Invoice>
 
     fun findByInvoiceGenerationRunId(invoiceGenerationRunId: UUID): List<Invoice>
 }

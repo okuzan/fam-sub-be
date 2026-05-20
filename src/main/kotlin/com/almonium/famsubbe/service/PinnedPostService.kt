@@ -43,7 +43,10 @@ class PinnedPostService(
             excludedUsers.none { excluded -> user.name?.equals(excluded, ignoreCase = true) == true }
         }.map { user ->
             logger.debug("Processing user: {}", user.name)
-            val unpaidInvoices = invoiceRepository.findBySubscriberAndStatusNot(user, InvoiceStatus.PAID)
+            val unpaidInvoices = invoiceRepository.findBySubscriberAndStatusIn(
+                user,
+                listOf(InvoiceStatus.DRAFT, InvoiceStatus.SENT)
+            )
             logger.debug("Found {} unpaid invoices for user {}", unpaidInvoices.size, user.name)
             val totalOwed = unpaidInvoices.sumOf { it.totalAmount ?: BigDecimal.ZERO }
             val accountBalance = (user.balance ?: BigDecimal.ZERO) - totalOwed
