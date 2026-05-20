@@ -13,7 +13,6 @@ import com.almonium.famsubbe.dto.InvoiceStatusHistoryResponse
 import com.almonium.famsubbe.dto.InvoiceStatusUpdateRequest
 import com.almonium.famsubbe.dto.InvoiceVoidRequest
 import com.almonium.famsubbe.dto.ManualInvoiceCreateRequest
-import com.almonium.famsubbe.dto.OutstandingBalanceInvoiceRequest
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
 import com.almonium.famsubbe.entity.InvoiceStatus
@@ -172,30 +171,6 @@ class AdminInvoiceController(
             )
         )
         return ResponseEntity.ok(updatedInvoice)
-    }
-
-    @PostMapping("/outstanding-balance")
-    fun generateOutstandingBalanceInvoice(
-        @RequestBody request: OutstandingBalanceInvoiceRequest,
-        authentication: Authentication
-    ): ResponseEntity<InvoiceResponse> {
-        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val invoice = invoiceService.generateOutstandingBalanceInvoice(request, performedByAccountId)
-        adminAuditLogService.log(
-            createdByAccountId = performedByAccountId,
-            actionType = AdminActionType.OUTSTANDING_BALANCE_INVOICE_CREATED,
-            targetType = AdminActionTargetType.INVOICE,
-            targetId = invoice.id,
-            subscriberId = invoice.subscriberId,
-            fromMonth = invoice.fromMonth,
-            toMonth = invoice.toMonth,
-            summary = "Created outstanding balance invoice for ${invoice.subscriberName}",
-            metadata = mapOf(
-                "totalAmount" to invoice.totalAmount,
-                "sendEmail" to request.sendEmail
-            )
-        )
-        return ResponseEntity.ok(invoice)
     }
 
     @PostMapping("/manual")

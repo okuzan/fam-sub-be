@@ -14,7 +14,6 @@ import com.almonium.famsubbe.dto.InvoiceLedgerEntryResponse
 import com.almonium.famsubbe.dto.InvoiceResponse
 import com.almonium.famsubbe.dto.InvoiceSuggestion
 import com.almonium.famsubbe.dto.ManualInvoiceCreateRequest
-import com.almonium.famsubbe.dto.OutstandingBalanceInvoiceRequest
 import com.almonium.famsubbe.dto.SubscriberDetailResponse
 import com.almonium.famsubbe.dto.UnpaidInvoiceDto
 import com.almonium.famsubbe.entity.Invoice
@@ -293,56 +292,6 @@ class InvoiceService(
 
         document.close()
         return outputStream.toByteArray()
-    }
-
-    fun generateOutstandingBalanceInvoice(
-        request: OutstandingBalanceInvoiceRequest,
-        performedByAccountId: UUID
-    ): InvoiceResponse {
-        val subscriber = subscriberRepository.findById(request.subscriberId)
-            .orElseThrow { IllegalArgumentException("Subscriber not found: ${request.subscriberId}") }
-
-        // Check if subscriber has negative balance
-        val currentBalance = subscriber.balance?: BigDecimal.ZERO
-        check(currentBalance < BigDecimal.ZERO) {
-            "Subscriber must have negative balance to generate outstanding balance invoice. Current balance: $currentBalance" 
-        }
-
-        // Calculate the amount needed to zero the balance (absolute value of negative balance)
-        val zeroingAmount = currentBalance.abs()
-        
-        val now = Instant.now()
-        
-        // Create invoice with zeroing amount
-        val invoice = invoiceRepository.save(
-            Invoice().apply {
-                val autoPaid = subscriber.autoPayInvoices
-                this.subscriber = subscriber
-                this.fromMonth = YearMonth.now()
-                this.toMonth = YearMonth.now()
-                this.totalAmount = zeroingAmount
-                this.status = initialInvoiceStatus(subscriber, request.sendEmail)
-                this.createdAt = now
-                this.statusChangedAt = now
-                this.createdByAccountId = performedByAccountId
-                this.sentAt = if (!autoPaid && request.sendEmail) now else null
-                this.emailSent = !autoPaid && request.sendEmail
-                this.notes = listOfNotNull(
-                    request.notes ?: "outstanding_balance_invoice_generated_by=$performedByAccountId",
-                    "auto_paid=true".takeIf { autoPaid }
-                ).joinToString("; ")
-                this.origin = InvoiceOrigin.OUTSTANDING_BALANCE
-            }
-        )
-        subscriber.balance = BigDecimal.ZERO
-        subscriberRepository.save(subscriber)
-
-        // Send email if requested
-        if (request.sendEmail && !subscriber.autoPayInvoices) {
-            invoiceEmailService.sendInvoiceEmail(invoice, emptyList())
-        }
-
-        return invoice.toResponse()
     }
 
     fun createManualInvoice(

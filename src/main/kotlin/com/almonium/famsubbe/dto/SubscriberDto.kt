@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.dto
 
+import jakarta.validation.constraints.DecimalMin
 import java.math.BigDecimal
 import java.util.*
 
@@ -16,6 +17,7 @@ data class SubscriberResponse(
 data class SubscriberCreateRequest(
     val name: String,
     val email: String,
+    @field:DecimalMin(value = "0.00", message = "balance must be a credit amount and cannot be negative")
     val balance: BigDecimal = BigDecimal.ZERO,
     val autoPayInvoices: Boolean = false
 )
@@ -23,6 +25,7 @@ data class SubscriberCreateRequest(
 data class SubscriberUpdateRequest(
     val name: String,
     val email: String,
+    @field:DecimalMin(value = "0.00", message = "balance must be a credit amount and cannot be negative")
     val balance: BigDecimal,
     val autoPayInvoices: Boolean? = null
 )
