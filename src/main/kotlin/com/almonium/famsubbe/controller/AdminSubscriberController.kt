@@ -4,14 +4,20 @@ import com.almonium.famsubbe.dto.SubscriberCreateRequest
 import com.almonium.famsubbe.dto.SubscriberDetailResponse
 import com.almonium.famsubbe.dto.SubscriberResponse
 import com.almonium.famsubbe.dto.SubscriberUpdateRequest
+import com.almonium.famsubbe.entity.AdminActionTargetType
+import com.almonium.famsubbe.entity.AdminActionType
+import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.service.InvoiceEmailService
 import com.almonium.famsubbe.service.InvoiceService
 import com.almonium.famsubbe.service.PinnedPostService
 import com.almonium.famsubbe.service.SubscriberService
+import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -29,7 +35,9 @@ class AdminSubscriberController(
     private val subscriberService: SubscriberService,
     private val invoiceService: InvoiceService,
     private val invoiceEmailService: InvoiceEmailService,
-    private val pinnedPostService: PinnedPostService
+    private val pinnedPostService: PinnedPostService,
+    private val accountService: AccountService,
+    private val adminAuditLogService: AdminAuditLogService
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AdminSubscriberController::class.java)
@@ -62,7 +70,11 @@ class AdminSubscriberController(
     }
 
     @PostMapping("/{id}/email-situation")
-    fun emailSubscriberSituation(@PathVariable id: UUID): ResponseEntity<Map<String, String>> {
+    fun emailSubscriberSituation(
+        @PathVariable id: UUID,
+        authentication: Authentication
+    ): ResponseEntity<Map<String, String>> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val details = invoiceService.getSubscriberDetails(id)
         
         if (details.email.isEmpty()) {
@@ -79,6 +91,19 @@ class AdminSubscriberController(
         )
 
         return if (success) {
+            adminAuditLogService.log(
+                createdByAccountId = performedByAccountId,
+                actionType = AdminActionType.SUBSCRIBER_SITUATION_EMAIL_SENT,
+                targetType = AdminActionTargetType.SUBSCRIBER,
+                targetId = id,
+                subscriberId = id,
+                summary = "Sent situation email to ${details.name}",
+                metadata = mapOf(
+                    "email" to details.email,
+                    "totalOwed" to details.totalAmountOwed,
+                    "unpaidInvoicesCount" to details.unpaidInvoices.size
+                )
+            )
             ResponseEntity.ok(mapOf("message" to "Situation email sent successfully to ${details.email}"))
         } else {
             ResponseEntity.internalServerError().body(mapOf("error" to "Failed to send email"))
@@ -86,33 +111,85 @@ class AdminSubscriberController(
     }
 
     @PostMapping
-    fun createSubscriber(@Valid @RequestBody request: SubscriberCreateRequest): ResponseEntity<SubscriberResponse> {
+    fun createSubscriber(
+        @Valid @RequestBody request: SubscriberCreateRequest,
+        authentication: Authentication
+    ): ResponseEntity<SubscriberResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val subscriber = subscriberService.createSubscriber(request)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.SUBSCRIBER_CREATED,
+            targetType = AdminActionTargetType.SUBSCRIBER,
+            targetId = subscriber.id,
+            subscriberId = subscriber.id,
+            summary = "Created subscriber ${subscriber.name}",
+            metadata = mapOf(
+                "email" to subscriber.email,
+                "balance" to subscriber.balance
+            )
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(subscriber)
     }
 
     @PutMapping("/{id}")
     fun updateSubscriber(
         @PathVariable id: UUID,
-        @Valid @RequestBody request: SubscriberUpdateRequest
+        @Valid @RequestBody request: SubscriberUpdateRequest,
+        authentication: Authentication
     ): ResponseEntity<SubscriberResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val subscriber = subscriberService.updateSubscriber(id, request)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.SUBSCRIBER_UPDATED,
+            targetType = AdminActionTargetType.SUBSCRIBER,
+            targetId = id,
+            subscriberId = id,
+            summary = "Updated subscriber ${subscriber.name}",
+            metadata = mapOf(
+                "email" to subscriber.email,
+                "balance" to subscriber.balance
+            )
+        )
         return ResponseEntity.ok(subscriber)
     }
 
     @DeleteMapping("/{id}")
-    fun deleteSubscriber(@PathVariable id: UUID): ResponseEntity<Void> {
+    fun deleteSubscriber(
+        @PathVariable id: UUID,
+        authentication: Authentication
+    ): ResponseEntity<Void> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val subscriber = subscriberService.getSubscriberById(id)
         subscriberService.deleteSubscriber(id)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.SUBSCRIBER_DELETED,
+            targetType = AdminActionTargetType.SUBSCRIBER,
+            targetId = id,
+            subscriberId = id,
+            summary = "Deleted subscriber ${subscriber.name}",
+            metadata = mapOf("email" to subscriber.email)
+        )
         return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/generate-pinned-post")
-    fun generatePinnedPost(): ResponseEntity<Map<String, String>> {
+    fun generatePinnedPost(authentication: Authentication): ResponseEntity<Map<String, String>> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         logger.info("Starting generatePinnedPost request")
         return try {
             logger.info("Calling pinnedPostService.generatePinnedPost()")
             val pinnedPost = pinnedPostService.generatePinnedPost()
             logger.info("Successfully generated pinned post with length: {}", pinnedPost.length)
+            adminAuditLogService.log(
+                createdByAccountId = performedByAccountId,
+                actionType = AdminActionType.PINNED_POST_GENERATED,
+                targetType = AdminActionTargetType.PINNED_POST,
+                summary = "Generated pinned post",
+                metadata = mapOf("contentLength" to pinnedPost.length)
+            )
             ResponseEntity.ok(mapOf("content" to pinnedPost))
         } catch (e: Exception) {
             logger.error("Failed to generate pinned post", e)

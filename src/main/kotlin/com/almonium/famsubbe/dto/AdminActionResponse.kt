@@ -9,8 +9,10 @@ data class AdminActionResponse(
     val type: String,
     val createdAt: Instant,
     val createdByAccountId: UUID,
-    val fromMonth: YearMonth,
-    val toMonth: YearMonth,
+    val targetType: String,
+    val targetId: UUID?,
+    val fromMonth: YearMonth?,
+    val toMonth: YearMonth?,
     val subscriberId: UUID?,
     val summary: String,
     val metrics: Map<String, Any>

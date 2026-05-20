@@ -3,10 +3,16 @@ package com.almonium.famsubbe.controller
 import com.almonium.famsubbe.dto.ChargeCreateRequest
 import com.almonium.famsubbe.dto.ChargeResponse
 import com.almonium.famsubbe.dto.ChargeUpdateRequest
+import com.almonium.famsubbe.entity.AdminActionTargetType
+import com.almonium.famsubbe.entity.AdminActionType
+import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.service.ChargeService
+import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -21,21 +27,52 @@ import java.util.*
 @RestController
 @RequestMapping("/admin/charges")
 class AdminChargeController(
-    private val chargeService: ChargeService
+    private val chargeService: ChargeService,
+    private val accountService: AccountService,
+    private val adminAuditLogService: AdminAuditLogService
 ) {
 
     @PostMapping
-    fun createCharge(@Valid @RequestBody request: ChargeCreateRequest): ResponseEntity<ChargeResponse> {
+    fun createCharge(
+        @Valid @RequestBody request: ChargeCreateRequest,
+        authentication: Authentication
+    ): ResponseEntity<ChargeResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val charge = chargeService.createCharge(request)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.CHARGE_CREATED,
+            targetType = AdminActionTargetType.CHARGE,
+            targetId = charge.id,
+            fromMonth = charge.chargeMonth,
+            toMonth = charge.chargeMonth,
+            summary = "Created charge for ${charge.subscriptionServiceName} in ${charge.chargeMonth}",
+            metadata = mapOf(
+                "subscriptionServiceId" to charge.subscriptionServiceId,
+                "amount" to charge.amount
+            )
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(charge)
     }
 
     @PutMapping("/{id}")
     fun updateCharge(
         @PathVariable id: UUID,
-        @Valid @RequestBody request: ChargeUpdateRequest
+        @Valid @RequestBody request: ChargeUpdateRequest,
+        authentication: Authentication
     ): ResponseEntity<ChargeResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val charge = chargeService.updateCharge(id, request)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.CHARGE_UPDATED,
+            targetType = AdminActionTargetType.CHARGE,
+            targetId = id,
+            fromMonth = charge.chargeMonth,
+            toMonth = charge.chargeMonth,
+            summary = "Updated charge for ${charge.subscriptionServiceName} in ${charge.chargeMonth}",
+            metadata = mapOf("amount" to charge.amount)
+        )
         return ResponseEntity.ok(charge)
     }
 
@@ -58,8 +95,23 @@ class AdminChargeController(
     }
 
     @DeleteMapping("/{id}")
-    fun deleteCharge(@PathVariable id: UUID): ResponseEntity<Void> {
+    fun deleteCharge(
+        @PathVariable id: UUID,
+        authentication: Authentication
+    ): ResponseEntity<Void> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val charge = chargeService.getCharge(id)
         chargeService.deleteCharge(id)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.CHARGE_DELETED,
+            targetType = AdminActionTargetType.CHARGE,
+            targetId = id,
+            fromMonth = charge.chargeMonth,
+            toMonth = charge.chargeMonth,
+            summary = "Deleted charge for ${charge.subscriptionServiceName} in ${charge.chargeMonth}",
+            metadata = mapOf("amount" to charge.amount)
+        )
         return ResponseEntity.noContent().build()
     }
 }

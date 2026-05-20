@@ -4,10 +4,16 @@ import com.almonium.famsubbe.dto.MembershipCreateRequest
 import com.almonium.famsubbe.dto.MembershipEndRequest
 import com.almonium.famsubbe.dto.MembershipResponse
 import com.almonium.famsubbe.dto.MembershipUpdateRequest
+import com.almonium.famsubbe.entity.AdminActionTargetType
+import com.almonium.famsubbe.entity.AdminActionType
+import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.service.MembershipService
+import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -22,21 +28,54 @@ import java.util.*
 @RestController
 @RequestMapping("/admin/memberships")
 class AdminMembershipController(
-    private val membershipService: MembershipService
+    private val membershipService: MembershipService,
+    private val accountService: AccountService,
+    private val adminAuditLogService: AdminAuditLogService
 ) {
 
     @PostMapping
-    fun createMembership(@Valid @RequestBody request: MembershipCreateRequest): ResponseEntity<MembershipResponse> {
+    fun createMembership(
+        @Valid @RequestBody request: MembershipCreateRequest,
+        authentication: Authentication
+    ): ResponseEntity<MembershipResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val membership = membershipService.createMembership(request)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.MEMBERSHIP_CREATED,
+            targetType = AdminActionTargetType.MEMBERSHIP,
+            targetId = membership.id,
+            subscriberId = membership.subscriberId,
+            fromMonth = membership.startMonth,
+            toMonth = membership.endMonth,
+            summary = "Created ${membership.subscriptionServiceName} membership for ${membership.subscriberName}",
+            metadata = mapOf(
+                "subscriptionServiceId" to membership.subscriptionServiceId,
+                "subscriptionServiceName" to membership.subscriptionServiceName
+            )
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(membership)
     }
 
     @PutMapping("/{id}")
     fun updateMembership(
         @PathVariable id: UUID,
-        @Valid @RequestBody request: MembershipUpdateRequest
+        @Valid @RequestBody request: MembershipUpdateRequest,
+        authentication: Authentication
     ): ResponseEntity<MembershipResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val membership = membershipService.updateMembership(id, request)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.MEMBERSHIP_UPDATED,
+            targetType = AdminActionTargetType.MEMBERSHIP,
+            targetId = id,
+            subscriberId = membership.subscriberId,
+            fromMonth = membership.startMonth,
+            toMonth = membership.endMonth,
+            summary = "Updated ${membership.subscriptionServiceName} membership for ${membership.subscriberName}",
+            metadata = mapOf("subscriptionServiceId" to membership.subscriptionServiceId)
+        )
         return ResponseEntity.ok(membership)
     }
 
@@ -49,9 +88,22 @@ class AdminMembershipController(
     @PostMapping("/{id}/end")
     fun endMembership(
         @PathVariable id: UUID,
-        @Valid @RequestBody request: MembershipEndRequest
+        @Valid @RequestBody request: MembershipEndRequest,
+        authentication: Authentication
     ): ResponseEntity<MembershipResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val membership = membershipService.endMembership(id, request)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.MEMBERSHIP_ENDED,
+            targetType = AdminActionTargetType.MEMBERSHIP,
+            targetId = id,
+            subscriberId = membership.subscriberId,
+            fromMonth = membership.startMonth,
+            toMonth = membership.endMonth,
+            summary = "Ended ${membership.subscriptionServiceName} membership for ${membership.subscriberName}",
+            metadata = mapOf("subscriptionServiceId" to membership.subscriptionServiceId)
+        )
         return ResponseEntity.ok(membership)
     }
 
@@ -80,8 +132,24 @@ class AdminMembershipController(
     }
 
     @DeleteMapping("/{id}")
-    fun deleteMembership(@PathVariable id: UUID): ResponseEntity<Void> {
+    fun deleteMembership(
+        @PathVariable id: UUID,
+        authentication: Authentication
+    ): ResponseEntity<Void> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val membership = membershipService.getMembership(id)
         membershipService.deleteMembership(id)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.MEMBERSHIP_DELETED,
+            targetType = AdminActionTargetType.MEMBERSHIP,
+            targetId = id,
+            subscriberId = membership.subscriberId,
+            fromMonth = membership.startMonth,
+            toMonth = membership.endMonth,
+            summary = "Deleted ${membership.subscriptionServiceName} membership for ${membership.subscriberName}",
+            metadata = mapOf("subscriptionServiceId" to membership.subscriptionServiceId)
+        )
         return ResponseEntity.noContent().build()
     }
 }
