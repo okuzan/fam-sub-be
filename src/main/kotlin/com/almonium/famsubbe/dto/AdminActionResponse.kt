@@ -15,5 +15,5 @@ data class AdminActionResponse(
     val toMonth: YearMonth?,
     val subscriberId: UUID?,
     val summary: String,
-    val metrics: Map<String, Any>
+    val metrics: Map<String, Any?>
 )

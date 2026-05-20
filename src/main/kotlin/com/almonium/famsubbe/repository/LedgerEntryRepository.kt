@@ -67,6 +67,8 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
 
     fun findByInvoice(invoice: Invoice): List<LedgerEntry>
 
+    fun findByCalculationBatchId(calculationBatchId: UUID): List<LedgerEntry>
+
     fun countByCalculationBatchId(calculationBatchId: UUID): Long
 
     @Query("""

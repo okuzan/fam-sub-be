@@ -70,7 +70,10 @@ class AdminActionService(
             subscriberId = null,
             summary = "Calculated costs for $from to $to",
             metrics = mapOf(
-                "ledgerEntriesCreated" to ledgerEntriesCreated
+                "ledgerEntriesCreated" to ledgerEntriesCreated,
+                "undoneAt" to undoneAt,
+                "undoneByAccountId" to undoneByAccountId,
+                "undoReason" to undoReason
             )
         )
     }
@@ -100,7 +103,10 @@ class AdminActionService(
                 "invoicesCreated" to invoices.size,
                 "ledgerEntriesAssigned" to ledgerEntriesAssigned,
                 "totalAmount" to totalAmount,
-                "sendEmail" to sendEmail
+                "sendEmail" to sendEmail,
+                "undoneAt" to undoneAt,
+                "undoneByAccountId" to undoneByAccountId,
+                "undoReason" to undoReason
             )
         )
     }
@@ -175,6 +181,6 @@ class AdminActionService(
     companion object {
         private const val DEFAULT_LIMIT = 50
         private const val MAX_LIMIT = 200
-        private val mapTypeReference = object : TypeReference<Map<String, Any>>() {}
+        private val mapTypeReference = object : TypeReference<Map<String, Any?>>() {}
     }
 }

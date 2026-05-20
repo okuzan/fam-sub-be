@@ -29,6 +29,15 @@ class CostCalculationBatch {
 
     @Column(name = "created_by_account_id", nullable = false, updatable = false)
     var createdByAccountId: UUID? = null
+
+    @Column(name = "undone_at")
+    var undoneAt: Instant? = null
+
+    @Column(name = "undone_by_account_id")
+    var undoneByAccountId: UUID? = null
+
+    @Column(name = "undo_reason")
+    var undoReason: String? = null
 }
 
 fun CostCalculationBatch.toResponse(): CostCalculationBatchResponse {
