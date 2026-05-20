@@ -113,11 +113,7 @@ class InvoiceService(
                     this.createdByAccountId = performedByAccountId
                     this.sentAt = if (!autoPaid && request.sendEmail) now else null
                     this.emailSent = !autoPaid && request.sendEmail
-                    this.notes = if (autoPaid) {
-                        "generated_by=$performedByAccountId; auto_paid=true"
-                    } else {
-                        "generated_by=$performedByAccountId"
-                    }
+                    this.notes = "Auto-paid by subscriber setting".takeIf { autoPaid }
                     this.origin = InvoiceOrigin.SUBSCRIPTION_LEDGER
                     this.invoiceGenerationRun = generationRun
                 }
@@ -317,8 +313,8 @@ class InvoiceService(
                 this.emailSent = !autoPaid && request.sendEmail
                 this.notes = listOfNotNull(
                     request.notes.trim().takeIf { it.isNotBlank() },
-                    "auto_paid=true".takeIf { autoPaid }
-                ).joinToString("; ")
+                    "Auto-paid by subscriber setting".takeIf { autoPaid }
+                ).joinToString("; ").takeIf { it.isNotBlank() }
                 this.origin = InvoiceOrigin.MANUAL
             }
         )
@@ -548,7 +544,7 @@ class InvoiceService(
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
 
-        invoice.notes = notes
+        invoice.notes = notes?.trim()?.takeIf { it.isNotBlank() }
         val updatedInvoice = invoiceRepository.save(invoice)
 
         return updatedInvoice.toResponse()
@@ -563,7 +559,7 @@ class InvoiceService(
 
         val normalizedReason = reason?.trim()?.takeIf { it.isNotEmpty() }
         if (normalizedReason != null) {
-            invoice.notes = listOfNotNull(invoice.notes, "void_reason=$normalizedReason")
+            invoice.notes = listOfNotNull(invoice.notes, "Voided: $normalizedReason")
                 .joinToString("\n")
         }
         invoice.setStatus(InvoiceStatus.VOID)

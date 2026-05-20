@@ -109,7 +109,6 @@ class CostCalculationService(
                         this.participantCount = subscribers.size
                         this.calculatedAt = calculatedAt
                         this.calculationBatch = savedBatch
-                        this.notes = "calculated_by=$performedByAccountId"
                     }
                 }
 
