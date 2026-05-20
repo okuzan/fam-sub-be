@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.controller
 
 import com.almonium.famsubbe.dto.InvoiceDetailResponse
+import com.almonium.famsubbe.dto.InvoiceBulkEmailResult
 import com.almonium.famsubbe.dto.InvoiceFilterRequest
 import com.almonium.famsubbe.dto.InvoiceGenerationRequest
 import com.almonium.famsubbe.dto.InvoiceGenerationResult
@@ -225,6 +226,28 @@ class AdminInvoiceController(
         } else {
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to send invoice email")
         }
+    }
+
+    @PostMapping("/drafts/email")
+    fun sendDraftInvoiceEmails(authentication: Authentication): ResponseEntity<InvoiceBulkEmailResult> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val result = invoiceService.sendDraftInvoiceEmails()
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.INVOICE_BULK_EMAIL_SENT,
+            targetType = AdminActionTargetType.INVOICE,
+            summary = "Sent ${result.sentCount} of ${result.attemptedCount} draft invoice emails",
+            metadata = mapOf(
+                "attemptedCount" to result.attemptedCount,
+                "sentCount" to result.sentCount,
+                "updatedCount" to result.updatedCount,
+                "failedCount" to result.failedCount,
+                "dryRun" to result.dryRun,
+                "invoiceIds" to result.items.map { it.invoiceId },
+                "failedInvoiceIds" to result.items.filter { !it.sent }.map { it.invoiceId }
+            )
+        )
+        return ResponseEntity.ok(result)
     }
 
     @DeleteMapping("/{invoiceId}")

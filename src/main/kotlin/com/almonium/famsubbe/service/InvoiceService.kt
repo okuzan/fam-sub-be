@@ -1,6 +1,8 @@
 package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.ActiveSubscriptionDto
+import com.almonium.famsubbe.dto.InvoiceBulkEmailItemResult
+import com.almonium.famsubbe.dto.InvoiceBulkEmailResult
 import com.almonium.famsubbe.dto.InvoiceDetailResponse
 import com.almonium.famsubbe.dto.InvoiceFilterRequest
 import com.almonium.famsubbe.dto.InvoiceGenerationItemResult
@@ -428,6 +430,67 @@ class InvoiceService(
         }
         
         return success
+    }
+
+    @Transactional
+    fun sendDraftInvoiceEmails(): InvoiceBulkEmailResult {
+        val draftInvoices = invoiceRepository.findByStatusOrderByCreatedAtAsc(InvoiceStatus.DRAFT)
+        val items = draftInvoices.map { invoice ->
+            val invoiceId = requireNotNull(invoice.id)
+            val subscriber = requireNotNull(invoice.subscriber)
+            val subscriberId = requireNotNull(subscriber.id)
+            val subscriberName = requireNotNull(subscriber.name)
+            val statusBefore = invoice.status.name
+
+            try {
+                val entries = ledgerEntryRepository.findByInvoice(invoice)
+                    .sortedBy { it.recordedMonth }
+                val success = invoiceEmailService.sendInvoiceEmail(invoice, entries)
+                val updated = success && !isDryRun && invoice.status == InvoiceStatus.DRAFT
+
+                if (updated) {
+                    invoice.emailSent = true
+                    invoice.sentAt = Instant.now()
+                    invoice.status = InvoiceStatus.SENT
+                    invoiceRepository.save(invoice)
+                }
+
+                InvoiceBulkEmailItemResult(
+                    invoiceId = invoiceId,
+                    subscriberId = subscriberId,
+                    subscriberName = subscriberName,
+                    statusBefore = statusBefore,
+                    statusAfter = invoice.status.name,
+                    sent = success,
+                    updated = updated,
+                    message = if (success) {
+                        "Invoice email sent successfully"
+                    } else {
+                        "Failed to send invoice email"
+                    }
+                )
+            } catch (e: Exception) {
+                InvoiceBulkEmailItemResult(
+                    invoiceId = invoiceId,
+                    subscriberId = subscriberId,
+                    subscriberName = subscriberName,
+                    statusBefore = statusBefore,
+                    statusAfter = invoice.status.name,
+                    sent = false,
+                    updated = false,
+                    message = e.message ?: "Failed to send invoice email"
+                )
+            }
+        }
+
+        return InvoiceBulkEmailResult(
+            attemptedCount = items.size,
+            sentCount = items.count { it.sent },
+            updatedCount = items.count { it.updated },
+            failedCount = items.count { !it.sent },
+            dryRun = isDryRun,
+            items = items
+        )
     }
 
     fun updateInvoiceNotes(invoiceId: UUID, notes: String?): InvoiceResponse {
