@@ -178,22 +178,16 @@ class CostCalculationService(
 
     fun getSuggestedCalculationPeriod(): CostCalculationSuggestion {
         val currentMonth = YearMonth.now()
-        val latestBatch = costCalculationBatchRepository.findFirstByOrderByToMonthDesc()
+        val latestBatch = costCalculationBatchRepository.findFirstByUndoneAtIsNullOrderByToMonthDesc()
 
-        return if (latestBatch != null) {
-            val suggestedFromMonth = latestBatch.toMonth!!.plusMonths(1)
-            CostCalculationSuggestion(
-                lastCalculatedToMonth = latestBatch.toMonth,
-                suggestedFromMonth = suggestedFromMonth,
-                suggestedToMonth = currentMonth
-            )
-        } else {
-            CostCalculationSuggestion(
-                lastCalculatedToMonth = null,
-                suggestedFromMonth = currentMonth,
-                suggestedToMonth = currentMonth
-            )
-        }
+        val suggestedFromMonth = latestBatch?.toMonth?.plusMonths(1) ?: currentMonth
+        val suggestedToMonth = maxOf(currentMonth, suggestedFromMonth)
+
+        return CostCalculationSuggestion(
+            lastCalculatedToMonth = latestBatch?.toMonth,
+            suggestedFromMonth = suggestedFromMonth,
+            suggestedToMonth = suggestedToMonth
+        )
     }
 
     @Transactional(readOnly = true)

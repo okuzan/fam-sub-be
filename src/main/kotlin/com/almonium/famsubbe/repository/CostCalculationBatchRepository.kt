@@ -7,5 +7,5 @@ import java.util.*
 
 @Repository
 interface CostCalculationBatchRepository : JpaRepository<CostCalculationBatch, UUID> {
-    fun findFirstByOrderByToMonthDesc(): CostCalculationBatch?
+    fun findFirstByUndoneAtIsNullOrderByToMonthDesc(): CostCalculationBatch?
 }
