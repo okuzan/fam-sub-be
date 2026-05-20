@@ -7,7 +7,7 @@ import com.almonium.famsubbe.entity.LedgerEntry
 import java.math.BigDecimal
 
 interface InvoiceEmailService {
-    fun sendInvoiceEmail(invoice: Invoice, entries: List<LedgerEntry>): Boolean
+    fun sendInvoiceEmail(invoice: Invoice, entries: List<LedgerEntry>, totalAmountOwed: BigDecimal): Boolean
     fun sendSituationEmail(
         toEmail: String,
         subscriberName: String,

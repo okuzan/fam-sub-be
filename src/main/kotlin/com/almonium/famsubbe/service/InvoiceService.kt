@@ -324,7 +324,7 @@ class InvoiceService(
         )
 
         if (request.sendEmail && !subscriber.autoPayInvoices) {
-            invoiceEmailService.sendInvoiceEmail(invoice, emptyList())
+            invoiceEmailService.sendInvoiceEmail(invoice, emptyList(), calculateTotalAmountOwed(subscriber))
         }
 
         return invoice.toResponse()
@@ -463,7 +463,11 @@ class InvoiceService(
         
         val entries = ledgerEntryRepository.findByInvoice(invoice)
             .sortedBy { it.recordedMonth }
-        val success = invoiceEmailService.sendInvoiceEmail(invoice, entries)
+        val success = invoiceEmailService.sendInvoiceEmail(
+            invoice,
+            entries,
+            calculateTotalAmountOwed(requireNotNull(invoice.subscriber))
+        )
         
         if (success && !isDryRun && invoice.status == InvoiceStatus.DRAFT) {
             invoice.emailSent = true
@@ -488,7 +492,11 @@ class InvoiceService(
             try {
                 val entries = ledgerEntryRepository.findByInvoice(invoice)
                     .sortedBy { it.recordedMonth }
-                val success = invoiceEmailService.sendInvoiceEmail(invoice, entries)
+                val success = invoiceEmailService.sendInvoiceEmail(
+                    invoice,
+                    entries,
+                    calculateTotalAmountOwed(subscriber)
+                )
                 val updated = success && !isDryRun && invoice.status == InvoiceStatus.DRAFT
 
                 if (updated) {
@@ -568,6 +576,17 @@ class InvoiceService(
             this.status = status
             this.statusChangedAt = Instant.now()
         }
+    }
+
+    private fun calculateTotalAmountOwed(subscriber: Subscriber): BigDecimal {
+        val totalUnpaidAmount = invoiceRepository.findBySubscriberAndStatusIn(
+            subscriber,
+            listOf(InvoiceStatus.DRAFT, InvoiceStatus.SENT)
+        )
+            .map { it.totalAmount ?: BigDecimal.ZERO }
+            .fold(BigDecimal.ZERO, BigDecimal::add)
+
+        return totalUnpaidAmount - (subscriber.balance ?: BigDecimal.ZERO)
     }
 
     fun deleteInvoice(invoiceId: UUID, addToBalance: Boolean = true): String {

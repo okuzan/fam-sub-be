@@ -29,7 +29,7 @@ class DefaultInvoiceEmailService(
     private val log = LoggerFactory.getLogger(DefaultInvoiceEmailService::class.java)
     private val restClient = RestClient.create()
 
-    override fun sendInvoiceEmail(invoice: Invoice, entries: List<LedgerEntry>): Boolean {
+    override fun sendInvoiceEmail(invoice: Invoice, entries: List<LedgerEntry>, totalAmountOwed: BigDecimal): Boolean {
         val subscriber = invoice.subscriber ?: return false
         val toEmail = subscriber.email ?: return false
 
@@ -39,6 +39,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("subscriber", subscriber)
             context.setVariable("entries", entries)
             context.setVariable("origin", invoice.origin)
+            context.setVariable("totalAmountOwed", totalAmountOwed)
             context.setVariable("paymentMethods", paymentProperties.methods)
 
             val htmlContent = templateEngine.process("invoice-email", context)

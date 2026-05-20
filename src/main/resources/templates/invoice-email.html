@@ -80,6 +80,9 @@
         <div class="total">
             Total Amount: <span th:text="${'₴' + invoice.totalAmount}">₴0.00</span>
         </div>
+        <div class="total">
+            Total Currently Owed: <span th:text="${'₴' + totalAmountOwed}">₴0.00</span>
+        </div>
         
         <div class="notes" th:if="${invoice.notes}">
             <strong>Notes:</strong> <span th:text="${invoice.notes}"></span>
