@@ -129,7 +129,8 @@ class AdminSubscriberController(
             summary = "Created subscriber ${subscriber.name}",
             metadata = mapOf(
                 "email" to subscriber.email,
-                "balance" to subscriber.balance
+                "balance" to subscriber.balance,
+                "autoPayInvoices" to subscriber.autoPayInvoices
             )
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(subscriber)
@@ -152,7 +153,8 @@ class AdminSubscriberController(
             summary = "Updated subscriber ${subscriber.name}",
             metadata = mapOf(
                 "email" to subscriber.email,
-                "balance" to subscriber.balance
+                "balance" to subscriber.balance,
+                "autoPayInvoices" to subscriber.autoPayInvoices
             )
         )
         return ResponseEntity.ok(subscriber)

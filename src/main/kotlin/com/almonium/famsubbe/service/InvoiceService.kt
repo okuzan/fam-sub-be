@@ -101,16 +101,21 @@ class InvoiceService(
 
             val invoice = invoiceRepository.save(
                 Invoice().apply {
+                    val autoPaid = subscriber.autoPayInvoices
                     this.subscriber = subscriber
                     this.fromMonth = request.fromMonth
                     this.toMonth = request.toMonth
                     this.totalAmount = invoiceTotal
-                    this.status = if (request.sendEmail) InvoiceStatus.SENT else InvoiceStatus.DRAFT
+                    this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                     this.createdAt = now
                     this.createdByAccountId = performedByAccountId
-                    this.sentAt = if (request.sendEmail) now else null
-                    this.emailSent = request.sendEmail
-                    this.notes = "generated_by=$performedByAccountId"
+                    this.sentAt = if (!autoPaid && request.sendEmail) now else null
+                    this.emailSent = !autoPaid && request.sendEmail
+                    this.notes = if (autoPaid) {
+                        "generated_by=$performedByAccountId; auto_paid=true"
+                    } else {
+                        "generated_by=$performedByAccountId"
+                    }
                     this.origin = InvoiceOrigin.SUBSCRIPTION_LEDGER
                     this.invoiceGenerationRun = generationRun
                 }
@@ -132,8 +137,12 @@ class InvoiceService(
                 totalAmount = invoiceTotal,
                 ledgerEntryCount = subscriberEntries.size,
                 emailRequested = request.sendEmail,
-                emailSent = request.sendEmail,
-                message = "Created invoice with ${subscriberEntries.size} ledger entries"
+                emailSent = invoice.emailSent,
+                message = if (invoice.status == InvoiceStatus.PAID) {
+                    "Created auto-paid invoice with ${subscriberEntries.size} ledger entries"
+                } else {
+                    "Created invoice with ${subscriberEntries.size} ledger entries"
+                }
             )
         }
 
@@ -200,6 +209,13 @@ class InvoiceService(
             notes = notes,
             origin = origin.name
         )
+
+    private fun initialInvoiceStatus(subscriber: Subscriber, sendEmail: Boolean): InvoiceStatus =
+        when {
+            subscriber.autoPayInvoices -> InvoiceStatus.PAID
+            sendEmail -> InvoiceStatus.SENT
+            else -> InvoiceStatus.DRAFT
+        }
 
     private fun LedgerEntry.toInvoiceLedgerEntryResponse(): InvoiceLedgerEntryResponse =
         InvoiceLedgerEntryResponse(
@@ -295,16 +311,20 @@ class InvoiceService(
         // Create invoice with zeroing amount
         val invoice = invoiceRepository.save(
             Invoice().apply {
+                val autoPaid = subscriber.autoPayInvoices
                 this.subscriber = subscriber
                 this.fromMonth = YearMonth.now()
                 this.toMonth = YearMonth.now()
                 this.totalAmount = zeroingAmount
-                this.status = if (request.sendEmail) InvoiceStatus.SENT else InvoiceStatus.DRAFT
+                this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                 this.createdAt = now
                 this.createdByAccountId = performedByAccountId
-                this.sentAt = if (request.sendEmail) now else null
-                this.emailSent = request.sendEmail
-                this.notes = request.notes ?: "outstanding_balance_invoice_generated_by=$performedByAccountId"
+                this.sentAt = if (!autoPaid && request.sendEmail) now else null
+                this.emailSent = !autoPaid && request.sendEmail
+                this.notes = listOfNotNull(
+                    request.notes ?: "outstanding_balance_invoice_generated_by=$performedByAccountId",
+                    "auto_paid=true".takeIf { autoPaid }
+                ).joinToString("; ")
                 this.origin = InvoiceOrigin.OUTSTANDING_BALANCE
             }
         )
@@ -312,7 +332,7 @@ class InvoiceService(
         subscriberRepository.save(subscriber)
 
         // Send email if requested
-        if (request.sendEmail) {
+        if (request.sendEmail && !subscriber.autoPayInvoices) {
             invoiceEmailService.sendInvoiceEmail(invoice, emptyList())
         }
 
@@ -329,21 +349,25 @@ class InvoiceService(
         val now = Instant.now()
         val invoice = invoiceRepository.save(
             Invoice().apply {
+                val autoPaid = subscriber.autoPayInvoices
                 this.subscriber = subscriber
                 this.fromMonth = request.invoiceMonth
                 this.toMonth = request.invoiceMonth
                 this.totalAmount = request.amount
-                this.status = if (request.sendEmail) InvoiceStatus.SENT else InvoiceStatus.DRAFT
+                this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                 this.createdAt = now
                 this.createdByAccountId = performedByAccountId
-                this.sentAt = if (request.sendEmail) now else null
-                this.emailSent = request.sendEmail
-                this.notes = request.notes.trim()
+                this.sentAt = if (!autoPaid && request.sendEmail) now else null
+                this.emailSent = !autoPaid && request.sendEmail
+                this.notes = listOfNotNull(
+                    request.notes.trim().takeIf { it.isNotBlank() },
+                    "auto_paid=true".takeIf { autoPaid }
+                ).joinToString("; ")
                 this.origin = InvoiceOrigin.MANUAL
             }
         )
 
-        if (request.sendEmail) {
+        if (request.sendEmail && !subscriber.autoPayInvoices) {
             invoiceEmailService.sendInvoiceEmail(invoice, emptyList())
         }
 

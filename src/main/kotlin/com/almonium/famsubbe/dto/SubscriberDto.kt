@@ -8,6 +8,7 @@ data class SubscriberResponse(
     val name: String,
     val email: String,
     val balance: BigDecimal,
+    val autoPayInvoices: Boolean,
     val createdAt: Date,
     val updatedAt: Date
 )
@@ -15,11 +16,13 @@ data class SubscriberResponse(
 data class SubscriberCreateRequest(
     val name: String,
     val email: String,
-    val balance: BigDecimal = BigDecimal.ZERO
+    val balance: BigDecimal = BigDecimal.ZERO,
+    val autoPayInvoices: Boolean = false
 )
 
 data class SubscriberUpdateRequest(
     val name: String,
     val email: String,
-    val balance: BigDecimal
+    val balance: BigDecimal,
+    val autoPayInvoices: Boolean? = null
 )

@@ -27,6 +27,9 @@ class Subscriber {
     @Column(nullable = false)
     var balance: BigDecimal? = null
 
+    @Column(name = "auto_pay_invoices", nullable = false)
+    var autoPayInvoices: Boolean = false
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Date? = null

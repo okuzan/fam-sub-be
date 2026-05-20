@@ -1,0 +1,2 @@
+ALTER TABLE subscriber
+    ADD COLUMN auto_pay_invoices BOOLEAN NOT NULL DEFAULT FALSE;

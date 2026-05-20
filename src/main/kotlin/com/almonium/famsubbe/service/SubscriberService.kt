@@ -3,6 +3,7 @@ package com.almonium.famsubbe.service
 import com.almonium.famsubbe.dto.SubscriberCreateRequest
 import com.almonium.famsubbe.dto.SubscriberResponse
 import com.almonium.famsubbe.dto.SubscriberUpdateRequest
+import com.almonium.famsubbe.entity.InvoiceStatus
 import com.almonium.famsubbe.entity.Subscriber
 import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.SubscriberRepository
@@ -45,6 +46,7 @@ class SubscriberService(
             name = request.name
             email = request.email.lowercase().trim()
             balance = request.balance
+            autoPayInvoices = request.autoPayInvoices
         }
         val savedSubscriber = subscriberRepository.save(subscriber)
         return savedSubscriber.toResponse()
@@ -53,14 +55,26 @@ class SubscriberService(
     fun updateSubscriber(id: UUID, request: SubscriberUpdateRequest): SubscriberResponse {
         val subscriber = subscriberRepository.findByIdOrNull(id)
             ?: throw EntityNotFoundException("Subscriber not found")
-        
+        val updatedAutoPayInvoices = request.autoPayInvoices ?: subscriber.autoPayInvoices
+        val autoPayInvoicesWasEnabled = !subscriber.autoPayInvoices && updatedAutoPayInvoices
+
         subscriber.apply {
             name = request.name
             email = request.email.lowercase().trim()
             balance = request.balance
+            autoPayInvoices = updatedAutoPayInvoices
         }
-        
+
         val updatedSubscriber = subscriberRepository.save(subscriber)
+        if (autoPayInvoicesWasEnabled) {
+            invoiceRepository.findBySubscriberAndStatusIn(
+                updatedSubscriber,
+                listOf(InvoiceStatus.DRAFT, InvoiceStatus.SENT)
+            ).forEach { invoice ->
+                invoice.status = InvoiceStatus.PAID
+                invoiceRepository.save(invoice)
+            }
+        }
         return updatedSubscriber.toResponse()
     }
 
@@ -77,6 +91,7 @@ class SubscriberService(
             name = this.name!!,
             email = this.email!!,
             balance = this.balance ?: BigDecimal.ZERO,
+            autoPayInvoices = this.autoPayInvoices,
             createdAt = this.createdAt!!,
             updatedAt = this.updatedAt!!
         )
