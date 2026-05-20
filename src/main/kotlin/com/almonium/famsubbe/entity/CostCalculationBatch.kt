@@ -3,9 +3,12 @@ package com.almonium.famsubbe.entity
 import com.almonium.famsubbe.dto.CostCalculationBatchResponse
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import java.time.Instant
 import java.time.YearMonth
@@ -30,11 +33,19 @@ class CostCalculationBatch {
     @Column(name = "created_by_account_id", nullable = false, updatable = false)
     var createdByAccountId: UUID? = null
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_account_id", insertable = false, updatable = false)
+    var createdByAccount: Account? = null
+
     @Column(name = "undone_at")
     var undoneAt: Instant? = null
 
     @Column(name = "undone_by_account_id")
     var undoneByAccountId: UUID? = null
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "undone_by_account_id", insertable = false, updatable = false)
+    var undoneByAccount: Account? = null
 
     @Column(name = "undo_reason")
     var undoReason: String? = null
@@ -46,6 +57,7 @@ fun CostCalculationBatch.toResponse(): CostCalculationBatchResponse {
         fromMonth = this.fromMonth.toString(),
         toMonth = this.toMonth.toString(),
         createdAt = this.createdAt.toString(),
-        createdByAccountId = this.createdByAccountId!!
+        createdByAccountId = this.createdByAccountId!!,
+        createdByAccountName = this.createdByAccount?.email
     )
 }

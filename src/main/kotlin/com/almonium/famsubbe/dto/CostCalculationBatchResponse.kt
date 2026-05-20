@@ -7,5 +7,6 @@ data class CostCalculationBatchResponse(
     val fromMonth: String, // Format: "YYYY-MM"
     val toMonth: String,   // Format: "YYYY-MM"
     val createdAt: String, // ISO timestamp
-    val createdByAccountId: UUID
+    val createdByAccountId: UUID,
+    val createdByAccountName: String? = null
 )

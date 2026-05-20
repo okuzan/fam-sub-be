@@ -72,6 +72,40 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
     fun countByCalculationBatchId(calculationBatchId: UUID): Long
 
     @Query("""
+        select distinct le
+        from LedgerEntry le
+        join fetch le.charge charge
+        join fetch le.subscriptionService service
+        join fetch le.subscriber subscriber
+        join fetch le.calculationBatch batch
+        left join fetch batch.createdByAccount generatedBy
+        left join fetch le.invoice invoice
+        where (:id is null or le.id = :id)
+          and (:chargeId is null or charge.id = :chargeId)
+          and (:serviceId is null or service.id = :serviceId)
+          and (:subscriberId is null or subscriber.id = :subscriberId)
+          and (:recordedMonth is null or le.recordedMonth = :recordedMonth)
+          and (:fromMonth is null or le.recordedMonth >= :fromMonth)
+          and (:toMonth is null or le.recordedMonth <= :toMonth)
+          and (:calculationBatchId is null or batch.id = :calculationBatchId)
+          and (:generatedByAccountId is null or batch.createdByAccountId = :generatedByAccountId)
+          and (:invoiceId is null or invoice.id = :invoiceId)
+        order by batch.createdAt desc, le.recordedMonth desc, service.name asc, subscriber.name asc, le.id asc
+    """)
+    fun findVisibleEntries(
+        id: UUID?,
+        chargeId: UUID?,
+        serviceId: UUID?,
+        subscriberId: UUID?,
+        recordedMonth: YearMonth?,
+        fromMonth: YearMonth?,
+        toMonth: YearMonth?,
+        calculationBatchId: UUID?,
+        generatedByAccountId: UUID?,
+        invoiceId: UUID?
+    ): List<LedgerEntry>
+
+    @Query("""
         select count(le)
         from LedgerEntry le
         where le.invoice.invoiceGenerationRun.id = :invoiceGenerationRunId
