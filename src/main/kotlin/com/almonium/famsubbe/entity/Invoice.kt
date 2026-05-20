@@ -54,6 +54,9 @@ class Invoice {
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant? = null
 
+    @Column(name = "status_changed_at", nullable = false)
+    var statusChangedAt: Instant? = null
+
     @Column(name = "created_by_account_id", nullable = false, updatable = false)
     var createdByAccountId: UUID? = null
 

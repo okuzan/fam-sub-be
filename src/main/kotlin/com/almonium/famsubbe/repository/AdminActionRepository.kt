@@ -1,10 +1,18 @@
 package com.almonium.famsubbe.repository
 
 import com.almonium.famsubbe.entity.AdminAction
+import com.almonium.famsubbe.entity.AdminActionTargetType
+import com.almonium.famsubbe.entity.AdminActionType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.stereotype.Repository
 import java.util.*
 
 @Repository
-interface AdminActionRepository : JpaRepository<AdminAction, UUID>, JpaSpecificationExecutor<AdminAction>
+interface AdminActionRepository : JpaRepository<AdminAction, UUID>, JpaSpecificationExecutor<AdminAction> {
+    fun findByTargetTypeAndTargetIdAndActionTypeInOrderByCreatedAtAsc(
+        targetType: AdminActionTargetType,
+        targetId: UUID,
+        actionTypes: Collection<AdminActionType>
+    ): List<AdminAction>
+}

@@ -14,6 +14,7 @@ data class InvoiceResponse(
     val totalAmount: BigDecimal,
     val status: String,
     val createdAt: Instant,
+    val statusChangedAt: Instant,
     val createdByAccountId: UUID,
     val invoiceGenerationRunId: UUID?,
     val sentAt: Instant?,

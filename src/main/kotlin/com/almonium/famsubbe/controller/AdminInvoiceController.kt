@@ -9,6 +9,7 @@ import com.almonium.famsubbe.dto.InvoiceGenerationResult
 import com.almonium.famsubbe.dto.InvoiceNotesUpdateRequest
 import com.almonium.famsubbe.dto.InvoiceResponse
 import com.almonium.famsubbe.dto.InvoiceSuggestion
+import com.almonium.famsubbe.dto.InvoiceStatusHistoryResponse
 import com.almonium.famsubbe.dto.InvoiceStatusUpdateRequest
 import com.almonium.famsubbe.dto.InvoiceVoidRequest
 import com.almonium.famsubbe.dto.ManualInvoiceCreateRequest
@@ -17,6 +18,7 @@ import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
 import com.almonium.famsubbe.entity.InvoiceStatus
 import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.service.AdminActionService
 import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.service.InvoiceService
 import com.almonium.famsubbe.util.AuthenticationUtil
@@ -43,6 +45,7 @@ import java.util.*
 class AdminInvoiceController(
     private val invoiceService: InvoiceService,
     private val accountService: AccountService,
+    private val adminActionService: AdminActionService,
     private val adminAuditLogService: AdminAuditLogService
 ) {
 
@@ -98,6 +101,13 @@ class AdminInvoiceController(
         return ResponseEntity.ok(invoiceService.getInvoice(invoiceId))
     }
 
+    @GetMapping("/{invoiceId}/status-history")
+    fun getInvoiceStatusHistory(
+        @PathVariable invoiceId: UUID
+    ): ResponseEntity<List<InvoiceStatusHistoryResponse>> {
+        return ResponseEntity.ok(adminActionService.getInvoiceStatusHistory(invoiceId))
+    }
+
     @GetMapping("/{invoiceId}/pdf")
     fun getInvoicePdf(
         @PathVariable invoiceId: UUID
@@ -116,6 +126,7 @@ class AdminInvoiceController(
         authentication: Authentication
     ): ResponseEntity<InvoiceResponse> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
         val updatedInvoice = invoiceService.markAsPaid(invoiceId)
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
@@ -126,7 +137,11 @@ class AdminInvoiceController(
             fromMonth = updatedInvoice.fromMonth,
             toMonth = updatedInvoice.toMonth,
             summary = "Marked invoice $invoiceId as paid",
-            metadata = mapOf("totalAmount" to updatedInvoice.totalAmount)
+            metadata = mapOf(
+                "statusBefore" to invoiceBefore.status,
+                "statusAfter" to updatedInvoice.status,
+                "totalAmount" to updatedInvoice.totalAmount
+            )
         )
         return ResponseEntity.ok(updatedInvoice)
     }
@@ -213,6 +228,7 @@ class AdminInvoiceController(
         authentication: Authentication
     ): ResponseEntity<InvoiceResponse> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
         val updatedInvoice = invoiceService.payFromBalance(invoiceId)
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
@@ -223,7 +239,11 @@ class AdminInvoiceController(
             fromMonth = updatedInvoice.fromMonth,
             toMonth = updatedInvoice.toMonth,
             summary = "Paid invoice $invoiceId from subscriber balance",
-            metadata = mapOf("totalAmount" to updatedInvoice.totalAmount)
+            metadata = mapOf(
+                "statusBefore" to invoiceBefore.status,
+                "statusAfter" to updatedInvoice.status,
+                "totalAmount" to updatedInvoice.totalAmount
+            )
         )
         return ResponseEntity.ok(updatedInvoice)
     }
@@ -257,6 +277,7 @@ class AdminInvoiceController(
         authentication: Authentication
     ): ResponseEntity<Map<String, String>> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
         val success = invoiceService.sendInvoiceEmail(invoiceId)
         if (success) {
             val invoice = invoiceService.getInvoice(invoiceId).invoice
@@ -271,7 +292,8 @@ class AdminInvoiceController(
                 summary = "Sent invoice email for invoice $invoiceId",
                 metadata = mapOf(
                     "totalAmount" to invoice.totalAmount,
-                    "status" to invoice.status
+                    "statusBefore" to invoiceBefore.status,
+                    "statusAfter" to invoice.status
                 )
             )
         }
@@ -360,6 +382,7 @@ class AdminInvoiceController(
         authentication: Authentication
     ): ResponseEntity<InvoiceResponse> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
         val updatedInvoice = invoiceService.voidInvoice(invoiceId, request?.reason)
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
@@ -372,6 +395,8 @@ class AdminInvoiceController(
             summary = "Voided invoice $invoiceId",
             metadata = mapOf(
                 "origin" to updatedInvoice.origin,
+                "statusBefore" to invoiceBefore.status,
+                "statusAfter" to updatedInvoice.status,
                 "totalAmount" to updatedInvoice.totalAmount,
                 "reason" to request?.reason
             )

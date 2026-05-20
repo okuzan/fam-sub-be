@@ -110,6 +110,7 @@ class InvoiceService(
                     this.totalAmount = invoiceTotal
                     this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                     this.createdAt = now
+                    this.statusChangedAt = now
                     this.createdByAccountId = performedByAccountId
                     this.sentAt = if (!autoPaid && request.sendEmail) now else null
                     this.emailSent = !autoPaid && request.sendEmail
@@ -204,6 +205,7 @@ class InvoiceService(
             totalAmount = requireNotNull(totalAmount),
             status = status.name,
             createdAt = requireNotNull(createdAt),
+            statusChangedAt = requireNotNull(statusChangedAt),
             createdByAccountId = requireNotNull(createdByAccountId),
             invoiceGenerationRunId = invoiceGenerationRun?.id,
             sentAt = sentAt,
@@ -239,7 +241,7 @@ class InvoiceService(
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
 
-        invoice.status = status
+        invoice.setStatus(status)
         val updatedInvoice = invoiceRepository.save(invoice)
 
         return updatedInvoice.toResponse()
@@ -321,6 +323,7 @@ class InvoiceService(
                 this.totalAmount = zeroingAmount
                 this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                 this.createdAt = now
+                this.statusChangedAt = now
                 this.createdByAccountId = performedByAccountId
                 this.sentAt = if (!autoPaid && request.sendEmail) now else null
                 this.emailSent = !autoPaid && request.sendEmail
@@ -359,6 +362,7 @@ class InvoiceService(
                 this.totalAmount = request.amount
                 this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                 this.createdAt = now
+                this.statusChangedAt = now
                 this.createdByAccountId = performedByAccountId
                 this.sentAt = if (!autoPaid && request.sendEmail) now else null
                 this.emailSent = !autoPaid && request.sendEmail
@@ -461,7 +465,7 @@ class InvoiceService(
         subscriberRepository.save(subscriber)
 
         // Mark invoice as paid
-        invoice.status = InvoiceStatus.PAID
+        invoice.setStatus(InvoiceStatus.PAID)
 
         return invoiceRepository.save(invoice)
     }
@@ -515,7 +519,7 @@ class InvoiceService(
         if (success && !isDryRun && invoice.status == InvoiceStatus.DRAFT) {
             invoice.emailSent = true
             invoice.sentAt = Instant.now()
-            invoice.status = InvoiceStatus.SENT
+            invoice.setStatus(InvoiceStatus.SENT)
             invoiceRepository.save(invoice)
         }
         
@@ -541,7 +545,7 @@ class InvoiceService(
                 if (updated) {
                     invoice.emailSent = true
                     invoice.sentAt = Instant.now()
-                    invoice.status = InvoiceStatus.SENT
+                    invoice.setStatus(InvoiceStatus.SENT)
                     invoiceRepository.save(invoice)
                 }
 
@@ -605,11 +609,17 @@ class InvoiceService(
             invoice.notes = listOfNotNull(invoice.notes, "void_reason=$normalizedReason")
                 .joinToString("\n")
         }
-        invoice.status = InvoiceStatus.VOID
+        invoice.setStatus(InvoiceStatus.VOID)
 
         return invoiceRepository.save(invoice).toResponse()
     }
 
+    private fun Invoice.setStatus(status: InvoiceStatus) {
+        if (this.status != status) {
+            this.status = status
+            this.statusChangedAt = Instant.now()
+        }
+    }
 
     fun deleteInvoice(invoiceId: UUID, addToBalance: Boolean = true): String {
         val invoice = invoiceRepository.findById(invoiceId)

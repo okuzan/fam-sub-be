@@ -11,6 +11,7 @@ import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.*
 
 @Service
@@ -71,7 +72,10 @@ class SubscriberService(
                 updatedSubscriber,
                 listOf(InvoiceStatus.DRAFT, InvoiceStatus.SENT)
             ).forEach { invoice ->
-                invoice.status = InvoiceStatus.PAID
+                if (invoice.status != InvoiceStatus.PAID) {
+                    invoice.status = InvoiceStatus.PAID
+                    invoice.statusChangedAt = Instant.now()
+                }
                 invoiceRepository.save(invoice)
             }
         }

@@ -2,6 +2,7 @@ package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.AdminActionResponse
 import com.almonium.famsubbe.dto.AdminActionFilterRequest
+import com.almonium.famsubbe.dto.InvoiceStatusHistoryResponse
 import com.almonium.famsubbe.entity.AdminAction
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional
 import tools.jackson.core.type.TypeReference
 import tools.jackson.databind.ObjectMapper
 import java.math.BigDecimal
+import java.util.*
 
 @Service
 @Transactional(readOnly = true)
@@ -30,10 +32,6 @@ class AdminActionService(
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val objectMapper: ObjectMapper
 ) {
-    fun getActions(limit: Int = DEFAULT_LIMIT): List<AdminActionResponse> {
-        return getActions(AdminActionFilterRequest(limit = limit))
-    }
-
     fun getActions(filter: AdminActionFilterRequest): List<AdminActionResponse> {
         return adminActionRepository.findAll(filter.toSpecification(), createdAtDescending())
             .take(filter.limit.coerceIn(1, MAX_LIMIT))
@@ -50,6 +48,24 @@ class AdminActionService(
         return invoiceGenerationRunRepository.findAll(createdAtDescending())
             .take(limit.coerceIn(1, MAX_LIMIT))
             .map { it.toAdminActionResponse() }
+    }
+
+    fun getInvoiceStatusHistory(invoiceId: UUID): List<InvoiceStatusHistoryResponse> {
+        val actionTypes = listOf(
+            AdminActionType.INVOICE_MARKED_PAID,
+            AdminActionType.INVOICE_STATUS_UPDATED,
+            AdminActionType.INVOICE_PAID_FROM_BALANCE,
+            AdminActionType.INVOICE_EMAIL_SENT,
+            AdminActionType.INVOICE_VOIDED
+        )
+
+        return adminActionRepository
+            .findByTargetTypeAndTargetIdAndActionTypeInOrderByCreatedAtAsc(
+                AdminActionTargetType.INVOICE,
+                invoiceId,
+                actionTypes
+            )
+            .mapNotNull { it.toInvoiceStatusHistoryResponse() }
     }
 
     private fun CostCalculationBatch.toAdminActionResponse(): AdminActionResponse {
@@ -129,6 +145,28 @@ class AdminActionService(
             subscriberId = subscriberId,
             summary = requireNotNull(summary),
             metrics = metadata
+        )
+    }
+
+    private fun AdminAction.toInvoiceStatusHistoryResponse(): InvoiceStatusHistoryResponse? {
+        val metadata = metadataJson
+            ?.takeIf { it.isNotBlank() }
+            ?.let { objectMapper.readValue(it, mapTypeReference) }
+            ?: emptyMap()
+        val statusAfter = metadata["statusAfter"]?.toString() ?: return null
+        val statusBefore = metadata["statusBefore"]?.toString()
+        if (statusBefore == statusAfter) {
+            return null
+        }
+
+        return InvoiceStatusHistoryResponse(
+            actionId = requireNotNull(id),
+            changedAt = requireNotNull(createdAt),
+            changedByAccountId = requireNotNull(createdByAccountId),
+            statusBefore = statusBefore,
+            statusAfter = statusAfter,
+            actionType = requireNotNull(actionType).name,
+            summary = requireNotNull(summary)
         )
     }
 
