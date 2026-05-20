@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.AdminActionResponse
+import com.almonium.famsubbe.dto.AdminActionFilterRequest
 import com.almonium.famsubbe.entity.AdminAction
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
@@ -12,6 +13,7 @@ import com.almonium.famsubbe.repository.InvoiceGenerationRunRepository
 import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import tools.jackson.core.type.TypeReference
@@ -29,8 +31,12 @@ class AdminActionService(
     private val objectMapper: ObjectMapper
 ) {
     fun getActions(limit: Int = DEFAULT_LIMIT): List<AdminActionResponse> {
-        return adminActionRepository.findAll(createdAtDescending())
-            .take(limit.coerceIn(1, MAX_LIMIT))
+        return getActions(AdminActionFilterRequest(limit = limit))
+    }
+
+    fun getActions(filter: AdminActionFilterRequest): List<AdminActionResponse> {
+        return adminActionRepository.findAll(filter.toSpecification(), createdAtDescending())
+            .take(filter.limit.coerceIn(1, MAX_LIMIT))
             .map { it.toAdminActionResponse() }
     }
 
@@ -122,6 +128,49 @@ class AdminActionService(
 
     private fun createdAtDescending(): Sort =
         Sort.by(Sort.Direction.DESC, "createdAt")
+
+    private fun AdminActionFilterRequest.toSpecification(): Specification<AdminAction> =
+        Specification { root, _, cb ->
+            val predicates = mutableListOf<jakarta.persistence.criteria.Predicate>()
+
+            actionType?.let {
+                predicates += cb.equal(root.get<AdminActionType>("actionType"), it)
+            }
+
+            targetType?.let {
+                predicates += cb.equal(root.get<AdminActionTargetType>("targetType"), it)
+            }
+
+            targetId?.let {
+                predicates += cb.equal(root.get<java.util.UUID>("targetId"), it)
+            }
+
+            subscriberId?.let {
+                predicates += cb.equal(root.get<java.util.UUID>("subscriberId"), it)
+            }
+
+            createdByAccountId?.let {
+                predicates += cb.equal(root.get<java.util.UUID>("createdByAccountId"), it)
+            }
+
+            dateFrom?.let {
+                predicates += cb.greaterThanOrEqualTo(root.get("createdAt"), it)
+            }
+
+            dateTo?.let {
+                predicates += cb.lessThanOrEqualTo(root.get("createdAt"), it)
+            }
+
+            fromMonth?.let {
+                predicates += cb.greaterThanOrEqualTo(root.get("fromMonth"), it)
+            }
+
+            toMonth?.let {
+                predicates += cb.lessThanOrEqualTo(root.get("toMonth"), it)
+            }
+
+            cb.and(*predicates.toTypedArray())
+        }
 
     companion object {
         private const val DEFAULT_LIMIT = 50
