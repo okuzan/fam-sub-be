@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.controller
 
+import com.almonium.famsubbe.dto.ApiErrorResponse
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpStatus
@@ -15,12 +16,18 @@ import org.springframework.web.bind.annotation.RestController
 class AuthController {
 
     @GetMapping("/status")
-    fun authStatus(): ResponseEntity<Void> {
+    fun authStatus(): ResponseEntity<Any> {
         val auth = SecurityContextHolder.getContext().authentication
         return if (auth != null && auth.isAuthenticated && auth !is AnonymousAuthenticationToken) {
             ResponseEntity.ok().build()
         } else {
-            ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+            ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                ApiErrorResponse(
+                    message = "Unauthorized",
+                    status = HttpStatus.UNAUTHORIZED.value(),
+                    path = "/auth/status"
+                )
+            )
         }
     }
 

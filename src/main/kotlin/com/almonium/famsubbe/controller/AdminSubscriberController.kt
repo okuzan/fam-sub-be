@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -78,7 +79,7 @@ class AdminSubscriberController(
         val details = invoiceService.getSubscriberDetails(id)
         
         if (details.email.isEmpty()) {
-            return ResponseEntity.badRequest().body(mapOf("error" to "Subscriber has no email address"))
+            throw IllegalArgumentException("Subscriber has no email address")
         }
 
         val success = invoiceEmailService.sendSituationEmail(
@@ -104,9 +105,11 @@ class AdminSubscriberController(
                     "unpaidInvoicesCount" to details.unpaidInvoices.size
                 )
             )
-            ResponseEntity.ok(mapOf("message" to "Situation email sent successfully to ${details.email}"))
+            ResponseEntity.ok(
+                mapOf("message" to "Situation email sent successfully to ${details.email}")
+            )
         } else {
-            ResponseEntity.internalServerError().body(mapOf("error" to "Failed to send email"))
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to send email")
         }
     }
 
@@ -193,7 +196,7 @@ class AdminSubscriberController(
             ResponseEntity.ok(mapOf("content" to pinnedPost))
         } catch (e: Exception) {
             logger.error("Failed to generate pinned post", e)
-            ResponseEntity.internalServerError().body(mapOf("error" to "Failed to generate pinned post: ${e.message}"))
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate pinned post")
         }
     }
 }

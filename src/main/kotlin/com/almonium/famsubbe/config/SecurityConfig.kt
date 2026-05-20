@@ -1,10 +1,15 @@
 package com.almonium.famsubbe.config
 
+import com.almonium.famsubbe.dto.ApiErrorResponse
 import com.almonium.famsubbe.entity.Role
 import com.almonium.famsubbe.security.AccountOidcUserService
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
@@ -14,11 +19,13 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import tools.jackson.databind.ObjectMapper
 
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
-    @Value("\${app.web-domain}") private val webDomain: String
+    @Value("\${app.web-domain}") private val webDomain: String,
+    private val objectMapper: ObjectMapper
 ) {
 
     companion object {
@@ -84,6 +91,15 @@ class SecurityConfig(
             .sessionManagement { sessions ->
                 sessions.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             }
+            .exceptionHandling { exceptions ->
+                exceptions
+                    .authenticationEntryPoint { request, response, _ ->
+                        writeError(response, HttpStatus.UNAUTHORIZED, "Unauthorized", request)
+                    }
+                    .accessDeniedHandler { request, response, _ ->
+                        writeError(response, HttpStatus.FORBIDDEN, "Forbidden", request)
+                    }
+            }
             .logout { logout ->
                 logout.logoutUrl("/auth/logout")
                     .invalidateHttpSession(true)
@@ -97,5 +113,24 @@ class SecurityConfig(
             }
             .httpBasic { }
         return http.build()
+    }
+
+    private fun writeError(
+        response: HttpServletResponse,
+        status: HttpStatus,
+        message: String,
+        request: HttpServletRequest
+    ) {
+        response.status = status.value()
+        response.contentType = MediaType.APPLICATION_JSON_VALUE
+        response.writer.write(
+            objectMapper.writeValueAsString(
+                ApiErrorResponse(
+                    message = message,
+                    status = status.value(),
+                    path = request.requestURI
+                )
+            )
+        )
     }
 }

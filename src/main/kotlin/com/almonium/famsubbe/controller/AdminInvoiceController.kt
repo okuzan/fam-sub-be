@@ -18,9 +18,11 @@ import com.almonium.famsubbe.service.InvoiceService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.springframework.core.io.ByteArrayResource
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -221,7 +223,7 @@ class AdminInvoiceController(
         return if (success) {
             ResponseEntity.ok(mapOf("message" to "Invoice email sent successfully"))
         } else {
-            ResponseEntity.internalServerError().body(mapOf("error" to "Failed to send invoice email"))
+            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to send invoice email")
         }
     }
 
