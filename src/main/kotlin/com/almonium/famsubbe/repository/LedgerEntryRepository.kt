@@ -46,6 +46,7 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
     @Query("""
         select le
         from LedgerEntry le
+        join fetch le.subscriptionService
         where le.invoice.id = :invoiceId
         order by le.recordedMonth asc, le.id asc
     """)

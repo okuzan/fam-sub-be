@@ -3,6 +3,8 @@ package com.almonium.famsubbe.service
 import com.almonium.famsubbe.config.AppEmailProperties
 import com.almonium.famsubbe.config.PaymentProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties
+import com.almonium.famsubbe.dto.ActiveSubscriptionDto
+import com.almonium.famsubbe.dto.WeeklySituationInvoiceDto
 import com.almonium.famsubbe.entity.Invoice
 import com.almonium.famsubbe.entity.InvoiceOrigin
 import com.almonium.famsubbe.entity.LedgerEntry
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
+import java.math.BigDecimal
 
 @Service
 class DefaultInvoiceEmailService(
@@ -55,7 +58,7 @@ class DefaultInvoiceEmailService(
     override fun sendSituationEmail(
         toEmail: String,
         subscriberName: String,
-        totalOwed: java.math.BigDecimal,
+        totalOwed: BigDecimal,
         unpaidInvoicesCount: Int,
         activeSubscriptionsCount: Int,
         activeSubscriptionNames: List<String>
@@ -75,6 +78,35 @@ class DefaultInvoiceEmailService(
             sendEmail(toEmail, subscriberName, subject, htmlContent)
         } catch (e: Exception) {
             log.error("Failed to send situation email to {}", toEmail, e)
+            false
+        }
+    }
+
+    override fun sendWeeklySituationEmail(
+        toEmail: String,
+        subscriberName: String,
+        totalOwed: BigDecimal,
+        subscriberBalance: BigDecimal,
+        activeSubscriptions: List<ActiveSubscriptionDto>,
+        unpaidInvoices: List<WeeklySituationInvoiceDto>
+    ): Boolean {
+        return try {
+            val context = Context()
+            context.setVariable("name", subscriberName)
+            context.setVariable("totalOwed", totalOwed)
+            context.setVariable("subscriberBalance", subscriberBalance)
+            context.setVariable("activeSubscriptions", activeSubscriptions)
+            context.setVariable("unpaidInvoices", unpaidInvoices)
+            context.setVariable("unpaidInvoicesCount", unpaidInvoices.size)
+            context.setVariable("activeSubscriptionsCount", activeSubscriptions.size)
+            context.setVariable("paymentMethods", paymentProperties.methods)
+
+            val htmlContent = templateEngine.process("weekly-situation-email", context)
+            val subject = "Weekly Subscription Account Check-up"
+
+            sendEmail(toEmail, subscriberName, subject, htmlContent)
+        } catch (e: Exception) {
+            log.error("Failed to send weekly situation email to {}", toEmail, e)
             false
         }
     }
