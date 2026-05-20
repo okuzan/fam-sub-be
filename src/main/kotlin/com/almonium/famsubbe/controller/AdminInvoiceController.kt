@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.controller
 
 import com.almonium.famsubbe.dto.InvoiceDetailResponse
+import com.almonium.famsubbe.dto.InvoiceBulkBalancePaymentResult
 import com.almonium.famsubbe.dto.InvoiceBulkEmailResult
 import com.almonium.famsubbe.dto.InvoiceFilterRequest
 import com.almonium.famsubbe.dto.InvoiceGenerationRequest
@@ -225,6 +226,29 @@ class AdminInvoiceController(
             metadata = mapOf("totalAmount" to updatedInvoice.totalAmount)
         )
         return ResponseEntity.ok(updatedInvoice)
+    }
+
+    @PostMapping("/drafts/pay-from-balance")
+    fun payDraftInvoicesFromBalance(authentication: Authentication): ResponseEntity<InvoiceBulkBalancePaymentResult> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val result = invoiceService.payDraftInvoicesFromBalance()
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.INVOICE_BULK_PAID_FROM_BALANCE,
+            targetType = AdminActionTargetType.INVOICE,
+            summary = "Paid ${result.paidCount} of ${result.attemptedCount} draft invoices from subscriber balances",
+            metadata = mapOf(
+                "attemptedCount" to result.attemptedCount,
+                "paidCount" to result.paidCount,
+                "skippedCount" to result.skippedCount,
+                "failedCount" to result.failedCount,
+                "totalPaidAmount" to result.totalPaidAmount,
+                "paidInvoiceIds" to result.items.filter { it.paid }.map { it.invoiceId },
+                "skippedInvoiceIds" to result.items.filter { it.skipped }.map { it.invoiceId },
+                "failedInvoiceIds" to result.items.filter { !it.paid && !it.skipped }.map { it.invoiceId }
+            )
+        )
+        return ResponseEntity.ok(result)
     }
 
     @PostMapping("/{invoiceId}/email")

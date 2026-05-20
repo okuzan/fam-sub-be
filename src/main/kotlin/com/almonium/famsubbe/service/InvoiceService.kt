@@ -1,6 +1,8 @@
 package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.ActiveSubscriptionDto
+import com.almonium.famsubbe.dto.InvoiceBulkBalancePaymentItemResult
+import com.almonium.famsubbe.dto.InvoiceBulkBalancePaymentResult
 import com.almonium.famsubbe.dto.InvoiceBulkEmailItemResult
 import com.almonium.famsubbe.dto.InvoiceBulkEmailResult
 import com.almonium.famsubbe.dto.InvoiceDetailResponse
@@ -378,27 +380,90 @@ class InvoiceService(
     fun payFromBalance(invoiceId: UUID): InvoiceResponse {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
-        
+
+        return payInvoiceFromBalance(invoice).toResponse()
+    }
+
+    fun payDraftInvoicesFromBalance(): InvoiceBulkBalancePaymentResult {
+        val draftInvoices = invoiceRepository.findByStatusOrderByCreatedAtAsc(InvoiceStatus.DRAFT)
+        val items = draftInvoices.map { invoice ->
+            val invoiceId = requireNotNull(invoice.id)
+            val subscriber = requireNotNull(invoice.subscriber)
+            val subscriberId = requireNotNull(subscriber.id)
+            val subscriberName = requireNotNull(subscriber.name)
+            val statusBefore = invoice.status.name
+            val invoiceAmount = requireNotNull(invoice.totalAmount)
+            val balanceBefore = subscriber.balance ?: BigDecimal.ZERO
+
+            if (balanceBefore < invoiceAmount) {
+                InvoiceBulkBalancePaymentItemResult(
+                    invoiceId = invoiceId,
+                    subscriberId = subscriberId,
+                    subscriberName = subscriberName,
+                    statusBefore = statusBefore,
+                    statusAfter = invoice.status.name,
+                    invoiceAmount = invoiceAmount,
+                    balanceBefore = balanceBefore,
+                    balanceAfter = balanceBefore,
+                    paid = false,
+                    skipped = true,
+                    updated = false,
+                    message = "Insufficient balance. Current balance: $balanceBefore, Invoice amount: $invoiceAmount"
+                )
+            } else {
+                val updatedInvoice = payInvoiceFromBalance(invoice)
+                val balanceAfter = requireNotNull(updatedInvoice.subscriber).balance ?: BigDecimal.ZERO
+
+                InvoiceBulkBalancePaymentItemResult(
+                    invoiceId = invoiceId,
+                    subscriberId = subscriberId,
+                    subscriberName = subscriberName,
+                    statusBefore = statusBefore,
+                    statusAfter = updatedInvoice.status.name,
+                    invoiceAmount = invoiceAmount,
+                    balanceBefore = balanceBefore,
+                    balanceAfter = balanceAfter,
+                    paid = true,
+                    skipped = false,
+                    updated = true,
+                    message = "Invoice paid from subscriber balance"
+                )
+            }
+        }
+
+        return InvoiceBulkBalancePaymentResult(
+            attemptedCount = items.size,
+            paidCount = items.count { it.paid },
+            skippedCount = items.count { it.skipped },
+            failedCount = items.count { !it.paid && !it.skipped },
+            totalPaidAmount = items
+                .filter { it.paid }
+                .map { it.invoiceAmount }
+                .fold(BigDecimal.ZERO, BigDecimal::add),
+            items = items
+        )
+    }
+
+    private fun payInvoiceFromBalance(invoice: Invoice): Invoice {
         check(invoice.status != InvoiceStatus.PAID) { "Invoice is already marked as paid" }
         check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be paid from balance" }
-        
+
         val subscriber = requireNotNull(invoice.subscriber)
         val currentBalance = subscriber.balance ?: BigDecimal.ZERO
         val invoiceAmount = requireNotNull(invoice.totalAmount)
-        
-        check(currentBalance >= invoiceAmount) { 
-            "Insufficient balance. Current balance: $currentBalance, Invoice amount: $invoiceAmount" 
+
+        check(currentBalance >= invoiceAmount) {
+            "Insufficient balance. Current balance: $currentBalance, Invoice amount: $invoiceAmount"
         }
-        
+
         // Deduct from subscriber balance
         subscriber.balance = currentBalance.subtract(invoiceAmount)
         subscriberRepository.save(subscriber)
-        
+
         // Mark invoice as paid
         invoice.status = InvoiceStatus.PAID
-        val updatedInvoice = invoiceRepository.save(invoice)
-        
-        return updatedInvoice.toResponse()
+
+        return invoiceRepository.save(invoice)
     }
 
     @Transactional(readOnly = true)
