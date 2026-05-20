@@ -35,7 +35,8 @@ class AccountOAuth2UserService(
             .providerDetails
             .userInfoEndpoint
             .userNameAttributeName
-            .ifBlank { "email" }
+            ?.ifBlank { "email" }
+            ?: "email"
 
         val attributes = LinkedHashMap(oauthUser.attributes).apply {
             put("local_account_id", account.id?.toString())
