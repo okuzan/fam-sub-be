@@ -8,11 +8,13 @@ import com.almonium.famsubbe.dto.InvoiceGenerationResult
 import com.almonium.famsubbe.dto.InvoiceNotesUpdateRequest
 import com.almonium.famsubbe.dto.InvoiceResponse
 import com.almonium.famsubbe.dto.InvoiceSuggestion
+import com.almonium.famsubbe.dto.InvoiceStatusUpdateRequest
 import com.almonium.famsubbe.dto.InvoiceVoidRequest
 import com.almonium.famsubbe.dto.ManualInvoiceCreateRequest
 import com.almonium.famsubbe.dto.OutstandingBalanceInvoiceRequest
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
+import com.almonium.famsubbe.entity.InvoiceStatus
 import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.service.InvoiceService
@@ -124,6 +126,34 @@ class AdminInvoiceController(
             toMonth = updatedInvoice.toMonth,
             summary = "Marked invoice $invoiceId as paid",
             metadata = mapOf("totalAmount" to updatedInvoice.totalAmount)
+        )
+        return ResponseEntity.ok(updatedInvoice)
+    }
+
+    @PatchMapping("/{invoiceId}/status")
+    fun updateInvoiceStatus(
+        @PathVariable invoiceId: UUID,
+        @RequestBody request: InvoiceStatusUpdateRequest,
+        authentication: Authentication
+    ): ResponseEntity<InvoiceResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
+        val requestedStatus = InvoiceStatus.valueOf(request.status.uppercase())
+        val updatedInvoice = invoiceService.updateStatus(invoiceId, requestedStatus)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.INVOICE_STATUS_UPDATED,
+            targetType = AdminActionTargetType.INVOICE,
+            targetId = invoiceId,
+            subscriberId = updatedInvoice.subscriberId,
+            fromMonth = updatedInvoice.fromMonth,
+            toMonth = updatedInvoice.toMonth,
+            summary = "Changed invoice $invoiceId status from ${invoiceBefore.status} to ${updatedInvoice.status}",
+            metadata = mapOf(
+                "statusBefore" to invoiceBefore.status,
+                "statusAfter" to updatedInvoice.status,
+                "totalAmount" to updatedInvoice.totalAmount
+            )
         )
         return ResponseEntity.ok(updatedInvoice)
     }

@@ -230,15 +230,16 @@ class InvoiceService(
         )
 
     fun markAsPaid(invoiceId: UUID): InvoiceResponse {
+        return updateStatus(invoiceId, InvoiceStatus.PAID)
+    }
+
+    fun updateStatus(invoiceId: UUID, status: InvoiceStatus): InvoiceResponse {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
-        
-        check(invoice.status != InvoiceStatus.PAID) { "Invoice is already marked as paid" }
-        check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be marked as paid" }
-        
-        invoice.status = InvoiceStatus.PAID
+
+        invoice.status = status
         val updatedInvoice = invoiceRepository.save(invoice)
-        
+
         return updatedInvoice.toResponse()
     }
 
