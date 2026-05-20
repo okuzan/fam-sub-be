@@ -5,6 +5,7 @@ import java.time.YearMonth
 import java.util.*
 
 data class InvoiceGenerationResult(
+    val runId: UUID,
     val invoicesCreated: Int,
     val ledgerEntriesAssigned: Int,
     val totalAmount: BigDecimal,

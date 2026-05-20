@@ -14,10 +14,12 @@ import com.almonium.famsubbe.dto.OutstandingBalanceInvoiceRequest
 import com.almonium.famsubbe.dto.SubscriberDetailResponse
 import com.almonium.famsubbe.dto.UnpaidInvoiceDto
 import com.almonium.famsubbe.entity.Invoice
+import com.almonium.famsubbe.entity.InvoiceGenerationRun
 import com.almonium.famsubbe.entity.InvoiceOrigin
 import com.almonium.famsubbe.entity.InvoiceStatus
 import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.entity.Subscriber
+import com.almonium.famsubbe.repository.InvoiceGenerationRunRepository
 import com.almonium.famsubbe.repository.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.MembershipRepository
@@ -43,6 +45,7 @@ import java.util.*
 @Service
 @Transactional
 class InvoiceService(
+    private val invoiceGenerationRunRepository: InvoiceGenerationRunRepository,
     private val invoiceRepository: InvoiceRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val subscriberRepository: SubscriberRepository,
@@ -72,6 +75,16 @@ class InvoiceService(
         check(entries.isNotEmpty()) { "No uninvoiced ledger entries found in the selected period" }
 
         val now = Instant.now()
+        val generationRun = invoiceGenerationRunRepository.save(
+            InvoiceGenerationRun().apply {
+                this.fromMonth = request.fromMonth
+                this.toMonth = request.toMonth
+                this.subscriberId = request.subscriberId
+                this.sendEmail = request.sendEmail
+                this.createdAt = now
+                this.createdByAccountId = performedByAccountId
+            }
+        )
         val grouped = entries.groupBy { requireNotNull(it.subscriber) }
 
         val createdInvoices = mutableListOf<Invoice>()
@@ -97,6 +110,7 @@ class InvoiceService(
                     this.emailSent = request.sendEmail
                     this.notes = "generated_by=$performedByAccountId"
                     this.origin = InvoiceOrigin.SUBSCRIPTION_LEDGER
+                    this.invoiceGenerationRun = generationRun
                 }
             )
 
@@ -122,6 +136,7 @@ class InvoiceService(
         }
 
         return InvoiceGenerationResult(
+            runId = requireNotNull(generationRun.id),
             invoicesCreated = createdInvoices.size,
             ledgerEntriesAssigned = totalAssigned,
             totalAmount = totalAmount,
@@ -177,6 +192,7 @@ class InvoiceService(
             status = status.name,
             createdAt = requireNotNull(createdAt),
             createdByAccountId = requireNotNull(createdByAccountId),
+            invoiceGenerationRunId = invoiceGenerationRun?.id,
             sentAt = sentAt,
             emailSent = emailSent,
             notes = notes,

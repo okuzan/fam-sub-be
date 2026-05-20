@@ -25,7 +25,8 @@ import java.util.*
         Index(name = "idx_invoice_status", columnList = "status"),
         Index(name = "idx_invoice_from_month", columnList = "from_month"),
         Index(name = "idx_invoice_to_month", columnList = "to_month"),
-        Index(name = "idx_invoice_created_at", columnList = "created_at")
+        Index(name = "idx_invoice_created_at", columnList = "created_at"),
+        Index(name = "idx_invoice_generation_run", columnList = "invoice_generation_run_id")
     ]
 )
 class Invoice {
@@ -68,4 +69,8 @@ class Invoice {
     @Enumerated(EnumType.STRING)
     @Column(name = "origin", nullable = false)
     var origin: InvoiceOrigin = InvoiceOrigin.SUBSCRIPTION_LEDGER
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice_generation_run_id", updatable = false)
+    var invoiceGenerationRun: InvoiceGenerationRun? = null
 }
