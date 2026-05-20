@@ -66,4 +66,13 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
     fun findLatestUninvoicedMonth(): YearMonth?
 
     fun findByInvoice(invoice: Invoice): List<LedgerEntry>
+
+    fun countByCalculationBatchId(calculationBatchId: UUID): Long
+
+    @Query("""
+        select count(le)
+        from LedgerEntry le
+        where le.invoice.invoiceGenerationRun.id = :invoiceGenerationRunId
+    """)
+    fun countByInvoiceGenerationRunId(invoiceGenerationRunId: UUID): Long
 }

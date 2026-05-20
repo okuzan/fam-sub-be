@@ -31,4 +31,6 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
     fun findSubscriberIdsWithUnpaidInvoices(): List<UUID>
     
     fun findBySubscriberAndStatusNot(subscriber: Subscriber, status: InvoiceStatus): List<Invoice>
+
+    fun findByInvoiceGenerationRunId(invoiceGenerationRunId: UUID): List<Invoice>
 }
