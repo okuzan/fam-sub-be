@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.repository
 
 import com.almonium.famsubbe.entity.Invoice
+import com.almonium.famsubbe.entity.InvoiceOrigin
 import com.almonium.famsubbe.entity.InvoiceStatus
 import com.almonium.famsubbe.entity.Subscriber
 import org.springframework.data.jpa.repository.JpaRepository
@@ -20,7 +21,7 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
     """)
     fun findAllFiltered(subscriberId: UUID?): List<Invoice>
 
-    fun findFirstByOrderByToMonthDesc(): Invoice?
+    fun findFirstByOriginOrderByToMonthDesc(origin: InvoiceOrigin): Invoice?
     
     @Query("""
         select distinct i.subscriber.id

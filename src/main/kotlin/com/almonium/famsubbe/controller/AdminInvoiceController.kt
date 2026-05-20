@@ -7,10 +7,12 @@ import com.almonium.famsubbe.dto.InvoiceGenerationResult
 import com.almonium.famsubbe.dto.InvoiceNotesUpdateRequest
 import com.almonium.famsubbe.dto.InvoiceResponse
 import com.almonium.famsubbe.dto.InvoiceSuggestion
+import com.almonium.famsubbe.dto.ManualInvoiceCreateRequest
 import com.almonium.famsubbe.dto.OutstandingBalanceInvoiceRequest
 import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.service.InvoiceService
 import com.almonium.famsubbe.util.AuthenticationUtil
+import jakarta.validation.Valid
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -99,6 +101,16 @@ class AdminInvoiceController(
         return ResponseEntity.ok(invoice)
     }
 
+    @PostMapping("/manual")
+    fun createManualInvoice(
+        @Valid @RequestBody request: ManualInvoiceCreateRequest,
+        authentication: Authentication
+    ): ResponseEntity<InvoiceResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoice = invoiceService.createManualInvoice(request, performedByAccountId)
+        return ResponseEntity.ok(invoice)
+    }
+
     @PostMapping("/{invoiceId}/pay-from-balance")
     fun payFromBalance(
         @PathVariable invoiceId: UUID
@@ -124,12 +136,7 @@ class AdminInvoiceController(
         @PathVariable invoiceId: UUID,
         @RequestParam(required = false, defaultValue = "true") addToBalance: Boolean
     ): ResponseEntity<Map<String, String>> {
-        invoiceService.deleteInvoice(invoiceId, addToBalance)
-        val message = if (addToBalance) {
-            "Invoice deleted and balance restored to subscriber"
-        } else {
-            "Invoice deleted without balance adjustment"
-        }
+        val message = invoiceService.deleteInvoice(invoiceId, addToBalance)
         return ResponseEntity.ok(mapOf("message" to message))
     }
 

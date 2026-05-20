@@ -9,6 +9,7 @@ import com.almonium.famsubbe.dto.InvoiceGenerationResult
 import com.almonium.famsubbe.dto.InvoiceLedgerEntryResponse
 import com.almonium.famsubbe.dto.InvoiceResponse
 import com.almonium.famsubbe.dto.InvoiceSuggestion
+import com.almonium.famsubbe.dto.ManualInvoiceCreateRequest
 import com.almonium.famsubbe.dto.OutstandingBalanceInvoiceRequest
 import com.almonium.famsubbe.dto.SubscriberDetailResponse
 import com.almonium.famsubbe.dto.UnpaidInvoiceDto
@@ -149,7 +150,7 @@ class InvoiceService(
     
     @Transactional(readOnly = true)
     fun getSuggestedInvoicePeriod(): InvoiceSuggestion {
-        val lastInvoice = invoiceRepository.findFirstByOrderByToMonthDesc()
+        val lastInvoice = invoiceRepository.findFirstByOriginOrderByToMonthDesc(InvoiceOrigin.SUBSCRIPTION_LEDGER)
         val lastInvoicedToMonth = lastInvoice?.toMonth
         
         val oldestUninvoicedMonth = ledgerEntryRepository.findOldestUninvoicedMonth()
@@ -231,15 +232,23 @@ class InvoiceService(
         document.add(Paragraph("Invoice #${invoice.id}").setFont(font))
         document.add(Paragraph("Subscriber: ${invoice.subscriber?.name ?: ""}").setFont(font))
         document.add(Paragraph("Period: ${invoice.fromMonth} - ${invoice.toMonth}").setFont(font))
+        document.add(Paragraph("Origin: ${invoice.origin.name}").setFont(font))
         document.add(Paragraph("Total: ₴${invoice.totalAmount}").setFont(font))
+        invoice.notes?.takeIf { it.isNotBlank() }?.let {
+            document.add(Paragraph("Notes: $it").setFont(font))
+        }
         document.add(Paragraph(" ").setFont(font))
 
-        document.add(Paragraph("Ledger Entries:").setFont(font))
-        entries.forEach { entry ->
-            document.add(
-                Paragraph("- ${entry.subscriptionService?.name ?: ""}: ₴${entry.amount} (${entry.recordedMonth})")
-                    .setFont(font)
-            )
+        if (entries.isEmpty()) {
+            document.add(Paragraph("No ledger entries attached to this invoice.").setFont(font))
+        } else {
+            document.add(Paragraph("Ledger Entries:").setFont(font))
+            entries.forEach { entry ->
+                document.add(
+                    Paragraph("- ${entry.subscriptionService?.name ?: ""}: ₴${entry.amount} (${entry.recordedMonth})")
+                        .setFont(font)
+                )
+            }
         }
 
         document.close()
@@ -284,6 +293,37 @@ class InvoiceService(
         subscriberRepository.save(subscriber)
 
         // Send email if requested
+        if (request.sendEmail) {
+            invoiceEmailService.sendInvoiceEmail(invoice, emptyList())
+        }
+
+        return invoice.toResponse()
+    }
+
+    fun createManualInvoice(
+        request: ManualInvoiceCreateRequest,
+        performedByAccountId: UUID
+    ): InvoiceResponse {
+        val subscriber = subscriberRepository.findById(request.subscriberId)
+            .orElseThrow { IllegalArgumentException("Subscriber not found: ${request.subscriberId}") }
+
+        val now = Instant.now()
+        val invoice = invoiceRepository.save(
+            Invoice().apply {
+                this.subscriber = subscriber
+                this.fromMonth = request.invoiceMonth
+                this.toMonth = request.invoiceMonth
+                this.totalAmount = request.amount
+                this.status = if (request.sendEmail) InvoiceStatus.SENT else InvoiceStatus.DRAFT
+                this.createdAt = now
+                this.createdByAccountId = performedByAccountId
+                this.sentAt = if (request.sendEmail) now else null
+                this.emailSent = request.sendEmail
+                this.notes = request.notes.trim()
+                this.origin = InvoiceOrigin.MANUAL
+            }
+        )
+
         if (request.sendEmail) {
             invoiceEmailService.sendInvoiceEmail(invoice, emptyList())
         }
@@ -381,7 +421,7 @@ class InvoiceService(
     }
 
 
-    fun deleteInvoice(invoiceId: UUID, addToBalance: Boolean = true) {
+    fun deleteInvoice(invoiceId: UUID, addToBalance: Boolean = true): String {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
 
@@ -389,12 +429,11 @@ class InvoiceService(
             "Only DRAFT invoices can be deleted"
         }
 
-        check(invoice.origin == InvoiceOrigin.OUTSTANDING_BALANCE) {
-            "Only outstanding balance invoices can be deleted"
+        check(invoice.origin == InvoiceOrigin.OUTSTANDING_BALANCE || invoice.origin == InvoiceOrigin.MANUAL) {
+            "Only outstanding balance and manual invoices can be deleted"
         }
 
-        // Restore subscriber balance if addToBalance is true
-        if (addToBalance) {
+        if (invoice.origin == InvoiceOrigin.OUTSTANDING_BALANCE && addToBalance) {
             val subscriber = requireNotNull(invoice.subscriber)
             val invoiceAmount = requireNotNull(invoice.totalAmount)
             subscriber.balance = subscriber.balance?.subtract(invoiceAmount) ?: invoiceAmount.negate()
@@ -402,6 +441,12 @@ class InvoiceService(
         }
 
         invoiceRepository.delete(invoice)
+
+        return when {
+            invoice.origin == InvoiceOrigin.MANUAL -> "Invoice deleted"
+            addToBalance -> "Invoice deleted and balance restored to subscriber"
+            else -> "Invoice deleted without balance adjustment"
+        }
     }
 
     @Transactional(readOnly = true)

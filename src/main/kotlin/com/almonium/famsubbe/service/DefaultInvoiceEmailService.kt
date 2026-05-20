@@ -4,6 +4,7 @@ import com.almonium.famsubbe.config.AppEmailProperties
 import com.almonium.famsubbe.config.PaymentProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties
 import com.almonium.famsubbe.entity.Invoice
+import com.almonium.famsubbe.entity.InvoiceOrigin
 import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.util.HtmlFileWriter
 import org.slf4j.LoggerFactory
@@ -38,7 +39,11 @@ class DefaultInvoiceEmailService(
             context.setVariable("paymentMethods", paymentProperties.methods)
 
             val htmlContent = templateEngine.process("invoice-email", context)
-            val subject = "Your Invoice for ${invoice.fromMonth} - ${invoice.toMonth}"
+            val subject = when (invoice.origin) {
+                InvoiceOrigin.OUTSTANDING_BALANCE -> "Your Outstanding Balance Invoice"
+                InvoiceOrigin.MANUAL -> "Your Manual Invoice for ${invoice.fromMonth}"
+                InvoiceOrigin.SUBSCRIPTION_LEDGER -> "Your Invoice for ${invoice.fromMonth} - ${invoice.toMonth}"
+            }
 
             sendEmail(toEmail, subscriber.name, subject, htmlContent)
         } catch (e: Exception) {

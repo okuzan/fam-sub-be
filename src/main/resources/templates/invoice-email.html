@@ -32,7 +32,8 @@
 <body>
     <div th:class="${invoice.status.name() == 'PAID'} ? 'header paid' : 'header unpaid'">
         <h2 th:if="${origin.name() == 'OUTSTANDING_BALANCE'}">Outstanding Balance Invoice</h2>
-        <h2 th:if="${origin.name() != 'OUTSTANDING_BALANCE'}">Invoice for <span th:text="${invoice.fromMonth}"></span> to <span th:text="${invoice.toMonth}"></span></h2>
+        <h2 th:if="${origin.name() == 'MANUAL'}">Manual Invoice for <span th:text="${invoice.fromMonth}"></span></h2>
+        <h2 th:if="${origin.name() == 'SUBSCRIPTION_LEDGER'}">Invoice for <span th:text="${invoice.fromMonth}"></span> to <span th:text="${invoice.toMonth}"></span></h2>
         <div th:if="${invoice.status.name() == 'PAID'}" class="status-badge status-paid">PAID</div>
         <div th:if="${invoice.status.name() != 'PAID'}" class="status-badge status-unpaid">UNPAID</div>
     </div>
@@ -47,8 +48,10 @@
         </div>
 
         <p th:if="${origin.name() == 'OUTSTANDING_BALANCE'}">This invoice represents your outstanding balance that has been carried forward from previous periods.</p>
-        <p th:if="${origin.name() != 'OUTSTANDING_BALANCE' && invoice.status.name() != 'PAID'}">Please find the details of your recent invoice below.</p>
-        <p th:if="${origin.name() != 'OUTSTANDING_BALANCE' && invoice.status.name() == 'PAID'}">Below is the breakdown of your paid invoice for your records.</p>
+        <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() != 'PAID'}">Please find the details of your one-off invoice below.</p>
+        <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() == 'PAID'}">Below is your paid one-off invoice for your records.</p>
+        <p th:if="${origin.name() == 'SUBSCRIPTION_LEDGER' && invoice.status.name() != 'PAID'}">Please find the details of your recent invoice below.</p>
+        <p th:if="${origin.name() == 'SUBSCRIPTION_LEDGER' && invoice.status.name() == 'PAID'}">Below is the breakdown of your paid invoice for your records.</p>
         
         <table th:if="${not #lists.isEmpty(entries)}">
             <thead>
