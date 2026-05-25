@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.controller
 
 import com.almonium.famsubbe.dto.SubscriberCreateRequest
+import com.almonium.famsubbe.dto.SubscriberDebtPaymentResult
 import com.almonium.famsubbe.dto.SubscriberDetailResponse
 import com.almonium.famsubbe.dto.SubscriberResponse
 import com.almonium.famsubbe.dto.SubscriberUpdateRequest
@@ -68,6 +69,31 @@ class AdminSubscriberController(
     fun getSubscriberDetails(@PathVariable id: UUID): ResponseEntity<SubscriberDetailResponse> {
         val subscriberDetails = invoiceService.getSubscriberDetails(id)
         return ResponseEntity.ok(subscriberDetails)
+    }
+
+    @PostMapping("/{id}/pay-off-debt")
+    fun payOffSubscriberDebt(
+        @PathVariable id: UUID,
+        authentication: Authentication
+    ): ResponseEntity<SubscriberDebtPaymentResult> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val result = invoiceService.payOffSubscriberDebt(id)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.SUBSCRIBER_DEBT_PAID,
+            targetType = AdminActionTargetType.SUBSCRIBER,
+            targetId = id,
+            subscriberId = id,
+            summary = "Paid off ${result.paidCount} pending invoices for ${result.subscriberName}",
+            metadata = mapOf(
+                "attemptedCount" to result.attemptedCount,
+                "paidCount" to result.paidCount,
+                "totalPaidAmount" to result.totalPaidAmount,
+                "balance" to result.balance,
+                "invoiceIds" to result.items.map { it.invoiceId }
+            )
+        )
+        return ResponseEntity.ok(result)
     }
 
     @PostMapping("/{id}/email-situation")

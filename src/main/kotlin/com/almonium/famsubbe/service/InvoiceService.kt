@@ -15,6 +15,8 @@ import com.almonium.famsubbe.dto.InvoiceResponse
 import com.almonium.famsubbe.dto.InvoiceSuggestion
 import com.almonium.famsubbe.dto.ManualInvoiceCreateRequest
 import com.almonium.famsubbe.dto.SubscriberDetailResponse
+import com.almonium.famsubbe.dto.SubscriberDebtPaymentItemResult
+import com.almonium.famsubbe.dto.SubscriberDebtPaymentResult
 import com.almonium.famsubbe.dto.UnpaidInvoiceDto
 import com.almonium.famsubbe.entity.Invoice
 import com.almonium.famsubbe.entity.InvoiceGenerationRun
@@ -389,6 +391,44 @@ class InvoiceService(
                 .filter { it.paid }
                 .map { it.invoiceAmount }
                 .fold(BigDecimal.ZERO, BigDecimal::add),
+            items = items
+        )
+    }
+
+    fun payOffSubscriberDebt(subscriberId: UUID): SubscriberDebtPaymentResult {
+        val subscriber = subscriberRepository.findById(subscriberId)
+            .orElseThrow { IllegalArgumentException("Subscriber not found: $subscriberId") }
+
+        val pendingInvoices = invoiceRepository.findBySubscriberAndStatusIn(
+            subscriber,
+            listOf(InvoiceStatus.DRAFT, InvoiceStatus.SENT)
+        ).sortedBy { it.createdAt }
+
+        val items = pendingInvoices.map { invoice ->
+            val statusBefore = invoice.status.name
+            invoice.setStatus(InvoiceStatus.PAID)
+            val updatedInvoice = invoiceRepository.save(invoice)
+
+            SubscriberDebtPaymentItemResult(
+                invoiceId = requireNotNull(updatedInvoice.id),
+                statusBefore = statusBefore,
+                statusAfter = updatedInvoice.status.name,
+                invoiceAmount = requireNotNull(updatedInvoice.totalAmount),
+                paid = true,
+                message = "Invoice marked as paid"
+            )
+        }
+
+        return SubscriberDebtPaymentResult(
+            subscriberId = requireNotNull(subscriber.id),
+            subscriberName = requireNotNull(subscriber.name),
+            attemptedCount = items.size,
+            paidCount = items.count { it.paid },
+            totalPaidAmount = items
+                .filter { it.paid }
+                .map { it.invoiceAmount }
+                .fold(BigDecimal.ZERO, BigDecimal::add),
+            balance = subscriber.balance ?: BigDecimal.ZERO,
             items = items
         )
     }
