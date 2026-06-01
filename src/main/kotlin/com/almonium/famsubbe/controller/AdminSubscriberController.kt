@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.math.BigDecimal
 import java.util.*
 
 @RestController
@@ -74,22 +75,31 @@ class AdminSubscriberController(
     @PostMapping("/{id}/pay-off-debt")
     fun payOffSubscriberDebt(
         @PathVariable id: UUID,
+        @RequestParam(defaultValue = "true") includeCredit: Boolean,
         authentication: Authentication
     ): ResponseEntity<SubscriberDebtPaymentResult> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val result = invoiceService.payOffSubscriberDebt(id)
+        val result = invoiceService.payOffSubscriberDebt(id, includeCredit)
+        val creditSummary = if (result.creditWrittenOff > BigDecimal.ZERO) {
+            " and wrote off credit ${result.creditWrittenOff}"
+        } else {
+            ""
+        }
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.SUBSCRIBER_DEBT_PAID,
             targetType = AdminActionTargetType.SUBSCRIBER,
             targetId = id,
             subscriberId = id,
-            summary = "Paid off ${result.paidCount} pending invoices for ${result.subscriberName}",
+            summary = "Paid off ${result.paidCount} pending invoices for ${result.subscriberName}$creditSummary",
             metadata = mapOf(
                 "attemptedCount" to result.attemptedCount,
                 "paidCount" to result.paidCount,
                 "totalPaidAmount" to result.totalPaidAmount,
-                "balance" to result.balance,
+                "includeCredit" to result.includeCredit,
+                "balanceBefore" to result.balanceBefore,
+                "balanceAfter" to result.balanceAfter,
+                "creditWrittenOff" to result.creditWrittenOff,
                 "invoiceIds" to result.items.map { it.invoiceId }
             )
         )

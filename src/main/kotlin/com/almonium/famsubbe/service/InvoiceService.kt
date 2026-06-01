@@ -395,9 +395,10 @@ class InvoiceService(
         )
     }
 
-    fun payOffSubscriberDebt(subscriberId: UUID): SubscriberDebtPaymentResult {
+    fun payOffSubscriberDebt(subscriberId: UUID, includeCredit: Boolean = true): SubscriberDebtPaymentResult {
         val subscriber = subscriberRepository.findById(subscriberId)
             .orElseThrow { IllegalArgumentException("Subscriber not found: $subscriberId") }
+        val balanceBefore = subscriber.balance ?: BigDecimal.ZERO
 
         val pendingInvoices = invoiceRepository.findBySubscriberAndStatusIn(
             subscriber,
@@ -419,6 +420,15 @@ class InvoiceService(
             )
         }
 
+        val creditWrittenOff = if (includeCredit && balanceBefore > BigDecimal.ZERO) {
+            subscriber.balance = BigDecimal.ZERO
+            subscriberRepository.save(subscriber)
+            balanceBefore
+        } else {
+            BigDecimal.ZERO
+        }
+        val balanceAfter = subscriber.balance ?: BigDecimal.ZERO
+
         return SubscriberDebtPaymentResult(
             subscriberId = requireNotNull(subscriber.id),
             subscriberName = requireNotNull(subscriber.name),
@@ -428,7 +438,11 @@ class InvoiceService(
                 .filter { it.paid }
                 .map { it.invoiceAmount }
                 .fold(BigDecimal.ZERO, BigDecimal::add),
-            balance = subscriber.balance ?: BigDecimal.ZERO,
+            includeCredit = includeCredit,
+            balanceBefore = balanceBefore,
+            balance = balanceAfter,
+            balanceAfter = balanceAfter,
+            creditWrittenOff = creditWrittenOff,
             items = items
         )
     }

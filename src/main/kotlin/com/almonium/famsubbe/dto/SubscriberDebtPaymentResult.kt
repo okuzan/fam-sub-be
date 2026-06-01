@@ -9,7 +9,11 @@ data class SubscriberDebtPaymentResult(
     val attemptedCount: Int,
     val paidCount: Int,
     val totalPaidAmount: BigDecimal,
+    val includeCredit: Boolean,
+    val balanceBefore: BigDecimal,
     val balance: BigDecimal,
+    val balanceAfter: BigDecimal,
+    val creditWrittenOff: BigDecimal,
     val items: List<SubscriberDebtPaymentItemResult>
 )
 
