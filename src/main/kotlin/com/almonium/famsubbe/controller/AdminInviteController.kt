@@ -4,6 +4,7 @@ import com.almonium.famsubbe.dto.AdminInviteAcceptRequest
 import com.almonium.famsubbe.dto.AdminInviteAcceptResponse
 import com.almonium.famsubbe.dto.AdminInviteCreateRequest
 import com.almonium.famsubbe.dto.AdminInviteResponse
+import com.almonium.famsubbe.entity.Account
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
 import com.almonium.famsubbe.service.AccountService
@@ -14,6 +15,10 @@ import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -88,6 +93,7 @@ class AdminInviteAcceptanceController(
             ?: throw IllegalStateException("Authenticated account not found")
         val accountId = requireNotNull(account.id)
         val result = adminInviteService.acceptInvite(request.token, account)
+        refreshAuthentication(authentication, account)
         adminAuditLogService.log(
             createdByAccountId = accountId,
             actionType = AdminActionType.ADMIN_INVITE_ACCEPTED,
@@ -96,5 +102,27 @@ class AdminInviteAcceptanceController(
             metadata = mapOf("email" to result.email)
         )
         return ResponseEntity.ok(result)
+    }
+
+    private fun refreshAuthentication(authentication: Authentication, account: Account) {
+        val authorities = buildSet {
+            addAll(authentication.authorities.filterNot { it.authority?.startsWith("ROLE_") == true })
+            account.roles.forEach { add(SimpleGrantedAuthority("ROLE_${it.name}")) }
+        }
+
+        val updatedAuthentication = when (authentication) {
+            is OAuth2AuthenticationToken -> OAuth2AuthenticationToken(
+                authentication.principal,
+                authorities,
+                authentication.authorizedClientRegistrationId
+            )
+            else -> UsernamePasswordAuthenticationToken(
+                requireNotNull(authentication.principal),
+                authentication.credentials,
+                authorities
+            )
+        }
+        updatedAuthentication.details = authentication.details
+        SecurityContextHolder.getContext().authentication = updatedAuthentication
     }
 }

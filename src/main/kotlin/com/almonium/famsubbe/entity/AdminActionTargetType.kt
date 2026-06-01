@@ -9,5 +9,6 @@ enum class AdminActionTargetType {
     MEMBERSHIP,
     SUBSCRIPTION_SERVICE,
     PINNED_POST,
+    ACCOUNT,
     ADMIN_INVITE
 }

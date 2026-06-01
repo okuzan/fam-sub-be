@@ -36,15 +36,21 @@ class AdminInviteService(
         if (existingAccount != null && Role.ADMIN in existingAccount.roles) {
             throw ResponseStatusException(HttpStatus.CONFLICT, "Account is already an admin")
         }
+        if (hasActivePendingInvite(email)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "A pending admin invite already exists for this email")
+        }
 
+        val now = Instant.now()
         val rawToken = generateToken()
         val invite = adminInviteRepository.save(
             AdminInvite().apply {
                 this.email = email
                 this.tokenHash = hashToken(rawToken)
                 this.status = AdminInviteStatus.PENDING
-                this.expiresAt = Instant.now().plus(Duration.ofDays(7))
+                this.expiresAt = now.plus(Duration.ofDays(7))
                 this.invitedByAccountId = invitedByAccountId
+                this.createdAt = now
+                this.updatedAt = now
             }
         )
 
@@ -71,7 +77,9 @@ class AdminInviteService(
         }
 
         invite.status = AdminInviteStatus.REVOKED
-        invite.revokedAt = Instant.now()
+        val now = Instant.now()
+        invite.revokedAt = now
+        invite.updatedAt = now
         return adminInviteRepository.save(invite).toResponse()
     }
 
@@ -97,8 +105,10 @@ class AdminInviteService(
         }
 
         invite.status = AdminInviteStatus.ACCEPTED
-        invite.acceptedAt = Instant.now()
+        val now = Instant.now()
+        invite.acceptedAt = now
         invite.acceptedByAccountId = account.id
+        invite.updatedAt = now
         adminInviteRepository.save(invite)
 
         return AdminInviteAcceptResponse(

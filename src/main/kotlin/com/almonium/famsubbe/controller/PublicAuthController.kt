@@ -30,7 +30,12 @@ class PublicAuthController(
 
         val authorities = authentication.authorities.mapNotNull { it.authority }.toSet()
 
-        val roles = authorities
+        val account = AuthenticationUtil.resolveAccount(authentication, accountService)
+
+        val roles = account?.roles
+            ?.map { it.name }
+            ?.toSet()
+            ?: authorities
             .filter { it.startsWith("ROLE_") }
             .map { it.removePrefix("ROLE_") }
             .toSet()
@@ -39,8 +44,6 @@ class PublicAuthController(
             .filter { it.startsWith("SCOPE_") }
             .map { it.removePrefix("SCOPE_") }
             .toSet()
-
-        val account = AuthenticationUtil.resolveAccount(authentication, accountService)
 
         return AuthMeResponse(
             authenticated = true,
