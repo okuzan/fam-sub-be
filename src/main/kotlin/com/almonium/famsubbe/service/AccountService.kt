@@ -12,6 +12,7 @@ import java.util.*
 class AccountService(
     private val accountRepository: AccountRepository,
     private val subscriberRepository: SubscriberRepository,
+    private val adminInviteService: AdminInviteService,
     private val passwordEncoder: PasswordEncoder
 ) {
 
@@ -45,26 +46,27 @@ class AccountService(
         val normalizedEmail = email.trim().lowercase()
         val existing = accountRepository.findByEmail(normalizedEmail)
         val subscriber = subscriberRepository.findByEmailIgnoreCase(normalizedEmail)
+        val hasPendingAdminInvite = adminInviteService.hasActivePendingInvite(normalizedEmail)
 
         if (existing != null) {
             if (subscriber != null && Role.SUBSCRIBER !in existing.roles) {
                 existing.roles.add(Role.SUBSCRIBER)
                 return accountRepository.save(existing)
             }
-            if (Role.ADMIN in existing.roles || subscriber != null) {
+            if (Role.ADMIN in existing.roles || subscriber != null || hasPendingAdminInvite) {
                 return existing
             }
             throw SubscriberRegistrationNotAllowedException(normalizedEmail)
         }
 
-        if (subscriber == null) {
+        if (subscriber == null && !hasPendingAdminInvite) {
             throw SubscriberRegistrationNotAllowedException(normalizedEmail)
         }
 
         val account = Account().apply {
             this.email = normalizedEmail
             this.passwordHash = passwordEncoder.encode(UUID.randomUUID().toString())
-            this.roles = mutableSetOf(Role.SUBSCRIBER)
+            this.roles = if (subscriber == null) mutableSetOf() else mutableSetOf(Role.SUBSCRIBER)
         }
         return accountRepository.save(account)
     }

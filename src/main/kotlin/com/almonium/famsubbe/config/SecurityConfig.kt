@@ -78,6 +78,7 @@ class SecurityConfig(
                 authz
                     .requestMatchers("/admin/**").hasRole(Role.ADMIN.name)
                     .requestMatchers("/subscriber/**").hasRole(Role.SUBSCRIBER.name)
+                    .requestMatchers("/admin-invites/accept").authenticated()
                     .requestMatchers(*PUBLIC_URL_PATTERNS).permitAll()
                     .anyRequest().authenticated()
             }
