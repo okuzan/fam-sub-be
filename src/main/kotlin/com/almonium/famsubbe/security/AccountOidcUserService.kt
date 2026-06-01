@@ -1,11 +1,13 @@
 package com.almonium.famsubbe.security
 
 import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.service.SubscriberRegistrationNotAllowedException
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
@@ -26,7 +28,15 @@ class AccountOidcUserService(
             ?.lowercase()
             ?: throw OAuth2AuthenticationException("Email is required")
 
-        val account = accountService.findOrCreateGoogleSubscriber(email)
+        val account = try {
+            accountService.findOrCreateGoogleSubscriber(email)
+        } catch (e: SubscriberRegistrationNotAllowedException) {
+            throw OAuth2AuthenticationException(
+                OAuth2Error("subscriber_not_registered"),
+                e.message,
+                e
+            )
+        }
 
         val authorities = buildSet {
             addAll(oidcUser.authorities)

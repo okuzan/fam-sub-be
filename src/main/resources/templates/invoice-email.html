@@ -29,6 +29,8 @@
         .payment-method .number:hover { background-color: #e9ecef; }
         .payment-method .copy-hint { font-size: 11px; color: #6c757d; font-style: italic; }
         .payment-method .copy-success { font-size: 11px; color: #28a745; font-style: italic; }
+        .cabinet-link { margin-top: 8px; text-align: right; }
+        .cabinet-link a { color: #007bff; text-decoration: none; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -82,6 +84,9 @@
         </div>
         <div class="total">
             Total Currently Owed: <span th:text="${'₴' + totalAmountOwed}">₴0.00</span>
+        </div>
+        <div class="cabinet-link" th:if="${invoice.status.name() != 'VOID'}">
+            <a th:href="${cabinetUrl}">View invoices included in this balance</a>
         </div>
         
         <div class="notes" th:if="${invoice.notes}">

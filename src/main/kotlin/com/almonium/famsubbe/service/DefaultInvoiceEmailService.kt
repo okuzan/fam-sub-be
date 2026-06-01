@@ -10,6 +10,7 @@ import com.almonium.famsubbe.entity.InvoiceOrigin
 import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.util.HtmlFileWriter
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
@@ -23,7 +24,8 @@ class DefaultInvoiceEmailService(
     private val htmlFileWriter: HtmlFileWriter,
     private val zeptoProperties: ZeptoMailProperties,
     private val appEmailProperties: AppEmailProperties,
-    private val paymentProperties: PaymentProperties
+    private val paymentProperties: PaymentProperties,
+    @Value($$"${app.web-domain}") private val webDomain: String
 ) : InvoiceEmailService {
 
     private val log = LoggerFactory.getLogger(DefaultInvoiceEmailService::class.java)
@@ -41,6 +43,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("origin", invoice.origin)
             context.setVariable("totalAmountOwed", totalAmountOwed)
             context.setVariable("paymentMethods", paymentProperties.methods)
+            context.setVariable("cabinetUrl", "$webDomain/subscriber/cabinet")
 
             val htmlContent = templateEngine.process("invoice-email", context)
             val subject = when (invoice.origin) {

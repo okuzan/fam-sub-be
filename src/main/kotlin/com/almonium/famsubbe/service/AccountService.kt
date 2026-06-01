@@ -3,6 +3,7 @@ package com.almonium.famsubbe.service
 import com.almonium.famsubbe.entity.Account
 import com.almonium.famsubbe.entity.Role
 import com.almonium.famsubbe.repository.AccountRepository
+import com.almonium.famsubbe.repository.SubscriberRepository
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.util.*
@@ -10,6 +11,7 @@ import java.util.*
 @Service
 class AccountService(
     private val accountRepository: AccountRepository,
+    private val subscriberRepository: SubscriberRepository,
     private val passwordEncoder: PasswordEncoder
 ) {
 
@@ -42,8 +44,21 @@ class AccountService(
     fun findOrCreateGoogleSubscriber(email: String): Account {
         val normalizedEmail = email.trim().lowercase()
         val existing = accountRepository.findByEmail(normalizedEmail)
+        val subscriber = subscriberRepository.findByEmailIgnoreCase(normalizedEmail)
+
         if (existing != null) {
-            return existing
+            if (subscriber != null && Role.SUBSCRIBER !in existing.roles) {
+                existing.roles.add(Role.SUBSCRIBER)
+                return accountRepository.save(existing)
+            }
+            if (Role.ADMIN in existing.roles || subscriber != null) {
+                return existing
+            }
+            throw SubscriberRegistrationNotAllowedException(normalizedEmail)
+        }
+
+        if (subscriber == null) {
+            throw SubscriberRegistrationNotAllowedException(normalizedEmail)
         }
 
         val account = Account().apply {
@@ -51,11 +66,9 @@ class AccountService(
             this.passwordHash = passwordEncoder.encode(UUID.randomUUID().toString())
             this.roles = mutableSetOf(Role.SUBSCRIBER)
         }
-        val saved = accountRepository.save(account)
-
-        // TODO: Try matching a preexisting admin-prepared subscriber by email.
-        // TODO: If there is no match, create a new subscriber with no memberships.
-
-        return saved
+        return accountRepository.save(account)
     }
 }
+
+class SubscriberRegistrationNotAllowedException(email: String) :
+    RuntimeException("No subscriber is registered for Google account email: $email")

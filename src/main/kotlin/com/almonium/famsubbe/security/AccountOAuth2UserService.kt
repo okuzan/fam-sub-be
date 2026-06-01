@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.security
 
 import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.service.SubscriberRegistrationNotAllowedException
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
@@ -26,7 +27,15 @@ class AccountOAuth2UserService(
                 "Google account email is required"
             )
 
-        val account = accountService.findOrCreateGoogleSubscriber(email)
+        val account = try {
+            accountService.findOrCreateGoogleSubscriber(email)
+        } catch (e: SubscriberRegistrationNotAllowedException) {
+            throw OAuth2AuthenticationException(
+                OAuth2Error("subscriber_not_registered"),
+                e.message,
+                e
+            )
+        }
         val authorities = account.roles
             .map { SimpleGrantedAuthority("ROLE_${it.name}") }
             .toSet()
