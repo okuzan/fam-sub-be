@@ -3,120 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <title>Weekly Subscription Account Check-up</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 680px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #f8f9fa; padding: 20px; text-align: center; border-bottom: 2px solid #dc3545; }
-        .content { padding: 20px 0; }
-        .footer { font-size: 12px; color: #6c757d; text-align: center; margin-top: 20px; border-top: 1px solid #dee2e6; padding-top: 20px; }
-        .summary-box { background-color: #f1f3f5; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .section { margin: 24px 0; }
-        .alert { color: #dc3545; font-weight: bold; }
-        .invoice { border: 1px solid #dee2e6; border-radius: 5px; margin: 14px 0; padding: 12px; }
-        .invoice-title { font-weight: bold; margin-bottom: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .total { font-weight: bold; font-size: 1.15em; text-align: right; margin-top: 20px; }
-        .payment-methods { margin-top: 20px; padding: 15px; background-color: #e9ecef; border-radius: 5px; border: 1px solid #ced4da; }
-        .payment-methods h3 { margin-top: 0; color: #495057; }
-        .payment-method { margin: 10px 0; padding: 10px; background-color: white; border-radius: 4px; border: 1px solid #dee2e6; }
-        .payment-method .name { font-weight: bold; color: #495057; }
-        .payment-method .number { font-family: monospace; background-color: #f8f9fa; padding: 4px 8px; border-radius: 3px; user-select: all; }
-    </style>
+    <style th:replace="~{situation-email-fragments :: styles}"></style>
 </head>
 <body>
-    <div class="header">
-        <h2>Weekly Subscription Account Check-up</h2>
-    </div>
+    <div th:replace="~{situation-email-fragments :: header('Weekly Subscription Account Check-up')}"></div>
 
     <div class="content">
         <p>Dear <span th:text="${name}">Customer</span>,</p>
 
-        <p>This is your regular weekly account check-up. It summarizes the current unpaid invoices, ledger lines, and active subscriptions we have on record.</p>
+        <p>This is your regular weekly account check-up. It summarizes the current unpaid invoices, notes, and active subscriptions we have on record.</p>
 
-        <div class="summary-box">
-            <h3>Current Situation</h3>
-            <ul>
-                <li>Active Subscriptions: <span th:text="${activeSubscriptionsCount}">0</span></li>
-                <li>Unpaid Invoices: <span th:text="${unpaidInvoicesCount}">0</span></li>
-                <li>Account Balance/Credit: <span th:text="${'₴' + subscriberBalance}">₴0.00</span></li>
-                <li><span class="alert">Total Currently Owed: <span th:text="${'₴' + totalOwed}">₴0.00</span></span></li>
-            </ul>
-        </div>
-
-        <div class="section" th:if="${not #lists.isEmpty(activeSubscriptions)}">
-            <h3>Active Subscriptions</h3>
-            <ul>
-                <li th:each="subscription : ${activeSubscriptions}">
-                    <span th:text="${subscription.serviceName}">Service Name</span>
-                    <span th:text="${' - ₴' + subscription.servicePrice}"> - ₴0.00</span>
-                    <span th:text="${' since ' + subscription.startMonth}"> since 2026-01</span>
-                </li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <h3>Unpaid Invoices and Ledger Lines</h3>
-            <div class="invoice" th:each="invoice : ${unpaidInvoices}">
-                <div class="invoice-title">
-                    Invoice <span th:text="${invoice.id}">id</span>
-                    <span th:text="${'(' + invoice.status + ')'}">(SENT)</span>
-                </div>
-                <div>
-                    Period:
-                    <span th:text="${invoice.fromMonth}">2026-01</span>
-                    to
-                    <span th:text="${invoice.toMonth}">2026-01</span>
-                </div>
-                <div>Amount: <strong th:text="${'₴' + invoice.totalAmount}">₴0.00</strong></div>
-
-                <table th:if="${not #lists.isEmpty(invoice.ledgerEntries)}">
-                    <thead>
-                        <tr>
-                            <th>Month</th>
-                            <th>Subscription</th>
-                            <th>Notes</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="entry : ${invoice.ledgerEntries}">
-                            <td th:text="${entry.recordedMonth}">2026-01</td>
-                            <td th:text="${entry.subscriptionServiceName}">Service</td>
-                            <td th:text="${entry.notes ?: 'Subscription charge'}">Subscription charge</td>
-                            <td th:text="${'₴' + entry.amount}">₴0.00</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <p th:if="${#lists.isEmpty(invoice.ledgerEntries)}"><em>No ledger entries are attached to this invoice.</em></p>
-            </div>
-        </div>
-
-        <div class="total">
-            Total currently owed: <span th:text="${'₴' + totalOwed}">₴0.00</span>
-        </div>
+        <div th:replace="~{situation-email-fragments :: summary('Current Situation')}"></div>
+        <div th:replace="~{situation-email-fragments :: activeSubscriptions}"></div>
+        <div th:replace="~{situation-email-fragments :: unpaidInvoices}"></div>
+        <div th:replace="~{situation-email-fragments :: total}"></div>
 
         <p>Please settle the outstanding amount when you can so access to active subscriptions stays uninterrupted.</p>
-
-        <div class="payment-methods">
-            <h3>Payment Methods</h3>
-            <p>Please use one of the following payment methods:</p>
-            <div class="payment-method">
-                <div class="name">Mono <span th:text="${paymentMethods['mono'].currency}"></span></div>
-                <div class="number" th:text="${paymentMethods['mono'].number}">4441111068471360</div>
-            </div>
-            <div class="payment-method">
-                <div class="name">Privat <span th:text="${paymentMethods['privat'].currency}"></span></div>
-                <div class="number" th:text="${paymentMethods['privat'].number}">5169360022967743</div>
-            </div>
-        </div>
+        <div th:replace="~{situation-email-fragments :: paymentMethods}"></div>
 
         <p>If something looks wrong, please reach out and we will check it.</p>
         <p>Thank you.</p>
     </div>
 
-    <div class="footer">
-        This is an automated weekly message. Please do not reply to this email.
-    </div>
+    <div th:replace="~{situation-email-fragments :: footer('This is an automated weekly message. Please do not reply to this email.')}"></div>
 </body>
 </html>

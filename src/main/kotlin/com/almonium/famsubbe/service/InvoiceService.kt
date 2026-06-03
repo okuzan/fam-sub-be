@@ -18,6 +18,8 @@ import com.almonium.famsubbe.dto.SubscriberDetailResponse
 import com.almonium.famsubbe.dto.SubscriberDebtPaymentItemResult
 import com.almonium.famsubbe.dto.SubscriberDebtPaymentResult
 import com.almonium.famsubbe.dto.UnpaidInvoiceDto
+import com.almonium.famsubbe.dto.WeeklySituationInvoiceDto
+import com.almonium.famsubbe.dto.WeeklySituationLedgerEntryDto
 import com.almonium.famsubbe.entity.Invoice
 import com.almonium.famsubbe.entity.InvoiceGenerationRun
 import com.almonium.famsubbe.entity.InvoiceOrigin
@@ -705,7 +707,8 @@ class InvoiceService(
                 toMonth = invoice.toMonth?.toString() ?: "",
                 createdAt = invoice.createdAt ?: Instant.now(),
                 status = invoice.status.name,
-                notes = invoice.notes
+                notes = invoice.notes,
+                origin = invoice.origin.name
             )
         }
 
@@ -726,4 +729,27 @@ class InvoiceService(
             unpaidInvoices = unpaidInvoicesDto
         )
     }
+
+    @Transactional(readOnly = true)
+    fun buildSituationEmailInvoices(unpaidInvoices: List<UnpaidInvoiceDto>): List<WeeklySituationInvoiceDto> =
+        unpaidInvoices.map { invoice ->
+            WeeklySituationInvoiceDto(
+                id = invoice.id,
+                totalAmount = invoice.totalAmount,
+                fromMonth = invoice.fromMonth,
+                toMonth = invoice.toMonth,
+                createdAt = invoice.createdAt,
+                status = invoice.status,
+                notes = invoice.notes?.trim()?.takeIf { it.isNotBlank() },
+                origin = invoice.origin,
+                ledgerEntries = ledgerEntryRepository.findByInvoiceId(invoice.id).map { entry ->
+                    WeeklySituationLedgerEntryDto(
+                        recordedMonth = entry.recordedMonth?.toString() ?: "",
+                        subscriptionServiceName = entry.subscriptionService?.name ?: "",
+                        notes = entry.notes,
+                        amount = entry.amount ?: BigDecimal.ZERO
+                    )
+                }
+            )
+        }
 }

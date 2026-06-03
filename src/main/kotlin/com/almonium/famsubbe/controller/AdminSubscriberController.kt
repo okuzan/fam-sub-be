@@ -137,13 +137,14 @@ class AdminSubscriberController(
             throw IllegalArgumentException("Subscriber has no email address")
         }
 
+        val unpaidInvoices = invoiceService.buildSituationEmailInvoices(details.unpaidInvoices)
         val success = invoiceEmailService.sendSituationEmail(
             toEmail = details.email,
             subscriberName = details.name,
             totalOwed = details.totalAmountOwed,
-            unpaidInvoicesCount = details.unpaidInvoices.size,
-            activeSubscriptionsCount = details.activeSubscriptions.size,
-            activeSubscriptionNames = details.activeSubscriptions.map { it.serviceName }
+            subscriberBalance = details.balance,
+            activeSubscriptions = details.activeSubscriptions,
+            unpaidInvoices = unpaidInvoices
         )
 
         return if (success) {

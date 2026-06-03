@@ -2,10 +2,7 @@ package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.WeeklySituationEmailItemResult
 import com.almonium.famsubbe.dto.WeeklySituationEmailResult
-import com.almonium.famsubbe.dto.WeeklySituationInvoiceDto
-import com.almonium.famsubbe.dto.WeeklySituationLedgerEntryDto
 import com.almonium.famsubbe.repository.InvoiceRepository
-import com.almonium.famsubbe.repository.LedgerEntryRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
@@ -16,7 +13,6 @@ import java.math.BigDecimal
 @Service
 class WeeklySituationEmailService(
     private val invoiceRepository: InvoiceRepository,
-    private val ledgerEntryRepository: LedgerEntryRepository,
     private val invoiceService: InvoiceService,
     private val invoiceEmailService: InvoiceEmailService,
     @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean
@@ -68,24 +64,7 @@ class WeeklySituationEmailService(
                     )
                 }
 
-                val unpaidInvoices = details.unpaidInvoices.map { invoice ->
-                    WeeklySituationInvoiceDto(
-                        id = invoice.id,
-                        totalAmount = invoice.totalAmount,
-                        fromMonth = invoice.fromMonth,
-                        toMonth = invoice.toMonth,
-                        createdAt = invoice.createdAt,
-                        status = invoice.status,
-                        ledgerEntries = ledgerEntryRepository.findByInvoiceId(invoice.id).map { entry ->
-                            WeeklySituationLedgerEntryDto(
-                                recordedMonth = entry.recordedMonth?.toString() ?: "",
-                                subscriptionServiceName = entry.subscriptionService?.name ?: "",
-                                notes = entry.notes,
-                                amount = entry.amount ?: BigDecimal.ZERO
-                            )
-                        }
-                    )
-                }
+                val unpaidInvoices = invoiceService.buildSituationEmailInvoices(details.unpaidInvoices)
 
                 val sent = invoiceEmailService.sendWeeklySituationEmail(
                     toEmail = email,

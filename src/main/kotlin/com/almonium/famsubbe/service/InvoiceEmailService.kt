@@ -12,9 +12,9 @@ interface InvoiceEmailService {
         toEmail: String,
         subscriberName: String,
         totalOwed: BigDecimal,
-        unpaidInvoicesCount: Int,
-        activeSubscriptionsCount: Int,
-        activeSubscriptionNames: List<String> = emptyList()
+        subscriberBalance: BigDecimal,
+        activeSubscriptions: List<ActiveSubscriptionDto>,
+        unpaidInvoices: List<WeeklySituationInvoiceDto>
     ): Boolean
 
     fun sendWeeklySituationEmail(

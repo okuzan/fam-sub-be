@@ -63,17 +63,19 @@ class DefaultInvoiceEmailService(
         toEmail: String,
         subscriberName: String,
         totalOwed: BigDecimal,
-        unpaidInvoicesCount: Int,
-        activeSubscriptionsCount: Int,
-        activeSubscriptionNames: List<String>
+        subscriberBalance: BigDecimal,
+        activeSubscriptions: List<ActiveSubscriptionDto>,
+        unpaidInvoices: List<WeeklySituationInvoiceDto>
     ): Boolean {
         return try {
             val context = Context()
             context.setVariable("name", subscriberName)
             context.setVariable("totalOwed", totalOwed)
-            context.setVariable("unpaidInvoicesCount", unpaidInvoicesCount)
-            context.setVariable("activeSubscriptionsCount", activeSubscriptionsCount)
-            context.setVariable("activeSubscriptionNames", activeSubscriptionNames)
+            context.setVariable("subscriberBalance", subscriberBalance)
+            context.setVariable("activeSubscriptions", activeSubscriptions)
+            context.setVariable("unpaidInvoices", unpaidInvoices)
+            context.setVariable("unpaidInvoicesCount", unpaidInvoices.size)
+            context.setVariable("activeSubscriptionsCount", activeSubscriptions.size)
             context.setVariable("paymentMethods", paymentProperties.methods)
 
             val htmlContent = templateEngine.process("situation-email", context)

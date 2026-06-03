@@ -11,8 +11,16 @@ data class WeeklySituationInvoiceDto(
     val toMonth: String,
     val createdAt: Instant,
     val status: String,
+    val notes: String?,
+    val origin: String,
     val ledgerEntries: List<WeeklySituationLedgerEntryDto>
-)
+) {
+    val originLabel: String
+        get() = origin
+            .lowercase()
+            .split("_")
+            .joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+}
 
 data class WeeklySituationLedgerEntryDto(
     val recordedMonth: String,

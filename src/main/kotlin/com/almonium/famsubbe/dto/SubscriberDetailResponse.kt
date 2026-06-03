@@ -29,5 +29,6 @@ data class UnpaidInvoiceDto(
     val toMonth: String,
     val createdAt: Instant,
     val status: String,
-    val notes: String?
+    val notes: String?,
+    val origin: String
 )
