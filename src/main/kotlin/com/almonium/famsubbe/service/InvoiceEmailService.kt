@@ -25,4 +25,13 @@ interface InvoiceEmailService {
         activeSubscriptions: List<ActiveSubscriptionDto>,
         unpaidInvoices: List<WeeklySituationInvoiceDto>
     ): Boolean
+
+    fun sendDebtPaidEmail(
+        toEmail: String,
+        subscriberName: String,
+        paidInvoicesCount: Int,
+        totalPaidAmount: BigDecimal,
+        balanceAfter: BigDecimal,
+        creditWrittenOff: BigDecimal
+    ): Boolean
 }

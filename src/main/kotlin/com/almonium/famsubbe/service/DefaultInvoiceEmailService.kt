@@ -115,6 +115,33 @@ class DefaultInvoiceEmailService(
         }
     }
 
+    override fun sendDebtPaidEmail(
+        toEmail: String,
+        subscriberName: String,
+        paidInvoicesCount: Int,
+        totalPaidAmount: BigDecimal,
+        balanceAfter: BigDecimal,
+        creditWrittenOff: BigDecimal
+    ): Boolean {
+        return try {
+            val context = Context()
+            context.setVariable("name", subscriberName)
+            context.setVariable("paidInvoicesCount", paidInvoicesCount)
+            context.setVariable("totalPaidAmount", totalPaidAmount)
+            context.setVariable("balanceAfter", balanceAfter)
+            context.setVariable("creditWrittenOff", creditWrittenOff)
+            context.setVariable("cabinetUrl", "$webDomain/subscriber/cabinet")
+
+            val htmlContent = templateEngine.process("debt-paid-email", context)
+            val subject = "Your Subscription Debt Has Been Paid"
+
+            sendEmail(toEmail, subscriberName, subject, htmlContent)
+        } catch (e: Exception) {
+            log.error("Failed to send debt paid email to {}", toEmail, e)
+            false
+        }
+    }
+
     private fun sendEmail(toEmail: String, toName: String?, subject: String, htmlContent: String): Boolean {
         if (appEmailProperties.dryRun) {
             log.info("Email sending is disabled. Skipping sending email to {}", toEmail)

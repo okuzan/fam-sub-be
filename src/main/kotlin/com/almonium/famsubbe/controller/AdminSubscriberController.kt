@@ -80,6 +80,24 @@ class AdminSubscriberController(
     ): ResponseEntity<SubscriberDebtPaymentResult> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val result = invoiceService.payOffSubscriberDebt(id, includeCredit)
+        val details = invoiceService.getSubscriberDetails(id)
+        val debtPaidEmailSent = if (result.paidCount > 0 && details.email.isNotBlank()) {
+            invoiceEmailService.sendDebtPaidEmail(
+                toEmail = details.email,
+                subscriberName = result.subscriberName,
+                paidInvoicesCount = result.paidCount,
+                totalPaidAmount = result.totalPaidAmount,
+                balanceAfter = result.balanceAfter,
+                creditWrittenOff = result.creditWrittenOff
+            )
+        } else {
+            false
+        }
+
+        if (result.paidCount > 0 && details.email.isNotBlank() && !debtPaidEmailSent) {
+            logger.warn("Failed to send debt paid email to subscriber {}", id)
+        }
+
         val creditSummary = if (result.creditWrittenOff > BigDecimal.ZERO) {
             " and wrote off credit ${result.creditWrittenOff}"
         } else {
@@ -100,6 +118,7 @@ class AdminSubscriberController(
                 "balanceBefore" to result.balanceBefore,
                 "balanceAfter" to result.balanceAfter,
                 "creditWrittenOff" to result.creditWrittenOff,
+                "debtPaidEmailSent" to debtPaidEmailSent,
                 "invoiceIds" to result.items.map { it.invoiceId }
             )
         )
