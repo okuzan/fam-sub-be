@@ -4,11 +4,11 @@ import com.almonium.famsubbe.dto.RunRecoveryPreviewResponse
 import com.almonium.famsubbe.dto.RunUndoResponse
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
-import com.almonium.famsubbe.entity.InvoiceOrigin
-import com.almonium.famsubbe.entity.InvoiceStatus
+import com.almonium.famsubbe.invoice.InvoiceOrigin
+import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.repository.CostCalculationBatchRepository
-import com.almonium.famsubbe.repository.InvoiceGenerationRunRepository
-import com.almonium.famsubbe.repository.InvoiceRepository
+import com.almonium.famsubbe.invoice.InvoiceGenerationRunRepository
+import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

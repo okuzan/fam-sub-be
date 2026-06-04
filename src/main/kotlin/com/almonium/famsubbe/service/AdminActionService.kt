@@ -2,16 +2,16 @@ package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.AdminActionResponse
 import com.almonium.famsubbe.dto.AdminActionFilterRequest
-import com.almonium.famsubbe.dto.InvoiceStatusHistoryResponse
+import com.almonium.famsubbe.invoice.InvoiceStatusHistoryResponse
 import com.almonium.famsubbe.entity.AdminAction
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
 import com.almonium.famsubbe.entity.CostCalculationBatch
-import com.almonium.famsubbe.entity.InvoiceGenerationRun
+import com.almonium.famsubbe.invoice.InvoiceGenerationRun
 import com.almonium.famsubbe.repository.AdminActionRepository
 import com.almonium.famsubbe.repository.CostCalculationBatchRepository
-import com.almonium.famsubbe.repository.InvoiceGenerationRunRepository
-import com.almonium.famsubbe.repository.InvoiceRepository
+import com.almonium.famsubbe.invoice.InvoiceGenerationRunRepository
+import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification

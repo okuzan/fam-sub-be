@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.dto
 
+import com.almonium.famsubbe.invoice.InvoiceLedgerEntryResponse
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.YearMonth

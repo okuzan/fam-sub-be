@@ -1,9 +1,9 @@
 package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.config.PaymentProperties
-import com.almonium.famsubbe.entity.InvoiceStatus
+import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.entity.Subscriber
-import com.almonium.famsubbe.repository.InvoiceRepository
+import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.repository.SubscriberRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value

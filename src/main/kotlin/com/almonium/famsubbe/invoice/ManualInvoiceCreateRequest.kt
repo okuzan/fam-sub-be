@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.invoice
 
 import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank

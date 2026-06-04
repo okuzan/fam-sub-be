@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.entity
 
+import com.almonium.famsubbe.invoice.Invoice
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType

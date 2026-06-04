@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.entity
+package com.almonium.famsubbe.invoice
 
 enum class InvoiceStatus {
     DRAFT,

@@ -1,8 +1,7 @@
-package com.almonium.famsubbe.service
+package com.almonium.famsubbe.invoice
 
 import com.almonium.famsubbe.dto.ActiveSubscriptionDto
 import com.almonium.famsubbe.dto.WeeklySituationInvoiceDto
-import com.almonium.famsubbe.entity.Invoice
 import com.almonium.famsubbe.entity.LedgerEntry
 import java.math.BigDecimal
 
