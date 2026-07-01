@@ -11,13 +11,14 @@ data class CostCalculationRequest(
 )
 
 data class CostCalculationResult(
-    val batchId: UUID,
+    val batchId: UUID?,
     val fromMonth: YearMonth,
     val toMonth: YearMonth,
     val createdAt: Instant,
     val createdByAccountId: UUID,
     val monthsProcessed: Int,
     val chargesProcessed: Int,
+    val chargesSkipped: Int,
     val ledgerEntriesCreated: Int,
     val items: List<CostCalculationItemResult>
 )

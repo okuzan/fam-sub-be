@@ -42,6 +42,7 @@ class AdminCostCalculationController(
             metadata = mapOf(
                 "monthsProcessed" to result.monthsProcessed,
                 "chargesProcessed" to result.chargesProcessed,
+                "chargesSkipped" to result.chargesSkipped,
                 "ledgerEntriesCreated" to result.ledgerEntriesCreated
             )
         )

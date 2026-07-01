@@ -9,10 +9,14 @@ import java.util.*
 
 @Repository
 interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
-    fun findByRecordedMonth(recordedMonth: YearMonth): List<LedgerEntry>
-    fun findBySubscriberId(subscriberId: UUID): List<LedgerEntry>
-
     fun existsByChargeId(chargeId: UUID): Boolean
+
+    @Query("""
+        select distinct le.charge.id
+        from LedgerEntry le
+        where le.charge.id in :chargeIds
+    """)
+    fun findRecordedChargeIds(chargeIds: Collection<UUID>): Set<UUID>
 
     @Query("""
         select le

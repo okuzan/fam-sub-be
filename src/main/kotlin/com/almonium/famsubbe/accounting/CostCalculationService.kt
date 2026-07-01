@@ -27,14 +27,37 @@ class CostCalculationService(
 
         val monthsToProcess = generateMonths(fromMonth, toMonth)
 
-        // load all charges once per month
-        val chargesByMonth = monthsToProcess.associateWith { month ->
-            chargeRepository.findByChargeMonth(month).also { charges ->
-                check(charges.isNotEmpty()) { "No charges found for $month" }
-            }
+        // Lock in chronological order so concurrent runs cannot calculate the same charge.
+        val allChargesByMonth = monthsToProcess.associateWith { month ->
+            chargeRepository.findByChargeMonthForUpdate(month)
+        }
+        val allCharges = allChargesByMonth.values.flatten()
+        val recordedChargeIds = if (allCharges.isEmpty()) {
+            emptySet()
+        } else {
+            ledgerEntryRepository.findRecordedChargeIds(allCharges.map { requireNotNull(it.id) })
+        }
+        val chargesByMonth = allChargesByMonth.mapValues { (_, charges) ->
+            charges.filter { requireNotNull(it.id) !in recordedChargeIds }
+        }
+        val chargesToProcess = chargesByMonth.values.flatten()
+        val calculatedAt = Instant.now()
+
+        if (chargesToProcess.isEmpty()) {
+            return CostCalculationResult(
+                batchId = null,
+                fromMonth = fromMonth,
+                toMonth = toMonth,
+                createdAt = calculatedAt,
+                createdByAccountId = performedByAccountId,
+                monthsProcessed = monthsToProcess.size,
+                chargesProcessed = 0,
+                chargesSkipped = allCharges.size,
+                ledgerEntriesCreated = 0,
+                items = emptyList()
+            )
         }
 
-        // validation + membership cache
         val membershipsCache = mutableMapOf<Pair<UUID, YearMonth>, List<Membership>>()
 
         for ((month, charges) in chargesByMonth) {
@@ -42,10 +65,6 @@ class CostCalculationService(
                 val chargeId = requireNotNull(charge.id) { "Charge id is null" }
                 val service = requireNotNull(charge.subscriptionService) { "Charge $chargeId has no service" }
                 val serviceId = requireNotNull(service.id) { "Service id is null for charge $chargeId" }
-
-                check(!ledgerEntryRepository.existsByChargeId(chargeId)) {
-                    "Charge $chargeId for $month already has ledger entries"
-                }
 
                 val memberships = membershipsCache.getOrPut(serviceId to month) {
                     membershipRepository.findActiveByServiceAndMonth(serviceId, month)
@@ -56,8 +75,6 @@ class CostCalculationService(
                 }
             }
         }
-
-        val calculatedAt = Instant.now()
 
         val savedBatch = costCalculationBatchRepository.save(
             CostCalculationBatch().apply {
@@ -132,6 +149,7 @@ class CostCalculationService(
             createdByAccountId = performedByAccountId,
             monthsProcessed = monthsToProcess.size,
             chargesProcessed = totalChargesProcessed,
+            chargesSkipped = recordedChargeIds.size,
             ledgerEntriesCreated = totalEntriesCreated,
             items = items
         )
