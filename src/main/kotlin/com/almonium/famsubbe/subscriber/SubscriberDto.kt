@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.subscriber
 
 import jakarta.validation.constraints.DecimalMin
 import java.math.BigDecimal

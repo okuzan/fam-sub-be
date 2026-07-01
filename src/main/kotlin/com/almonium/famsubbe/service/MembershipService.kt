@@ -6,7 +6,7 @@ import com.almonium.famsubbe.dto.MembershipResponse
 import com.almonium.famsubbe.dto.MembershipUpdateRequest
 import com.almonium.famsubbe.entity.Membership
 import com.almonium.famsubbe.repository.MembershipRepository
-import com.almonium.famsubbe.repository.SubscriberRepository
+import com.almonium.famsubbe.subscriber.SubscriberRepository
 import com.almonium.famsubbe.repository.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

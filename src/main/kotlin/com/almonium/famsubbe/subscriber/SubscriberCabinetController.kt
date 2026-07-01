@@ -1,10 +1,6 @@
-package com.almonium.famsubbe.controller
+package com.almonium.famsubbe.subscriber
 
-import com.almonium.famsubbe.dto.SubscriberCabinetResponse
-import com.almonium.famsubbe.dto.SubscriberInvoiceDetailResponse
-import com.almonium.famsubbe.dto.SubscriberInvoiceSummaryResponse
 import com.almonium.famsubbe.service.AccountService
-import com.almonium.famsubbe.service.SubscriberCabinetService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication

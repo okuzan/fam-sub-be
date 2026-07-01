@@ -1,17 +1,17 @@
 package com.almonium.famsubbe.invoice
 
-import com.almonium.famsubbe.dto.ActiveSubscriptionDto
-import com.almonium.famsubbe.dto.SubscriberDetailResponse
-import com.almonium.famsubbe.dto.SubscriberDebtPaymentItemResult
-import com.almonium.famsubbe.dto.SubscriberDebtPaymentResult
-import com.almonium.famsubbe.dto.UnpaidInvoiceDto
+import com.almonium.famsubbe.subscriber.ActiveSubscriptionDto
+import com.almonium.famsubbe.subscriber.SubscriberDetailResponse
+import com.almonium.famsubbe.subscriber.SubscriberDebtPaymentItemResult
+import com.almonium.famsubbe.subscriber.SubscriberDebtPaymentResult
+import com.almonium.famsubbe.subscriber.UnpaidInvoiceDto
 import com.almonium.famsubbe.dto.WeeklySituationInvoiceDto
 import com.almonium.famsubbe.dto.WeeklySituationLedgerEntryDto
 import com.almonium.famsubbe.entity.LedgerEntry
-import com.almonium.famsubbe.entity.Subscriber
+import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.MembershipRepository
-import com.almonium.famsubbe.repository.SubscriberRepository
+import com.almonium.famsubbe.subscriber.SubscriberRepository
 import com.itextpdf.kernel.font.PdfFont
 import com.itextpdf.kernel.font.PdfFontFactory
 import com.itextpdf.kernel.pdf.PdfDocument

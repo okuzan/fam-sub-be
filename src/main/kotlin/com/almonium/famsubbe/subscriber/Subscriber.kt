@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.entity
+package com.almonium.famsubbe.subscriber
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

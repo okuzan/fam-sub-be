@@ -1,6 +1,6 @@
 package com.almonium.famsubbe.invoice
 
-import com.almonium.famsubbe.entity.Subscriber
+import com.almonium.famsubbe.subscriber.Subscriber
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType

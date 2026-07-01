@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.subscriber
 
 import com.almonium.famsubbe.invoice.InvoiceLedgerEntryResponse
 import java.math.BigDecimal

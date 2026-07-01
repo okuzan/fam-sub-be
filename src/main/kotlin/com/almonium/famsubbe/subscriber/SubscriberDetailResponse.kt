@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.subscriber
 
 import java.math.BigDecimal
 import java.time.Instant

@@ -1,6 +1,6 @@
 package com.almonium.famsubbe.invoice
 
-import com.almonium.famsubbe.entity.Subscriber
+import com.almonium.famsubbe.subscriber.Subscriber
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Query

@@ -1,6 +1,5 @@
-package com.almonium.famsubbe.repository
+package com.almonium.famsubbe.subscriber
 
-import com.almonium.famsubbe.entity.Subscriber
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 import java.util.*

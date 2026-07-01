@@ -1,19 +1,12 @@
-package com.almonium.famsubbe.service
+package com.almonium.famsubbe.subscriber
 
-import com.almonium.famsubbe.dto.ActiveSubscriptionDto
 import com.almonium.famsubbe.invoice.InvoiceLedgerEntryResponse
-import com.almonium.famsubbe.dto.SubscriberCabinetProfileResponse
-import com.almonium.famsubbe.dto.SubscriberCabinetResponse
-import com.almonium.famsubbe.dto.SubscriberInvoiceDetailResponse
-import com.almonium.famsubbe.dto.SubscriberInvoiceSummaryResponse
 import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.entity.LedgerEntry
-import com.almonium.famsubbe.entity.Subscriber
 import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.repository.MembershipRepository
-import com.almonium.famsubbe.repository.SubscriberRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

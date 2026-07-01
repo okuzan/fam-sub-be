@@ -4,7 +4,7 @@ import com.almonium.famsubbe.dto.AccountResponse
 import com.almonium.famsubbe.entity.Account
 import com.almonium.famsubbe.entity.Role
 import com.almonium.famsubbe.repository.AccountRepository
-import com.almonium.famsubbe.repository.SubscriberRepository
+import com.almonium.famsubbe.subscriber.SubscriberRepository
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
