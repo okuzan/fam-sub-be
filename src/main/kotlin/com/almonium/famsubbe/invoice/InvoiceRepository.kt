@@ -29,6 +29,15 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
     
     fun findBySubscriberAndStatusIn(subscriber: Subscriber, statuses: Collection<InvoiceStatus>): List<Invoice>
 
+    @Query("""
+        select i
+        from Invoice i
+        join fetch i.subscriber
+        where i.status in :statuses
+        order by i.createdAt asc
+    """)
+    fun findByStatusInWithSubscriber(statuses: Collection<InvoiceStatus>): List<Invoice>
+
     fun findByInvoiceGenerationRunId(invoiceGenerationRunId: UUID): List<Invoice>
 
     fun findByStatusOrderByCreatedAtAsc(status: InvoiceStatus): List<Invoice>
