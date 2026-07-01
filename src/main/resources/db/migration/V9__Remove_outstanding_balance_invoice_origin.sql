@@ -1,0 +1,3 @@
+UPDATE invoice
+SET origin = 'MANUAL'
+WHERE origin = 'OUTSTANDING_BALANCE';

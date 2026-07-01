@@ -192,7 +192,6 @@ class DefaultInvoiceEmailService(
 internal fun buildInvoiceEmailSubject(invoice: Invoice): String {
     val amount = requireNotNull(invoice.totalAmount).setScale(2).toPlainString()
     val detail = when (invoice.origin) {
-        InvoiceOrigin.OUTSTANDING_BALANCE -> "Outstanding balance"
         InvoiceOrigin.MANUAL -> invoice.notes
             ?.replace(Regex("\\s+"), " ")
             ?.trim()

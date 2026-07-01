@@ -658,7 +658,7 @@ class InvoiceService(
         return totalUnpaidAmount - (subscriber.balance ?: BigDecimal.ZERO)
     }
 
-    fun deleteInvoice(invoiceId: UUID, addToBalance: Boolean = true): String {
+    fun deleteInvoice(invoiceId: UUID): String {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
 
@@ -666,24 +666,13 @@ class InvoiceService(
             "Only DRAFT invoices can be deleted"
         }
 
-        check(invoice.origin == InvoiceOrigin.OUTSTANDING_BALANCE || invoice.origin == InvoiceOrigin.MANUAL) {
-            "Only outstanding balance and manual invoices can be deleted"
-        }
-
-        if (invoice.origin == InvoiceOrigin.OUTSTANDING_BALANCE && addToBalance) {
-            val subscriber = requireNotNull(invoice.subscriber)
-            val invoiceAmount = requireNotNull(invoice.totalAmount)
-            subscriber.balance = subscriber.balance?.subtract(invoiceAmount) ?: invoiceAmount.negate()
-            subscriberRepository.save(subscriber)
+        check(invoice.origin == InvoiceOrigin.MANUAL) {
+            "Only manual invoices can be deleted"
         }
 
         invoiceRepository.delete(invoice)
 
-        return when {
-            invoice.origin == InvoiceOrigin.MANUAL -> "Invoice deleted"
-            addToBalance -> "Invoice deleted and balance restored to subscriber"
-            else -> "Invoice deleted without balance adjustment"
-        }
+        return "Invoice deleted"
     }
 
     @Transactional(readOnly = true)

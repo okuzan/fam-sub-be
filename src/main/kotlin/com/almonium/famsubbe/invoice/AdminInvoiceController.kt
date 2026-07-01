@@ -315,12 +315,11 @@ class AdminInvoiceController(
     @DeleteMapping("/{invoiceId}")
     fun deleteInvoice(
         @PathVariable invoiceId: UUID,
-        @RequestParam(required = false, defaultValue = "true") addToBalance: Boolean,
         authentication: Authentication
     ): ResponseEntity<Map<String, String>> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val invoice = invoiceService.getInvoice(invoiceId).invoice
-        val message = invoiceService.deleteInvoice(invoiceId, addToBalance)
+        val message = invoiceService.deleteInvoice(invoiceId)
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.INVOICE_DELETED,
@@ -333,8 +332,7 @@ class AdminInvoiceController(
             metadata = mapOf(
                 "origin" to invoice.origin,
                 "status" to invoice.status,
-                "totalAmount" to invoice.totalAmount,
-                "addToBalance" to addToBalance
+                "totalAmount" to invoice.totalAmount
             )
         )
         return ResponseEntity.ok(mapOf("message" to message))

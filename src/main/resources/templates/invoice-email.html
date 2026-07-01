@@ -35,7 +35,6 @@
 </head>
 <body>
     <div th:class="${invoice.status.name() == 'PAID'} ? 'header paid' : (${invoice.status.name() == 'VOID'} ? 'header void' : 'header unpaid')">
-        <h2 th:if="${origin.name() == 'OUTSTANDING_BALANCE'}">Outstanding Balance Invoice</h2>
         <h2 th:if="${origin.name() == 'MANUAL'}">New Invoice</h2>
         <h2 th:if="${origin.name() == 'SUBSCRIPTION_LEDGER'}">Subscription Invoice for <span th:text="${invoicePeriod}"></span></h2>
         <div th:if="${invoice.status.name() == 'PAID'}" class="status-badge status-paid">PAID</div>
@@ -53,7 +52,6 @@
         </div>
 
         <p th:if="${invoice.status.name() == 'VOID'}">This invoice has been voided and should not be paid.</p>
-        <p th:if="${origin.name() == 'OUTSTANDING_BALANCE' && invoice.status.name() != 'VOID'}">This invoice represents your outstanding balance that has been carried forward from previous periods.</p>
         <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">Please find the details of your one-off invoice below.</p>
         <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() == 'PAID'}">Below is your paid one-off invoice for your records.</p>
         <p th:if="${origin.name() == 'SUBSCRIPTION_LEDGER' && invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">Please find the details of your recent invoice below.</p>
