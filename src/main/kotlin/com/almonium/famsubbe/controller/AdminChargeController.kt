@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.controller
 
 import com.almonium.famsubbe.dto.ChargeCreateRequest
+import com.almonium.famsubbe.dto.ChargePageResponse
 import com.almonium.famsubbe.dto.ChargeResponse
 import com.almonium.famsubbe.dto.ChargeUpdateRequest
 import com.almonium.famsubbe.entity.AdminActionTargetType
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.YearMonth
 import java.util.*
@@ -83,8 +85,14 @@ class AdminChargeController(
     }
 
     @GetMapping("/service/{serviceId}")
-    fun getChargesByService(@PathVariable serviceId: UUID): ResponseEntity<List<ChargeResponse>> {
-        val charges = chargeService.getChargesByService(serviceId)
+    fun getChargesByService(
+        @PathVariable serviceId: UUID,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "6") size: Int
+    ): ResponseEntity<ChargePageResponse> {
+        require(page >= 0) { "Page must not be negative" }
+        require(size in 1..50) { "Page size must be between 1 and 50" }
+        val charges = chargeService.getChargesByService(serviceId, page, size)
         return ResponseEntity.ok(charges)
     }
 

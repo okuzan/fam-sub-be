@@ -26,3 +26,11 @@ data class ChargeResponse(
     val description: String?,
     val createdAt: Instant
 )
+
+data class ChargePageResponse(
+    val content: List<ChargeResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int
+)

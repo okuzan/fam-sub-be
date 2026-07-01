@@ -2,6 +2,8 @@ package com.almonium.famsubbe.repository
 
 import com.almonium.famsubbe.entity.Charge
 import com.almonium.famsubbe.subscription.SubscriptionService
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 import java.time.YearMonth
@@ -14,7 +16,10 @@ interface ChargeRepository : JpaRepository<Charge, UUID> {
         chargeMonth: YearMonth
     ): Charge?
     
-    fun findBySubscriptionService(subscriptionService: SubscriptionService): List<Charge>
+    fun findBySubscriptionServiceOrderByChargeMonthDescCreatedAtDescIdDesc(
+        subscriptionService: SubscriptionService,
+        pageable: Pageable
+    ): Page<Charge>
 
     fun findByChargeMonth(chargeMonth: YearMonth): List<Charge>
 }

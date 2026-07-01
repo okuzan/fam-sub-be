@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.service
 
 import com.almonium.famsubbe.dto.ChargeCreateRequest
+import com.almonium.famsubbe.dto.ChargePageResponse
 import com.almonium.famsubbe.dto.ChargeResponse
 import com.almonium.famsubbe.dto.ChargeUpdateRequest
 import com.almonium.famsubbe.entity.Charge
@@ -8,6 +9,7 @@ import com.almonium.famsubbe.repository.ChargeRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.subscription.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
+import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 import java.time.YearMonth
 import java.util.*
@@ -68,11 +70,21 @@ class ChargeService(
         return mapToResponse(charge)
     }
 
-    fun getChargesByService(subscriptionServiceId: UUID): List<ChargeResponse> {
+    fun getChargesByService(subscriptionServiceId: UUID, page: Int, size: Int): ChargePageResponse {
         val subscriptionService = subscriptionServiceRepository.findById(subscriptionServiceId)
             .orElseThrow { IllegalArgumentException("Subscription service not found: $subscriptionServiceId") }
 
-        return chargeRepository.findBySubscriptionService(subscriptionService).map { mapToResponse(it) }
+        val charges = chargeRepository.findBySubscriptionServiceOrderByChargeMonthDescCreatedAtDescIdDesc(
+            subscriptionService,
+            PageRequest.of(page, size)
+        )
+        return ChargePageResponse(
+            content = charges.content.map(::mapToResponse),
+            page = charges.number,
+            size = charges.size,
+            totalElements = charges.totalElements,
+            totalPages = charges.totalPages
+        )
     }
 
     fun getChargesByMonth(chargeMonth: YearMonth): List<ChargeResponse> {
