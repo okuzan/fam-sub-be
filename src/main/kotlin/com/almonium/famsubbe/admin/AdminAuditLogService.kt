@@ -1,9 +1,5 @@
-package com.almonium.famsubbe.service
+package com.almonium.famsubbe.admin
 
-import com.almonium.famsubbe.entity.AdminAction
-import com.almonium.famsubbe.entity.AdminActionTargetType
-import com.almonium.famsubbe.entity.AdminActionType
-import com.almonium.famsubbe.repository.AdminActionRepository
 import tools.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

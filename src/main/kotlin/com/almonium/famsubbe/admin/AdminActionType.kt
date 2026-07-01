@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.entity
+package com.almonium.famsubbe.admin
 
 enum class AdminActionType {
     COST_CALCULATION_RUN,

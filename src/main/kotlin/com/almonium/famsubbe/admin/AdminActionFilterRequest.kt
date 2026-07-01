@@ -1,7 +1,5 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.admin
 
-import com.almonium.famsubbe.entity.AdminActionTargetType
-import com.almonium.famsubbe.entity.AdminActionType
 import java.time.Instant
 import java.time.YearMonth
 import java.util.*

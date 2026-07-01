@@ -1,9 +1,9 @@
 package com.almonium.famsubbe.subscriber
 
-import com.almonium.famsubbe.entity.AdminActionTargetType
-import com.almonium.famsubbe.entity.AdminActionType
+import com.almonium.famsubbe.admin.AdminActionTargetType
+import com.almonium.famsubbe.admin.AdminActionType
+import com.almonium.famsubbe.admin.AdminAuditLogService
 import com.almonium.famsubbe.account.AccountService
-import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.invoice.InvoiceEmailService
 import com.almonium.famsubbe.invoice.InvoiceService
 import com.almonium.famsubbe.service.PinnedPostService

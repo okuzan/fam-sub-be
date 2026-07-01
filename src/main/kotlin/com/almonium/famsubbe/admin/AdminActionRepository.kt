@@ -1,8 +1,5 @@
-package com.almonium.famsubbe.repository
+package com.almonium.famsubbe.admin
 
-import com.almonium.famsubbe.entity.AdminAction
-import com.almonium.famsubbe.entity.AdminActionTargetType
-import com.almonium.famsubbe.entity.AdminActionType
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.stereotype.Repository

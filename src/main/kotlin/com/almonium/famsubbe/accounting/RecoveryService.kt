@@ -1,12 +1,12 @@
 package com.almonium.famsubbe.accounting
 
-import com.almonium.famsubbe.entity.AdminActionTargetType
-import com.almonium.famsubbe.entity.AdminActionType
+import com.almonium.famsubbe.admin.AdminActionTargetType
+import com.almonium.famsubbe.admin.AdminActionType
+import com.almonium.famsubbe.admin.AdminAuditLogService
 import com.almonium.famsubbe.invoice.InvoiceOrigin
 import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.invoice.InvoiceGenerationRunRepository
 import com.almonium.famsubbe.invoice.InvoiceRepository
-import com.almonium.famsubbe.service.AdminAuditLogService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant

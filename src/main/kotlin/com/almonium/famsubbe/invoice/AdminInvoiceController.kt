@@ -1,10 +1,10 @@
 package com.almonium.famsubbe.invoice
 
-import com.almonium.famsubbe.entity.AdminActionTargetType
-import com.almonium.famsubbe.entity.AdminActionType
+import com.almonium.famsubbe.admin.AdminActionService
+import com.almonium.famsubbe.admin.AdminActionTargetType
+import com.almonium.famsubbe.admin.AdminActionType
+import com.almonium.famsubbe.admin.AdminAuditLogService
 import com.almonium.famsubbe.account.AccountService
-import com.almonium.famsubbe.service.AdminActionService
-import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.springframework.core.io.ByteArrayResource

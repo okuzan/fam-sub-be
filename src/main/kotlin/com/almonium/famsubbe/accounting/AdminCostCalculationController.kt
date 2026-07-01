@@ -1,9 +1,9 @@
 package com.almonium.famsubbe.accounting
 
-import com.almonium.famsubbe.entity.AdminActionTargetType
-import com.almonium.famsubbe.entity.AdminActionType
+import com.almonium.famsubbe.admin.AdminActionTargetType
+import com.almonium.famsubbe.admin.AdminActionType
+import com.almonium.famsubbe.admin.AdminAuditLogService
 import com.almonium.famsubbe.account.AccountService
-import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication

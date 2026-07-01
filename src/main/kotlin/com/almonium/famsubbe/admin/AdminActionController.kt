@@ -1,10 +1,5 @@
-package com.almonium.famsubbe.controller
+package com.almonium.famsubbe.admin
 
-import com.almonium.famsubbe.dto.AdminActionFilterRequest
-import com.almonium.famsubbe.dto.AdminActionResponse
-import com.almonium.famsubbe.entity.AdminActionTargetType
-import com.almonium.famsubbe.entity.AdminActionType
-import com.almonium.famsubbe.service.AdminActionService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
