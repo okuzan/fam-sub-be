@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.subscription
 
 import java.time.Instant
 import java.time.YearMonth

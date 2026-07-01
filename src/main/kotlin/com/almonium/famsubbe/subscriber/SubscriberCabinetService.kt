@@ -6,7 +6,7 @@ import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
-import com.almonium.famsubbe.repository.MembershipRepository
+import com.almonium.famsubbe.subscription.MembershipRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

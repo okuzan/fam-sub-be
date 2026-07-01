@@ -6,7 +6,7 @@ import com.almonium.famsubbe.dto.ChargeUpdateRequest
 import com.almonium.famsubbe.entity.Charge
 import com.almonium.famsubbe.repository.ChargeRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
-import com.almonium.famsubbe.repository.SubscriptionServiceRepository
+import com.almonium.famsubbe.subscription.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.YearMonth

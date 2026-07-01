@@ -8,7 +8,8 @@ import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.repository.ChargeRepository
 import com.almonium.famsubbe.repository.CostCalculationBatchRepository
 import com.almonium.famsubbe.repository.LedgerEntryRepository
-import com.almonium.famsubbe.repository.MembershipRepository
+import com.almonium.famsubbe.subscription.Membership
+import com.almonium.famsubbe.subscription.MembershipRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -42,7 +43,7 @@ class CostCalculationService(
         }
 
         // validation + membership cache
-        val membershipsCache = mutableMapOf<Pair<UUID, YearMonth>, List<com.almonium.famsubbe.entity.Membership>>()
+        val membershipsCache = mutableMapOf<Pair<UUID, YearMonth>, List<Membership>>()
 
         for ((month, charges) in chargesByMonth) {
             for (charge in charges) {

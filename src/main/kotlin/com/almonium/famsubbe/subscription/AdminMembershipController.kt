@@ -1,14 +1,9 @@
-package com.almonium.famsubbe.controller
+package com.almonium.famsubbe.subscription
 
-import com.almonium.famsubbe.dto.MembershipCreateRequest
-import com.almonium.famsubbe.dto.MembershipEndRequest
-import com.almonium.famsubbe.dto.MembershipResponse
-import com.almonium.famsubbe.dto.MembershipUpdateRequest
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
 import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.service.AdminAuditLogService
-import com.almonium.famsubbe.service.MembershipService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus

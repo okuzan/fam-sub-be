@@ -1,13 +1,6 @@
-package com.almonium.famsubbe.service
+package com.almonium.famsubbe.subscription
 
-import com.almonium.famsubbe.dto.MembershipCreateRequest
-import com.almonium.famsubbe.dto.MembershipEndRequest
-import com.almonium.famsubbe.dto.MembershipResponse
-import com.almonium.famsubbe.dto.MembershipUpdateRequest
-import com.almonium.famsubbe.entity.Membership
-import com.almonium.famsubbe.repository.MembershipRepository
 import com.almonium.famsubbe.subscriber.SubscriberRepository
-import com.almonium.famsubbe.repository.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.YearMonth

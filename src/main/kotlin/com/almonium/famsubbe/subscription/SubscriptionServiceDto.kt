@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.subscription
 
 import java.math.BigDecimal
 import java.util.*

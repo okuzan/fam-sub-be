@@ -1,10 +1,5 @@
-package com.almonium.famsubbe.service
+package com.almonium.famsubbe.subscription
 
-import com.almonium.famsubbe.dto.SubscriptionServiceCreateRequest
-import com.almonium.famsubbe.dto.SubscriptionServiceResponse
-import com.almonium.famsubbe.dto.SubscriptionServiceUpdateRequest
-import com.almonium.famsubbe.entity.SubscriptionService
-import com.almonium.famsubbe.repository.SubscriptionServiceRepository
 import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service

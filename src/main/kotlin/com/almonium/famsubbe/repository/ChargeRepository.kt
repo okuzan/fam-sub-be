@@ -1,7 +1,7 @@
 package com.almonium.famsubbe.repository
 
 import com.almonium.famsubbe.entity.Charge
-import com.almonium.famsubbe.entity.SubscriptionService
+import com.almonium.famsubbe.subscription.SubscriptionService
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 import java.time.YearMonth

@@ -10,8 +10,8 @@ import com.almonium.famsubbe.dto.WeeklySituationLedgerEntryDto
 import com.almonium.famsubbe.entity.LedgerEntry
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.repository.LedgerEntryRepository
-import com.almonium.famsubbe.repository.MembershipRepository
 import com.almonium.famsubbe.subscriber.SubscriberRepository
+import com.almonium.famsubbe.subscription.MembershipRepository
 import com.itextpdf.kernel.font.PdfFont
 import com.itextpdf.kernel.font.PdfFontFactory
 import com.itextpdf.kernel.pdf.PdfDocument
