@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.service
+package com.almonium.famsubbe.reporting
 
 import com.almonium.famsubbe.config.PaymentProperties
 import com.almonium.famsubbe.invoice.InvoiceStatus

@@ -1,7 +1,7 @@
 package com.almonium.famsubbe.invoice
 
 import com.almonium.famsubbe.subscriber.ActiveSubscriptionDto
-import com.almonium.famsubbe.dto.WeeklySituationInvoiceDto
+import com.almonium.famsubbe.reporting.WeeklySituationInvoiceDto
 import com.almonium.famsubbe.accounting.LedgerEntry
 import java.math.BigDecimal
 

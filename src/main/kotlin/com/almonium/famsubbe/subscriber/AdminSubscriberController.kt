@@ -6,7 +6,7 @@ import com.almonium.famsubbe.admin.AdminAuditLogService
 import com.almonium.famsubbe.account.AccountService
 import com.almonium.famsubbe.invoice.InvoiceEmailService
 import com.almonium.famsubbe.invoice.InvoiceService
-import com.almonium.famsubbe.service.PinnedPostService
+import com.almonium.famsubbe.reporting.PinnedPostService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory

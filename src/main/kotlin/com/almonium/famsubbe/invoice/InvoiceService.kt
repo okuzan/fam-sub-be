@@ -5,8 +5,8 @@ import com.almonium.famsubbe.subscriber.SubscriberDetailResponse
 import com.almonium.famsubbe.subscriber.SubscriberDebtPaymentItemResult
 import com.almonium.famsubbe.subscriber.SubscriberDebtPaymentResult
 import com.almonium.famsubbe.subscriber.UnpaidInvoiceDto
-import com.almonium.famsubbe.dto.WeeklySituationInvoiceDto
-import com.almonium.famsubbe.dto.WeeklySituationLedgerEntryDto
+import com.almonium.famsubbe.reporting.WeeklySituationInvoiceDto
+import com.almonium.famsubbe.reporting.WeeklySituationLedgerEntryDto
 import com.almonium.famsubbe.accounting.LedgerEntry
 import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.subscriber.Subscriber
