@@ -175,6 +175,7 @@ class AdminInvoiceController(
             toMonth = invoice.toMonth,
             summary = "Created manual invoice for ${invoice.subscriberName}",
             metadata = mapOf(
+                "invoiceDate" to invoice.invoiceDate,
                 "totalAmount" to invoice.totalAmount,
                 "sendEmail" to request.sendEmail
             )
@@ -201,6 +202,7 @@ class AdminInvoiceController(
             summary = "Duplicated invoice $invoiceId for ${invoice.subscriberName}",
             metadata = mapOf(
                 "sourceInvoiceId" to invoiceId,
+                "invoiceDate" to invoice.invoiceDate,
                 "totalAmount" to invoice.totalAmount,
                 "sendEmail" to request.sendEmail
             )

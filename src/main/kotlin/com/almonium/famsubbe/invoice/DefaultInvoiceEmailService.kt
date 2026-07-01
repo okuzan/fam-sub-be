@@ -15,6 +15,7 @@ import org.springframework.web.client.RestClient
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -196,13 +197,17 @@ internal fun buildInvoiceEmailSubject(invoice: Invoice): String {
             ?.replace(Regex("\\s+"), " ")
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
-            ?: "Manual charge"
+            ?.let { "$it — ${formatInvoiceDate(requireNotNull(invoice.invoiceDate))}" }
+            ?: "Manual charge — ${formatInvoiceDate(requireNotNull(invoice.invoiceDate))}"
         InvoiceOrigin.SUBSCRIPTION_LEDGER ->
             "Subscriptions, ${formatInvoicePeriod(invoice.fromMonth, invoice.toMonth)}"
     }
 
     return "New Invoice: ₴$amount — $detail"
 }
+
+internal fun formatInvoiceDate(invoiceDate: LocalDate): String =
+    invoiceDate.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH))
 
 internal fun formatInvoicePeriod(fromMonth: YearMonth?, toMonth: YearMonth?): String {
     val from = requireNotNull(fromMonth)

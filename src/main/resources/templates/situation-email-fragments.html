@@ -56,6 +56,7 @@
                 Invoice <span th:text="${invoice.id}">id</span>
                 <span th:text="${'(' + invoice.status + ')'}">(SENT)</span>
             </div>
+            <div>Invoice date: <span th:text="${#temporals.format(invoice.invoiceDate, 'MMM dd, yyyy')}">Jul 01, 2026</span></div>
             <div>
                 Period:
                 <span th:text="${invoice.fromMonth}">2026-01</span>

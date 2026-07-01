@@ -2,6 +2,7 @@ package com.almonium.famsubbe.reporting
 
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 data class WeeklySituationInvoiceDto(
@@ -9,6 +10,7 @@ data class WeeklySituationInvoiceDto(
     val totalAmount: BigDecimal,
     val fromMonth: String,
     val toMonth: String,
+    val invoiceDate: LocalDate,
     val createdAt: Instant,
     val status: String,
     val notes: String?,

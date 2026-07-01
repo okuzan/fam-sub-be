@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.util.*
 
@@ -26,6 +27,7 @@ import java.util.*
         Index(name = "idx_invoice_status", columnList = "status"),
         Index(name = "idx_invoice_from_month", columnList = "from_month"),
         Index(name = "idx_invoice_to_month", columnList = "to_month"),
+        Index(name = "idx_invoice_invoice_date", columnList = "invoice_date"),
         Index(name = "idx_invoice_created_at", columnList = "created_at"),
         Index(name = "idx_invoice_generation_run", columnList = "invoice_generation_run_id")
     ]
@@ -44,6 +46,9 @@ class Invoice {
 
     @Column(name = "to_month", nullable = false, updatable = false)
     var toMonth: YearMonth? = null
+
+    @Column(name = "invoice_date", nullable = false, updatable = false)
+    var invoiceDate: LocalDate? = null
 
     @Column(name = "total_amount", nullable = false, precision = 19, scale = 2)
     var totalAmount: BigDecimal? = null

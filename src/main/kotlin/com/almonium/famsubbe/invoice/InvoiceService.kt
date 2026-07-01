@@ -28,6 +28,7 @@ import java.io.ByteArrayOutputStream
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.YearMonth
+import java.time.ZoneId
 import java.util.*
 
 @Service
@@ -41,6 +42,8 @@ class InvoiceService(
     private val invoiceEmailService: InvoiceEmailService,
     @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean
 ) {
+    private val invoiceZone = ZoneId.of("Europe/Kyiv")
+
     fun generateInvoices(
         request: InvoiceGenerationRequest,
         performedByAccountId: UUID
@@ -63,6 +66,7 @@ class InvoiceService(
         check(entries.isNotEmpty()) { "No uninvoiced ledger entries found in the selected period" }
 
         val now = Instant.now()
+        val invoiceDate = now.atZone(invoiceZone).toLocalDate()
         val generationRun = invoiceGenerationRunRepository.save(
             InvoiceGenerationRun().apply {
                 this.fromMonth = request.fromMonth
@@ -91,6 +95,7 @@ class InvoiceService(
                     this.subscriber = subscriber
                     this.fromMonth = request.fromMonth
                     this.toMonth = request.toMonth
+                    this.invoiceDate = invoiceDate
                     this.totalAmount = invoiceTotal
                     this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                     this.createdAt = now
@@ -182,6 +187,7 @@ class InvoiceService(
             subscriberName = requireNotNull(subscriber?.name),
             fromMonth = requireNotNull(fromMonth),
             toMonth = requireNotNull(toMonth),
+            invoiceDate = requireNotNull(invoiceDate),
             totalAmount = requireNotNull(totalAmount),
             status = status.name,
             createdAt = requireNotNull(createdAt),
@@ -251,6 +257,7 @@ class InvoiceService(
 
         document.add(Paragraph("Invoice #${invoice.id}").setFont(font))
         document.add(Paragraph("Subscriber: ${invoice.subscriber?.name ?: ""}").setFont(font))
+        document.add(Paragraph("Invoice date: ${invoice.invoiceDate}").setFont(font))
         document.add(Paragraph("Period: ${invoice.fromMonth} - ${invoice.toMonth}").setFont(font))
         document.add(Paragraph("Origin: ${invoice.origin.name}").setFont(font))
         document.add(Paragraph("Total: ₴${invoice.totalAmount}").setFont(font))
@@ -283,12 +290,14 @@ class InvoiceService(
             .orElseThrow { IllegalArgumentException("Subscriber not found: ${request.subscriberId}") }
 
         val now = Instant.now()
+        val invoiceMonth = YearMonth.from(request.invoiceDate)
         val invoice = invoiceRepository.save(
             Invoice().apply {
                 val autoPaid = subscriber.autoPayInvoices
                 this.subscriber = subscriber
-                this.fromMonth = request.invoiceMonth
-                this.toMonth = request.invoiceMonth
+                this.fromMonth = invoiceMonth
+                this.toMonth = invoiceMonth
+                this.invoiceDate = request.invoiceDate
                 this.totalAmount = request.amount
                 this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                 this.createdAt = now
@@ -322,12 +331,15 @@ class InvoiceService(
             .orElseThrow { IllegalArgumentException("Subscriber not found: ${request.subscriberId}") }
 
         val now = Instant.now()
+        val invoiceDate = request.invoiceDate ?: now.atZone(invoiceZone).toLocalDate()
+        val invoiceMonth = YearMonth.from(invoiceDate)
         val invoice = invoiceRepository.save(
             Invoice().apply {
                 val autoPaid = subscriber.autoPayInvoices
                 this.subscriber = subscriber
-                this.fromMonth = requireNotNull(source.fromMonth)
-                this.toMonth = requireNotNull(source.toMonth)
+                this.fromMonth = invoiceMonth
+                this.toMonth = invoiceMonth
+                this.invoiceDate = invoiceDate
                 this.totalAmount = request.amount ?: requireNotNull(source.totalAmount)
                 this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                 this.createdAt = now
@@ -516,6 +528,14 @@ class InvoiceService(
                 predicates += cb.lessThanOrEqualTo(root.get("createdAt"), it)
             }
 
+            filter.invoiceDateFrom?.let {
+                predicates += cb.greaterThanOrEqualTo(root.get("invoiceDate"), it)
+            }
+
+            filter.invoiceDateTo?.let {
+                predicates += cb.lessThanOrEqualTo(root.get("invoiceDate"), it)
+            }
+
             origin?.let {
                 predicates += cb.equal(root.get<InvoiceOrigin>("origin"), it)
             }
@@ -523,7 +543,13 @@ class InvoiceService(
             cb.and(*predicates.toTypedArray())
         }
 
-        return invoiceRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"))
+        return invoiceRepository.findAll(
+            spec,
+            Sort.by(
+                Sort.Order.desc("invoiceDate"),
+                Sort.Order.desc("createdAt")
+            )
+        )
             .map { it.toResponse() }
     }
 
@@ -706,7 +732,10 @@ class InvoiceService(
                 predicates.add(root.get<InvoiceStatus>("status").`in`(InvoiceStatus.DRAFT, InvoiceStatus.SENT))
                 cb.and(*predicates.toTypedArray())
             },
-            Sort.by(Sort.Direction.DESC, "createdAt")
+            Sort.by(
+                Sort.Order.desc("invoiceDate"),
+                Sort.Order.desc("createdAt")
+            )
         )
 
         val unpaidInvoicesDto = unpaidInvoices.map { invoice ->
@@ -715,6 +744,7 @@ class InvoiceService(
                 totalAmount = invoice.totalAmount ?: BigDecimal.ZERO,
                 fromMonth = invoice.fromMonth?.toString() ?: "",
                 toMonth = invoice.toMonth?.toString() ?: "",
+                invoiceDate = requireNotNull(invoice.invoiceDate),
                 createdAt = invoice.createdAt ?: Instant.now(),
                 status = invoice.status.name,
                 notes = invoice.notes,
@@ -748,6 +778,7 @@ class InvoiceService(
                 totalAmount = invoice.totalAmount,
                 fromMonth = invoice.fromMonth,
                 toMonth = invoice.toMonth,
+                invoiceDate = invoice.invoiceDate,
                 createdAt = invoice.createdAt,
                 status = invoice.status,
                 notes = invoice.notes?.trim()?.takeIf { it.isNotBlank() },

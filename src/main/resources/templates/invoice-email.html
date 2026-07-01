@@ -47,7 +47,7 @@
         
         <div class="invoice-details">
             <p><strong>Invoice ID:</strong> <span th:text="${invoice.id}"></span></p>
-            <p><strong>Date Issued:</strong> <span th:text="${#temporals.format(invoice.createdAt, 'MMM dd, yyyy HH:mm')}"></span></p>
+            <p><strong>Invoice Date:</strong> <span th:text="${#temporals.format(invoice.invoiceDate, 'MMM dd, yyyy')}"></span></p>
             <p th:if="${invoice.status.name() == 'PAID'}"><strong>Payment Date:</strong> <span th:text="${invoice.sentAt != null ? #temporals.format(invoice.sentAt, 'MMM dd, yyyy HH:mm') : #dates.format(#dates.createNow(), 'MMM dd, yyyy HH:mm')}"></span></p>
         </div>
 

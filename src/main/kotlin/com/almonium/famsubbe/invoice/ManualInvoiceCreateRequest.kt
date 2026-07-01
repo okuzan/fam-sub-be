@@ -4,7 +4,7 @@ import jakarta.validation.constraints.DecimalMin
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import java.math.BigDecimal
-import java.time.YearMonth
+import java.time.LocalDate
 import java.util.*
 
 data class ManualInvoiceCreateRequest(
@@ -14,7 +14,7 @@ data class ManualInvoiceCreateRequest(
     @field:DecimalMin(value = "0.01")
     var amount: BigDecimal,
     @field:NotNull
-    var invoiceMonth: YearMonth,
+    var invoiceDate: LocalDate,
     @field:NotBlank
     val notes: String,
     val sendEmail: Boolean = false

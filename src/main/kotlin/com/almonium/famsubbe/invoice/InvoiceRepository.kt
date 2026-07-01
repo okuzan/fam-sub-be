@@ -14,7 +14,7 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
         select i
         from Invoice i
         where (:subscriberId is null or i.subscriber.id = :subscriberId)
-        order by i.createdAt desc
+        order by i.invoiceDate desc, i.createdAt desc
     """)
     fun findAllFiltered(subscriberId: UUID?): List<Invoice>
 

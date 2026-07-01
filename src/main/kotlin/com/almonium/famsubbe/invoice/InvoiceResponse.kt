@@ -2,6 +2,7 @@ package com.almonium.famsubbe.invoice
 
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
 import java.time.YearMonth
 import java.util.*
 
@@ -11,6 +12,7 @@ data class InvoiceResponse(
     val subscriberName: String,
     val fromMonth: YearMonth,
     val toMonth: YearMonth,
+    val invoiceDate: LocalDate,
     val totalAmount: BigDecimal,
     val status: String,
     val createdAt: Instant,

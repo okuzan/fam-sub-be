@@ -98,6 +98,7 @@ class SubscriberCabinetService(
             id = requireNotNull(id),
             fromMonth = requireNotNull(fromMonth),
             toMonth = requireNotNull(toMonth),
+            invoiceDate = requireNotNull(invoiceDate),
             totalAmount = totalAmount ?: BigDecimal.ZERO,
             status = status.name,
             createdAt = requireNotNull(createdAt),

@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.invoice
 
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -18,7 +19,7 @@ class InvoiceEmailSubjectTest {
         )
 
         assertEquals(
-            "New Invoice: ₴450.00 — Netflix annual adjustment",
+            "New Invoice: ₴450.00 — Netflix annual adjustment — 1 Jul 2026",
             buildInvoiceEmailSubject(invoice)
         )
     }
@@ -79,6 +80,7 @@ class InvoiceEmailSubjectTest {
         this.totalAmount = BigDecimal(amount)
         this.fromMonth = YearMonth.parse(fromMonth)
         this.toMonth = YearMonth.parse(toMonth)
+        this.invoiceDate = LocalDate.of(2026, 7, 1)
         this.notes = notes
     }
 }
