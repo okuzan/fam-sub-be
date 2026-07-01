@@ -3,9 +3,9 @@ package com.almonium.famsubbe.subscriber
 import com.almonium.famsubbe.invoice.InvoiceLedgerEntryResponse
 import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceStatus
-import com.almonium.famsubbe.entity.LedgerEntry
+import com.almonium.famsubbe.accounting.LedgerEntry
+import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.invoice.InvoiceRepository
-import com.almonium.famsubbe.repository.LedgerEntryRepository
 import com.almonium.famsubbe.subscription.MembershipRepository
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service

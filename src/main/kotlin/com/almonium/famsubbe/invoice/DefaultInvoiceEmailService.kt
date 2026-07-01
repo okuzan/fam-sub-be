@@ -5,7 +5,7 @@ import com.almonium.famsubbe.config.PaymentProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties
 import com.almonium.famsubbe.subscriber.ActiveSubscriptionDto
 import com.almonium.famsubbe.dto.WeeklySituationInvoiceDto
-import com.almonium.famsubbe.entity.LedgerEntry
+import com.almonium.famsubbe.accounting.LedgerEntry
 import com.almonium.famsubbe.util.HtmlFileWriter
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value

@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.accounting
 
 data class RunUndoRequest(
     val reason: String? = null

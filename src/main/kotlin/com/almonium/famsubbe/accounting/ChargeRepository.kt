@@ -1,6 +1,5 @@
-package com.almonium.famsubbe.repository
+package com.almonium.famsubbe.accounting
 
-import com.almonium.famsubbe.entity.Charge
 import com.almonium.famsubbe.subscription.SubscriptionService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable

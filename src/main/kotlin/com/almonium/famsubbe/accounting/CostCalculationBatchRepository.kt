@@ -1,6 +1,5 @@
-package com.almonium.famsubbe.repository
+package com.almonium.famsubbe.accounting
 
-import com.almonium.famsubbe.entity.CostCalculationBatch
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository

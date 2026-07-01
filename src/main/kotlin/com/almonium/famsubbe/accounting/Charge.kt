@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.entity
+package com.almonium.famsubbe.accounting
 
 import com.almonium.famsubbe.subscription.SubscriptionService
 import jakarta.persistence.Column
