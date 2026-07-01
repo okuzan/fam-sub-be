@@ -1,7 +1,5 @@
-package com.almonium.famsubbe.repository
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.entity.AdminInvite
-import com.almonium.famsubbe.entity.AdminInviteStatus
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository

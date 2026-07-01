@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.entity
 
+import com.almonium.famsubbe.account.Account
 import com.almonium.famsubbe.dto.CostCalculationBatchResponse
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

@@ -1,15 +1,8 @@
-package com.almonium.famsubbe.controller
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.dto.AdminInviteAcceptRequest
-import com.almonium.famsubbe.dto.AdminInviteAcceptResponse
-import com.almonium.famsubbe.dto.AdminInviteCreateRequest
-import com.almonium.famsubbe.dto.AdminInviteResponse
-import com.almonium.famsubbe.entity.Account
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
-import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.service.AdminAuditLogService
-import com.almonium.famsubbe.service.AdminInviteService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus

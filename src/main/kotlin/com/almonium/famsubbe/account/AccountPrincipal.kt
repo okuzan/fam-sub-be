@@ -1,6 +1,5 @@
-package com.almonium.famsubbe.security
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.entity.Account
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails

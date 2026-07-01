@@ -6,7 +6,7 @@ import com.almonium.famsubbe.dto.ChargeResponse
 import com.almonium.famsubbe.dto.ChargeUpdateRequest
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
-import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.account.AccountService
 import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.service.ChargeService
 import com.almonium.famsubbe.util.AuthenticationUtil

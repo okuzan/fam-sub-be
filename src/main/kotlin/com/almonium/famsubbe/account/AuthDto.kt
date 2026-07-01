@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.account
 
 data class AuthMeResponse(
     val authenticated: Boolean,

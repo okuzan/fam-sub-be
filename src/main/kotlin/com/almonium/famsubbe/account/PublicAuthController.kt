@@ -1,7 +1,5 @@
-package com.almonium.famsubbe.controller
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.dto.AuthMeResponse
-import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.GetMapping

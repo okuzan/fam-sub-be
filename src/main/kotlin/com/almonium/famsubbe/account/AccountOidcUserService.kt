@@ -1,7 +1,5 @@
-package com.almonium.famsubbe.security
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.service.AccountService
-import com.almonium.famsubbe.service.SubscriberRegistrationNotAllowedException
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService

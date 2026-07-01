@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.service
+package com.almonium.famsubbe.account
 
 import com.almonium.famsubbe.config.AppEmailProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties

@@ -1,9 +1,7 @@
-package com.almonium.famsubbe.controller
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.dto.AccountResponse
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
-import com.almonium.famsubbe.service.AccountService
 import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import org.springframework.http.ResponseEntity

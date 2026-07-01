@@ -1,6 +1,5 @@
-package com.almonium.famsubbe.dto
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.entity.AdminInviteStatus
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import java.time.Instant

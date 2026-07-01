@@ -1,6 +1,5 @@
-package com.almonium.famsubbe.security
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.repository.AccountRepository
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.core.userdetails.UsernameNotFoundException

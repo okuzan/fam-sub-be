@@ -1,8 +1,8 @@
 package com.almonium.famsubbe.config
 
 import com.almonium.famsubbe.dto.ApiErrorResponse
-import com.almonium.famsubbe.entity.Role
-import com.almonium.famsubbe.security.AccountOidcUserService
+import com.almonium.famsubbe.account.AccountOidcUserService
+import com.almonium.famsubbe.account.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value

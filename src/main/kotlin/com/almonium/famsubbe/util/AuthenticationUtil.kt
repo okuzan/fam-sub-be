@@ -1,8 +1,8 @@
 package com.almonium.famsubbe.util
 
-import com.almonium.famsubbe.entity.Account
-import com.almonium.famsubbe.security.AccountPrincipal
-import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.account.Account
+import com.almonium.famsubbe.account.AccountPrincipal
+import com.almonium.famsubbe.account.AccountService
 import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.core.user.OAuth2User
 import java.util.*

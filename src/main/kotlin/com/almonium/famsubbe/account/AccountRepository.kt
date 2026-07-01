@@ -1,7 +1,5 @@
-package com.almonium.famsubbe.repository
+package com.almonium.famsubbe.account
 
-import com.almonium.famsubbe.entity.Account
-import com.almonium.famsubbe.entity.Role
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository

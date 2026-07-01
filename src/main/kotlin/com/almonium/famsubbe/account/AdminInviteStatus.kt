@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.entity
+package com.almonium.famsubbe.account
 
 enum class AdminInviteStatus {
     PENDING,

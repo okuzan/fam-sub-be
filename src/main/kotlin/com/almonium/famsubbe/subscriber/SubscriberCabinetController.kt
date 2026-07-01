@@ -1,6 +1,6 @@
 package com.almonium.famsubbe.subscriber
 
-import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.account.AccountService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication

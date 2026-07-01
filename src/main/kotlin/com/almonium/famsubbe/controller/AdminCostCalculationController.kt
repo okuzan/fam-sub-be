@@ -7,7 +7,7 @@ import com.almonium.famsubbe.dto.CostCalculationSuggestion
 import com.almonium.famsubbe.entity.AdminActionTargetType
 import com.almonium.famsubbe.entity.AdminActionType
 import com.almonium.famsubbe.entity.toResponse
-import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.account.AccountService
 import com.almonium.famsubbe.service.AdminAuditLogService
 import com.almonium.famsubbe.service.CostCalculationService
 import com.almonium.famsubbe.util.AuthenticationUtil

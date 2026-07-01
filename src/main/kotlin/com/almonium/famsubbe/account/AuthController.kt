@@ -1,4 +1,4 @@
-package com.almonium.famsubbe.controller
+package com.almonium.famsubbe.account
 
 import com.almonium.famsubbe.dto.ApiErrorResponse
 import jakarta.servlet.http.HttpServletRequest

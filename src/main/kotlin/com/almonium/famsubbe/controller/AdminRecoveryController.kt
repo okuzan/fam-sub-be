@@ -3,7 +3,7 @@ package com.almonium.famsubbe.controller
 import com.almonium.famsubbe.dto.RunRecoveryPreviewResponse
 import com.almonium.famsubbe.dto.RunUndoRequest
 import com.almonium.famsubbe.dto.RunUndoResponse
-import com.almonium.famsubbe.service.AccountService
+import com.almonium.famsubbe.account.AccountService
 import com.almonium.famsubbe.service.RecoveryService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import org.springframework.http.ResponseEntity
