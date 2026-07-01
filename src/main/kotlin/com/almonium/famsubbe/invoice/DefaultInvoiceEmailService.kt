@@ -15,6 +15,9 @@ import org.springframework.web.client.RestClient
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 import java.math.BigDecimal
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Service
 class DefaultInvoiceEmailService(
@@ -42,13 +45,10 @@ class DefaultInvoiceEmailService(
             context.setVariable("totalAmountOwed", totalAmountOwed)
             context.setVariable("paymentMethods", paymentProperties.methods)
             context.setVariable("cabinetUrl", "$webDomain/subscriber/cabinet")
+            context.setVariable("invoicePeriod", formatInvoicePeriod(invoice.fromMonth, invoice.toMonth))
 
             val htmlContent = templateEngine.process("invoice-email", context)
-            val subject = when (invoice.origin) {
-                InvoiceOrigin.OUTSTANDING_BALANCE -> "Your Outstanding Balance Invoice"
-                InvoiceOrigin.MANUAL -> "Your Manual Invoice for ${invoice.fromMonth}"
-                InvoiceOrigin.SUBSCRIPTION_LEDGER -> "Your Invoice for ${invoice.fromMonth} - ${invoice.toMonth}"
-            }
+            val subject = buildInvoiceEmailSubject(invoice)
 
             sendEmail(toEmail, subscriber.name, subject, htmlContent)
         } catch (e: Exception) {
@@ -133,7 +133,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("cabinetUrl", "$webDomain/subscriber/cabinet")
 
             val htmlContent = templateEngine.process("debt-paid-email", context)
-            val subject = "Your Subscription Debt Has Been Paid"
+            val subject = "Your Debt Has Been Paid"
 
             sendEmail(toEmail, subscriberName, subject, htmlContent)
         } catch (e: Exception) {
@@ -186,5 +186,38 @@ class DefaultInvoiceEmailService(
             log.error("Error calling ZeptoMail API for {}", toEmail, e)
             false
         }
+    }
+}
+
+internal fun buildInvoiceEmailSubject(invoice: Invoice): String {
+    val amount = requireNotNull(invoice.totalAmount).setScale(2).toPlainString()
+    val detail = when (invoice.origin) {
+        InvoiceOrigin.OUTSTANDING_BALANCE -> "Outstanding balance"
+        InvoiceOrigin.MANUAL -> invoice.notes
+            ?.replace(Regex("\\s+"), " ")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: "Manual charge"
+        InvoiceOrigin.SUBSCRIPTION_LEDGER ->
+            "Subscriptions, ${formatInvoicePeriod(invoice.fromMonth, invoice.toMonth)}"
+    }
+
+    return "New Invoice: ₴$amount — $detail"
+}
+
+internal fun formatInvoicePeriod(fromMonth: YearMonth?, toMonth: YearMonth?): String {
+    val from = requireNotNull(fromMonth)
+    val to = requireNotNull(toMonth)
+    val monthFormatter = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)
+
+    if (from == to) {
+        return from.format(monthFormatter)
+    }
+
+    return if (from.year == to.year) {
+        val shortMonthFormatter = DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH)
+        "${from.format(shortMonthFormatter)}–${to.format(monthFormatter)}"
+    } else {
+        "${from.format(monthFormatter)}–${to.format(monthFormatter)}"
     }
 }

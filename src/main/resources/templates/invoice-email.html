@@ -36,8 +36,8 @@
 <body>
     <div th:class="${invoice.status.name() == 'PAID'} ? 'header paid' : (${invoice.status.name() == 'VOID'} ? 'header void' : 'header unpaid')">
         <h2 th:if="${origin.name() == 'OUTSTANDING_BALANCE'}">Outstanding Balance Invoice</h2>
-        <h2 th:if="${origin.name() == 'MANUAL'}">Manual Invoice for <span th:text="${invoice.fromMonth}"></span></h2>
-        <h2 th:if="${origin.name() == 'SUBSCRIPTION_LEDGER'}">Invoice for <span th:text="${invoice.fromMonth}"></span> to <span th:text="${invoice.toMonth}"></span></h2>
+        <h2 th:if="${origin.name() == 'MANUAL'}">New Invoice</h2>
+        <h2 th:if="${origin.name() == 'SUBSCRIPTION_LEDGER'}">Subscription Invoice for <span th:text="${invoicePeriod}"></span></h2>
         <div th:if="${invoice.status.name() == 'PAID'}" class="status-badge status-paid">PAID</div>
         <div th:if="${invoice.status.name() == 'VOID'}" class="status-badge status-void">VOID</div>
         <div th:if="${invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}" class="status-badge status-unpaid">UNPAID</div>
