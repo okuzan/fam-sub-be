@@ -182,6 +182,32 @@ class AdminInvoiceController(
         return ResponseEntity.ok(invoice)
     }
 
+    @PostMapping("/{invoiceId}/duplicate")
+    fun duplicateInvoice(
+        @PathVariable invoiceId: UUID,
+        @Valid @RequestBody request: InvoiceDuplicateRequest,
+        authentication: Authentication
+    ): ResponseEntity<InvoiceResponse> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoice = invoiceService.duplicateInvoice(invoiceId, request, performedByAccountId)
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.INVOICE_DUPLICATED,
+            targetType = AdminActionTargetType.INVOICE,
+            targetId = invoice.id,
+            subscriberId = invoice.subscriberId,
+            fromMonth = invoice.fromMonth,
+            toMonth = invoice.toMonth,
+            summary = "Duplicated invoice $invoiceId for ${invoice.subscriberName}",
+            metadata = mapOf(
+                "sourceInvoiceId" to invoiceId,
+                "totalAmount" to invoice.totalAmount,
+                "sendEmail" to request.sendEmail
+            )
+        )
+        return ResponseEntity.ok(invoice)
+    }
+
     @PostMapping("/{invoiceId}/pay-from-balance")
     fun payFromBalance(
         @PathVariable invoiceId: UUID,

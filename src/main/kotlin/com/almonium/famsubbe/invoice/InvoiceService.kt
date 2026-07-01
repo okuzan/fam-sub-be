@@ -311,6 +311,42 @@ class InvoiceService(
         return invoice.toResponse()
     }
 
+    fun duplicateInvoice(
+        invoiceId: UUID,
+        request: InvoiceDuplicateRequest,
+        performedByAccountId: UUID
+    ): InvoiceResponse {
+        val source = invoiceRepository.findById(invoiceId)
+            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+        val subscriber = subscriberRepository.findById(request.subscriberId)
+            .orElseThrow { IllegalArgumentException("Subscriber not found: ${request.subscriberId}") }
+
+        val now = Instant.now()
+        val invoice = invoiceRepository.save(
+            Invoice().apply {
+                val autoPaid = subscriber.autoPayInvoices
+                this.subscriber = subscriber
+                this.fromMonth = requireNotNull(source.fromMonth)
+                this.toMonth = requireNotNull(source.toMonth)
+                this.totalAmount = requireNotNull(source.totalAmount)
+                this.status = initialInvoiceStatus(subscriber, request.sendEmail)
+                this.createdAt = now
+                this.statusChangedAt = now
+                this.createdByAccountId = performedByAccountId
+                this.sentAt = if (!autoPaid && request.sendEmail) now else null
+                this.emailSent = !autoPaid && request.sendEmail
+                this.notes = source.notes
+                this.origin = InvoiceOrigin.MANUAL
+            }
+        )
+
+        if (request.sendEmail && !subscriber.autoPayInvoices) {
+            invoiceEmailService.sendInvoiceEmail(invoice, emptyList(), calculateTotalAmountOwed(subscriber))
+        }
+
+        return invoice.toResponse()
+    }
+
     fun payFromBalance(invoiceId: UUID): InvoiceResponse {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
