@@ -328,14 +328,18 @@ class InvoiceService(
                 this.subscriber = subscriber
                 this.fromMonth = requireNotNull(source.fromMonth)
                 this.toMonth = requireNotNull(source.toMonth)
-                this.totalAmount = requireNotNull(source.totalAmount)
+                this.totalAmount = request.amount ?: requireNotNull(source.totalAmount)
                 this.status = initialInvoiceStatus(subscriber, request.sendEmail)
                 this.createdAt = now
                 this.statusChangedAt = now
                 this.createdByAccountId = performedByAccountId
                 this.sentAt = if (!autoPaid && request.sendEmail) now else null
                 this.emailSent = !autoPaid && request.sendEmail
-                this.notes = source.notes
+                this.notes = if (request.notes == null) {
+                    source.notes
+                } else {
+                    request.notes.trim().takeIf { it.isNotBlank() }
+                }
                 this.origin = InvoiceOrigin.MANUAL
             }
         )
