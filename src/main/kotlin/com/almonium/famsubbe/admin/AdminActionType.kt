@@ -31,6 +31,8 @@ enum class AdminActionType {
     SUBSCRIPTION_SERVICE_CREATED,
     SUBSCRIPTION_SERVICE_UPDATED,
     SUBSCRIPTION_SERVICE_DELETED,
+    // Retired with the Telegram pinned-post generator. Kept because existing
+    // admin_action rows still carry this value and are read as an enum.
     PINNED_POST_GENERATED,
     ACCOUNT_DELETED,
     ADMIN_INVITE_CREATED,

@@ -8,6 +8,7 @@ enum class AdminActionTargetType {
     CHARGE,
     MEMBERSHIP,
     SUBSCRIPTION_SERVICE,
+    // Retired: see AdminActionType.PINNED_POST_GENERATED.
     PINNED_POST,
     ACCOUNT,
     ADMIN_INVITE
