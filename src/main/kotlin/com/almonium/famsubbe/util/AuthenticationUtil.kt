@@ -1,7 +1,6 @@
 package com.almonium.famsubbe.util
 
 import com.almonium.famsubbe.account.Account
-import com.almonium.famsubbe.account.AccountPrincipal
 import com.almonium.famsubbe.account.AccountService
 import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.core.user.OAuth2User
@@ -11,16 +10,13 @@ object AuthenticationUtil {
     
     fun resolveAccount(authentication: Authentication, accountService: AccountService): Account? {
         return when (val principal = authentication.principal) {
-            is AccountPrincipal -> accountService.findByEmail(principal.username)
             is OAuth2User -> resolveAccountFromOAuth2Principal(principal, accountService)
             else -> null
         }
     }
-    
+
     fun resolveAccountId(authentication: Authentication, accountService: AccountService): UUID {
-        val principal = authentication.principal
-        val email = when (principal) {
-            is AccountPrincipal -> principal.username
+        val email = when (val principal = authentication.principal) {
             is OAuth2User -> principal.getAttribute<String>("local_account_email")
                 ?: principal.getAttribute<String>("email")
             else -> null

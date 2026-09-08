@@ -17,24 +17,6 @@ class AccountService(
     private val passwordEncoder: PasswordEncoder
 ) {
 
-    fun createAdmin(email: String, password: String): Account {
-        val account = Account().apply {
-            this.email = email
-            this.passwordHash = passwordEncoder.encode(password)
-            this.roles = mutableSetOf(Role.ADMIN)
-        }
-        return accountRepository.save(account)
-    }
-
-    fun createSubscriber(email: String, password: String): Account {
-        val account = Account().apply {
-            this.email = email
-            this.passwordHash = passwordEncoder.encode(password)
-            this.roles = mutableSetOf(Role.SUBSCRIBER)
-        }
-        return accountRepository.save(account)
-    }
-
     fun findByEmail(email: String): Account? {
         return accountRepository.findByEmail(email)
     }

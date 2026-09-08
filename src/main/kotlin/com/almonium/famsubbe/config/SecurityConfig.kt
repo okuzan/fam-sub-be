@@ -112,7 +112,6 @@ class SecurityConfig(
                         response.writer.write("{\"message\":\"Logged out successfully\"}")
                     }
             }
-            .httpBasic { }
         return http.build()
     }
 
