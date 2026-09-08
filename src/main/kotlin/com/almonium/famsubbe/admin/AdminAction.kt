@@ -47,7 +47,7 @@ class AdminAction {
     @Column(name = "to_month", updatable = false)
     var toMonth: YearMonth? = null
 
-    @Column(name = "summary", nullable = false, updatable = false)
+    @Column(name = "summary", nullable = false, updatable = false, columnDefinition = "TEXT")
     var summary: String? = null
 
     @Column(name = "metadata_json", columnDefinition = "TEXT", updatable = false)

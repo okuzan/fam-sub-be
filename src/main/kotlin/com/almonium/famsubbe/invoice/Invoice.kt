@@ -72,7 +72,7 @@ class Invoice {
     @Column(name = "email_sent", nullable = false)
     var emailSent: Boolean = false
 
-    @Column(name = "notes")
+    @Column(name = "notes", columnDefinition = "TEXT")
     var notes: String? = null
 
     @Enumerated(EnumType.STRING)

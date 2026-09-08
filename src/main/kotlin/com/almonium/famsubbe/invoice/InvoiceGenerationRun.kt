@@ -41,6 +41,6 @@ class InvoiceGenerationRun {
     @Column(name = "undone_by_account_id")
     var undoneByAccountId: UUID? = null
 
-    @Column(name = "undo_reason")
+    @Column(name = "undo_reason", columnDefinition = "TEXT")
     var undoReason: String? = null
 }

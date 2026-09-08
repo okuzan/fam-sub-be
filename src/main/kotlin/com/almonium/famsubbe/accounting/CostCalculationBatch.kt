@@ -47,7 +47,7 @@ class CostCalculationBatch {
     @JoinColumn(name = "undone_by_account_id", insertable = false, updatable = false)
     var undoneByAccount: Account? = null
 
-    @Column(name = "undo_reason")
+    @Column(name = "undo_reason", columnDefinition = "TEXT")
     var undoReason: String? = null
 }
 

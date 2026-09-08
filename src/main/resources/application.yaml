@@ -14,9 +14,17 @@ spring:
     password: ${DB_PASSWORD}
   config:
     import: optional:file:.env[.properties]
+  flyway:
+    # V0 is a baseline of the schema Hibernate created implicitly, so it applies
+    # out of order on databases that already ran V1..V10. Every statement in it
+    # is guarded and does nothing there. Once every environment has V0 recorded,
+    # this can go back to the default.
+    out-of-order: true
   jpa:
     hibernate:
-      ddl-auto: update
+      # Migrations are the only thing allowed to change the schema. Hibernate
+      # verifies the entities match at startup and refuses to boot otherwise.
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
