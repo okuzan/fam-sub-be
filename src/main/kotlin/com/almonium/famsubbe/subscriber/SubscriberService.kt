@@ -42,7 +42,7 @@ class SubscriberService(
             name = request.name
             email = request.email.lowercase().trim()
             balance = request.balance
-            autoPayInvoices = request.autoPayInvoices
+            billingExempt = request.billingExempt
         }
         val savedSubscriber = subscriberRepository.save(subscriber)
         return savedSubscriber.toResponse()
@@ -51,18 +51,18 @@ class SubscriberService(
     fun updateSubscriber(id: UUID, request: SubscriberUpdateRequest): SubscriberResponse {
         val subscriber = subscriberRepository.findByIdOrNull(id)
             ?: throw EntityNotFoundException("Subscriber not found")
-        val updatedAutoPayInvoices = request.autoPayInvoices ?: subscriber.autoPayInvoices
-        val autoPayInvoicesWasEnabled = !subscriber.autoPayInvoices && updatedAutoPayInvoices
+        val updatedBillingExempt = request.billingExempt ?: subscriber.billingExempt
+        val billingExemptWasEnabled = !subscriber.billingExempt && updatedBillingExempt
 
         subscriber.apply {
             name = request.name
             email = request.email.lowercase().trim()
             balance = request.balance
-            autoPayInvoices = updatedAutoPayInvoices
+            billingExempt = updatedBillingExempt
         }
 
         val updatedSubscriber = subscriberRepository.save(subscriber)
-        if (autoPayInvoicesWasEnabled) {
+        if (billingExemptWasEnabled) {
             invoiceRepository.findBySubscriberAndStatusIn(
                 updatedSubscriber,
                 listOf(InvoiceStatus.DRAFT, InvoiceStatus.SENT)
@@ -90,7 +90,7 @@ class SubscriberService(
             name = this.name!!,
             email = this.email!!,
             balance = this.balance ?: BigDecimal.ZERO,
-            autoPayInvoices = this.autoPayInvoices,
+            billingExempt = this.billingExempt,
             createdAt = this.createdAt!!,
             updatedAt = this.updatedAt!!
         )

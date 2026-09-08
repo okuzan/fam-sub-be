@@ -27,8 +27,12 @@ class Subscriber {
     @Column(nullable = false)
     var balance: BigDecimal? = null
 
-    @Column(name = "auto_pay_invoices", nullable = false)
-    var autoPayInvoices: Boolean = false
+    /**
+     * Family and dependants who take part in cost splits but are never billed.
+     * Their invoices are created already settled; balance is untouched.
+     */
+    @Column(name = "billing_exempt", nullable = false)
+    var billingExempt: Boolean = false
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

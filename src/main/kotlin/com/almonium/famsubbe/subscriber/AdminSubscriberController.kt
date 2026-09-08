@@ -6,7 +6,6 @@ import com.almonium.famsubbe.admin.AdminAuditLogService
 import com.almonium.famsubbe.account.AccountService
 import com.almonium.famsubbe.invoice.InvoiceEmailService
 import com.almonium.famsubbe.invoice.InvoiceService
-import com.almonium.famsubbe.reporting.PinnedPostService
 import com.almonium.famsubbe.util.AuthenticationUtil
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
@@ -32,7 +31,6 @@ class AdminSubscriberController(
     private val subscriberService: SubscriberService,
     private val invoiceService: InvoiceService,
     private val invoiceEmailService: InvoiceEmailService,
-    private val pinnedPostService: PinnedPostService,
     private val accountService: AccountService,
     private val adminAuditLogService: AdminAuditLogService
 ) {
@@ -180,7 +178,7 @@ class AdminSubscriberController(
             metadata = mapOf(
                 "email" to subscriber.email,
                 "balance" to subscriber.balance,
-                "autoPayInvoices" to subscriber.autoPayInvoices
+                "billingExempt" to subscriber.billingExempt
             )
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(subscriber)
@@ -204,7 +202,7 @@ class AdminSubscriberController(
             metadata = mapOf(
                 "email" to subscriber.email,
                 "balance" to subscriber.balance,
-                "autoPayInvoices" to subscriber.autoPayInvoices
+                "billingExempt" to subscriber.billingExempt
             )
         )
         return ResponseEntity.ok(subscriber)
@@ -228,27 +226,5 @@ class AdminSubscriberController(
             metadata = mapOf("email" to subscriber.email)
         )
         return ResponseEntity.noContent().build()
-    }
-
-    @PostMapping("/generate-pinned-post")
-    fun generatePinnedPost(authentication: Authentication): ResponseEntity<Map<String, String>> {
-        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        logger.info("Starting generatePinnedPost request")
-        return try {
-            logger.info("Calling pinnedPostService.generatePinnedPost()")
-            val pinnedPost = pinnedPostService.generatePinnedPost()
-            logger.info("Successfully generated pinned post with length: {}", pinnedPost.length)
-            adminAuditLogService.log(
-                createdByAccountId = performedByAccountId,
-                actionType = AdminActionType.PINNED_POST_GENERATED,
-                targetType = AdminActionTargetType.PINNED_POST,
-                summary = "Generated pinned post",
-                metadata = mapOf("contentLength" to pinnedPost.length)
-            )
-            ResponseEntity.ok(mapOf("content" to pinnedPost))
-        } catch (e: Exception) {
-            logger.error("Failed to generate pinned post", e)
-            throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to generate pinned post")
-        }
     }
 }

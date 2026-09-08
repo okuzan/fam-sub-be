@@ -44,6 +44,10 @@ class InvoiceService(
 ) {
     private val invoiceZone = ZoneId.of("Europe/Kyiv")
 
+    private companion object {
+        const val BILLING_EXEMPT_NOTE = "Settled automatically: subscriber is billing-exempt"
+    }
+
     fun generateInvoices(
         request: InvoiceGenerationRequest,
         performedByAccountId: UUID
@@ -89,21 +93,19 @@ class InvoiceService(
                 .map { requireNotNull(it.amount) }
                 .fold(BigDecimal.ZERO, BigDecimal::add)
 
+            val exempt = subscriber.billingExempt
             val invoice = invoiceRepository.save(
                 Invoice().apply {
-                    val autoPaid = subscriber.autoPayInvoices
                     this.subscriber = subscriber
                     this.fromMonth = request.fromMonth
                     this.toMonth = request.toMonth
                     this.invoiceDate = invoiceDate
                     this.totalAmount = invoiceTotal
-                    this.status = initialInvoiceStatus(subscriber, request.sendEmail)
+                    this.status = if (exempt) InvoiceStatus.PAID else InvoiceStatus.DRAFT
                     this.createdAt = now
                     this.statusChangedAt = now
                     this.createdByAccountId = performedByAccountId
-                    this.sentAt = if (!autoPaid && request.sendEmail) now else null
-                    this.emailSent = !autoPaid && request.sendEmail
-                    this.notes = "Auto-paid by subscriber setting".takeIf { autoPaid }
+                    this.notes = BILLING_EXEMPT_NOTE.takeIf { exempt }
                     this.origin = InvoiceOrigin.SUBSCRIPTION_LEDGER
                     this.invoiceGenerationRun = generationRun
                 }
@@ -111,6 +113,12 @@ class InvoiceService(
 
             subscriberEntries.forEach { it.invoice = invoice }
             ledgerEntryRepository.saveAll(subscriberEntries)
+
+            // The invoice is only SENT once the mail actually went out. Claiming it
+            // up front is how generated invoices used to be marked delivered while
+            // nothing was ever sent.
+            val emailRequested = request.sendEmail && !exempt
+            val emailSent = emailRequested && sendGeneratedInvoiceEmail(invoice, subscriberEntries, subscriber)
 
             createdInvoices += invoice
             totalAssigned += subscriberEntries.size
@@ -124,12 +132,13 @@ class InvoiceService(
                 toMonth = request.toMonth,
                 totalAmount = invoiceTotal,
                 ledgerEntryCount = subscriberEntries.size,
-                emailRequested = request.sendEmail,
+                emailRequested = emailRequested,
                 emailSent = invoice.emailSent,
-                message = if (invoice.status == InvoiceStatus.PAID) {
-                    "Created auto-paid invoice with ${subscriberEntries.size} ledger entries"
-                } else {
-                    "Created invoice with ${subscriberEntries.size} ledger entries"
+                message = when {
+                    exempt -> "Created settled invoice for billing-exempt subscriber with ${subscriberEntries.size} ledger entries"
+                    emailRequested && !emailSent ->
+                        "Created invoice with ${subscriberEntries.size} ledger entries, but the email could not be sent"
+                    else -> "Created invoice with ${subscriberEntries.size} ledger entries"
                 }
             )
         }
@@ -200,9 +209,36 @@ class InvoiceService(
             origin = origin.name
         )
 
+    /**
+     * Sends the invoice email for a freshly generated invoice and advances it to
+     * SENT only if the mail really went out. Mirrors [sendInvoiceEmail]: a dry-run
+     * send reports success but must not move the invoice out of DRAFT.
+     */
+    private fun sendGeneratedInvoiceEmail(
+        invoice: Invoice,
+        entries: List<LedgerEntry>,
+        subscriber: Subscriber
+    ): Boolean {
+        val success = invoiceEmailService.sendInvoiceEmail(
+            invoice,
+            entries.sortedBy { it.recordedMonth },
+            calculateTotalAmountOwed(subscriber)
+        )
+
+        if (!success || isDryRun) {
+            return false
+        }
+
+        invoice.emailSent = true
+        invoice.sentAt = Instant.now()
+        invoice.setStatus(InvoiceStatus.SENT)
+        invoiceRepository.save(invoice)
+        return true
+    }
+
     private fun initialInvoiceStatus(subscriber: Subscriber, sendEmail: Boolean): InvoiceStatus =
         when {
-            subscriber.autoPayInvoices -> InvoiceStatus.PAID
+            subscriber.billingExempt -> InvoiceStatus.PAID
             sendEmail -> InvoiceStatus.SENT
             else -> InvoiceStatus.DRAFT
         }
@@ -244,13 +280,16 @@ class InvoiceService(
         val pdf = PdfDocument(writer)
         val document = Document(pdf)
 
-        // Put this font file into src/main/resources/fonts/
-        // For example: DejaVuSans.ttf or NotoSans-Regular.ttf
-        val fontStream = javaClass.classLoader.getResource("fonts/NotoSans.ttf")
-            ?: throw IllegalStateException("Font file not found")
+        // Read the font as bytes rather than resolving it to a filesystem path.
+        // URL.toURI().path is null for a `jar:` URL and mangles any path with
+        // spaces or non-ASCII characters, so the path form only works by accident
+        // of the image running the application exploded.
+        val fontBytes = javaClass.classLoader.getResourceAsStream("fonts/NotoSans.ttf")
+            ?.use { it.readBytes() }
+            ?: throw IllegalStateException("Font file not found: fonts/NotoSans.ttf")
 
         val font: PdfFont = PdfFontFactory.createFont(
-            fontStream.toURI().path,
+            fontBytes,
             com.itextpdf.io.font.PdfEncodings.IDENTITY_H,
             PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED
         )
@@ -293,7 +332,7 @@ class InvoiceService(
         val invoiceMonth = YearMonth.from(request.invoiceDate)
         val invoice = invoiceRepository.save(
             Invoice().apply {
-                val autoPaid = subscriber.autoPayInvoices
+                val exempt = subscriber.billingExempt
                 this.subscriber = subscriber
                 this.fromMonth = invoiceMonth
                 this.toMonth = invoiceMonth
@@ -303,17 +342,17 @@ class InvoiceService(
                 this.createdAt = now
                 this.statusChangedAt = now
                 this.createdByAccountId = performedByAccountId
-                this.sentAt = if (!autoPaid && request.sendEmail) now else null
-                this.emailSent = !autoPaid && request.sendEmail
+                this.sentAt = if (!exempt && request.sendEmail) now else null
+                this.emailSent = !exempt && request.sendEmail
                 this.notes = listOfNotNull(
                     request.notes.trim().takeIf { it.isNotBlank() },
-                    "Auto-paid by subscriber setting".takeIf { autoPaid }
+                    BILLING_EXEMPT_NOTE.takeIf { exempt }
                 ).joinToString("; ").takeIf { it.isNotBlank() }
                 this.origin = InvoiceOrigin.MANUAL
             }
         )
 
-        if (request.sendEmail && !subscriber.autoPayInvoices) {
+        if (request.sendEmail && !subscriber.billingExempt) {
             invoiceEmailService.sendInvoiceEmail(invoice, emptyList(), calculateTotalAmountOwed(subscriber))
         }
 
@@ -335,7 +374,7 @@ class InvoiceService(
         val invoiceMonth = YearMonth.from(invoiceDate)
         val invoice = invoiceRepository.save(
             Invoice().apply {
-                val autoPaid = subscriber.autoPayInvoices
+                val exempt = subscriber.billingExempt
                 this.subscriber = subscriber
                 this.fromMonth = invoiceMonth
                 this.toMonth = invoiceMonth
@@ -345,8 +384,8 @@ class InvoiceService(
                 this.createdAt = now
                 this.statusChangedAt = now
                 this.createdByAccountId = performedByAccountId
-                this.sentAt = if (!autoPaid && request.sendEmail) now else null
-                this.emailSent = !autoPaid && request.sendEmail
+                this.sentAt = if (!exempt && request.sendEmail) now else null
+                this.emailSent = !exempt && request.sendEmail
                 this.notes = if (request.notes == null) {
                     source.notes
                 } else {
@@ -356,7 +395,7 @@ class InvoiceService(
             }
         )
 
-        if (request.sendEmail && !subscriber.autoPayInvoices) {
+        if (request.sendEmail && !subscriber.billingExempt) {
             invoiceEmailService.sendInvoiceEmail(invoice, emptyList(), calculateTotalAmountOwed(subscriber))
         }
 
@@ -666,6 +705,15 @@ class InvoiceService(
                 .joinToString("\n")
         }
         invoice.setStatus(InvoiceStatus.VOID)
+
+        // Release the ledger entries back into the uninvoiced pool. Without this a
+        // voided invoice keeps its entries forever and the cost silently
+        // disappears: generation only ever picks up entries with no invoice.
+        val releasedEntries = ledgerEntryRepository.findByInvoice(invoice)
+        if (releasedEntries.isNotEmpty()) {
+            releasedEntries.forEach { it.invoice = null }
+            ledgerEntryRepository.saveAll(releasedEntries)
+        }
 
         return invoiceRepository.save(invoice).toResponse()
     }
