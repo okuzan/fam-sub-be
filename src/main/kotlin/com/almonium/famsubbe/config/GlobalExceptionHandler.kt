@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.config
 
 import com.almonium.famsubbe.dto.ApiErrorResponse
+import jakarta.persistence.EntityNotFoundException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.ConstraintViolationException
 import org.slf4j.LoggerFactory
@@ -64,6 +65,21 @@ class GlobalExceptionHandler {
                 )
             }
         }
+    }
+
+    @ExceptionHandler(
+        EntityNotFoundException::class,
+        NoSuchElementException::class
+    )
+    fun handleNotFound(
+        exception: Exception,
+        request: HttpServletRequest
+    ): ResponseEntity<ApiErrorResponse> {
+        return buildError(
+            HttpStatus.NOT_FOUND,
+            exception.message ?: "Not found",
+            request.requestURI
+        )
     }
 
     @ExceptionHandler(Exception::class)
