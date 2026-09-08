@@ -1,7 +1,9 @@
 package com.almonium.famsubbe.accounting
 
 import com.almonium.famsubbe.invoice.Invoice
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import java.time.YearMonth
@@ -18,6 +20,11 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
     """)
     fun findRecordedChargeIds(chargeIds: Collection<UUID>): Set<UUID>
 
+    /**
+     * Locked for the duration of the generation transaction so two concurrent runs
+     * cannot both claim the same entries and issue duplicate invoices for them.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         select le
         from LedgerEntry le
@@ -31,6 +38,7 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
         toMonth: YearMonth
     ): List<LedgerEntry>
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         select le
         from LedgerEntry le
