@@ -16,6 +16,7 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.logout.LogoutFilter
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
@@ -73,7 +74,9 @@ class SecurityConfig(
     ): SecurityFilterChain {
         http
             .cors { }
+            // Spring's token CSRF is off; RequestedWithHeaderFilter guards writes instead.
             .csrf { it.disable() }
+            .addFilterBefore(RequestedWithHeaderFilter(objectMapper), LogoutFilter::class.java)
             .authorizeHttpRequests { authz ->
                 authz
                     .requestMatchers("/admin/**").hasRole(Role.ADMIN.name)
