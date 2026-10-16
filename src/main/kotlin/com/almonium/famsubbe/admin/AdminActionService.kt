@@ -7,6 +7,7 @@ import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.invoice.InvoiceGenerationRun
 import com.almonium.famsubbe.invoice.InvoiceGenerationRunRepository
 import com.almonium.famsubbe.invoice.InvoiceRepository
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -27,20 +28,17 @@ class AdminActionService(
     private val objectMapper: ObjectMapper
 ) {
     fun getActions(filter: AdminActionFilterRequest): List<AdminActionResponse> {
-        return adminActionRepository.findAll(filter.toSpecification(), createdAtDescending())
-            .take(filter.limit.coerceIn(1, MAX_LIMIT))
+        return adminActionRepository.findAll(filter.toSpecification(), firstPage(filter.limit)).content
             .map { it.toAdminActionResponse() }
     }
 
     fun getCostRuns(limit: Int = DEFAULT_LIMIT): List<AdminActionResponse> {
-        return costCalculationBatchRepository.findAll(createdAtDescending())
-            .take(limit.coerceIn(1, MAX_LIMIT))
+        return costCalculationBatchRepository.findAll(firstPage(limit)).content
             .map { it.toAdminActionResponse() }
     }
 
     fun getInvoiceRuns(limit: Int = DEFAULT_LIMIT): List<AdminActionResponse> {
-        return invoiceGenerationRunRepository.findAll(createdAtDescending())
-            .take(limit.coerceIn(1, MAX_LIMIT))
+        return invoiceGenerationRunRepository.findAll(firstPage(limit)).content
             .map { it.toAdminActionResponse() }
     }
 
@@ -164,8 +162,8 @@ class AdminActionService(
         )
     }
 
-    private fun createdAtDescending(): Sort =
-        Sort.by(Sort.Direction.DESC, "createdAt")
+    private fun firstPage(limit: Int): PageRequest =
+        PageRequest.of(0, limit.coerceIn(1, MAX_LIMIT), Sort.by(Sort.Direction.DESC, "createdAt"))
 
     private fun AdminActionFilterRequest.toSpecification(): Specification<AdminAction> =
         Specification { root, _, cb ->

@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 
 @Service
@@ -32,7 +31,9 @@ class WeeklySituationEmailService(
         )
     }
 
-    @Transactional(readOnly = true)
+    // Deliberately not transactional: each subscriber is read in its own
+    // transaction, so one failure cannot mark a shared one rollback-only, and no
+    // connection is held open across the mail API calls.
     fun sendWeeklySituationEmails(): WeeklySituationEmailResult {
         val subscriberIds = invoiceRepository.findSubscriberIdsWithUnpaidInvoices()
         val items = subscriberIds.map { subscriberId ->
