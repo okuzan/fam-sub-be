@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.accounting
 
+import com.almonium.famsubbe.util.BillingTime
 import com.almonium.famsubbe.subscription.Membership
 import com.almonium.famsubbe.subscription.MembershipRepository
 import org.springframework.stereotype.Service
@@ -186,7 +187,7 @@ class CostCalculationService(
     }
 
     fun getSuggestedCalculationPeriod(): CostCalculationSuggestion {
-        val currentMonth = YearMonth.now()
+        val currentMonth = BillingTime.currentMonth()
         val latestBatch = costCalculationBatchRepository.findFirstByUndoneAtIsNullOrderByToMonthDesc()
 
         val suggestedFromMonth = latestBatch?.toMonth?.plusMonths(1) ?: currentMonth

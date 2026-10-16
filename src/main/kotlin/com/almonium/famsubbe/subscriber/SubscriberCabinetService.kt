@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.subscriber
 
+import com.almonium.famsubbe.util.BillingTime
 import com.almonium.famsubbe.invoice.InvoiceLedgerEntryResponse
 import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceStatus
@@ -73,7 +74,7 @@ class SubscriberCabinetService(
             .sortedByDescending { it.createdAt }
 
     private fun findActiveSubscriptions(subscriberId: UUID): List<ActiveSubscriptionDto> {
-        val currentMonth = YearMonth.now()
+        val currentMonth = BillingTime.currentMonth()
         return membershipRepository.findActiveBySubscriberAndMonth(subscriberId, currentMonth)
             .map { membership ->
                 ActiveSubscriptionDto(

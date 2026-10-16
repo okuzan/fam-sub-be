@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.subscription
 
+import com.almonium.famsubbe.util.BillingTime
 import com.almonium.famsubbe.subscriber.SubscriberRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -115,7 +116,7 @@ class MembershipService(
             subscriberName = membership.subscriber!!.name ?: "",
             startMonth = membership.startMonth!!,
             endMonth = membership.endMonth,
-            activeNow = isActiveInMonth(membership, YearMonth.now()),
+            activeNow = isActiveInMonth(membership, BillingTime.currentMonth()),
             createdAt = membership.createdAt!!
         )
     }

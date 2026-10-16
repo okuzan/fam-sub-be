@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.reporting
 
+import com.almonium.famsubbe.util.BillingTime
 import com.almonium.famsubbe.invoice.InvoiceEmailService
 import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.invoice.InvoiceService
@@ -18,7 +19,7 @@ class WeeklySituationEmailService(
 ) {
     private val log = LoggerFactory.getLogger(WeeklySituationEmailService::class.java)
 
-    @Scheduled(cron = "0 0 10 * * SAT", zone = "Europe/Kyiv")
+    @Scheduled(cron = "0 0 10 * * SAT", zone = BillingTime.ZONE_ID)
     fun sendWeeklySituationEmailsOnSaturday() {
         val result = sendWeeklySituationEmails()
         log.info(

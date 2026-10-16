@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.invoice
 
+import com.almonium.famsubbe.util.BillingTime
 import com.almonium.famsubbe.subscriber.ActiveSubscriptionDto
 import com.almonium.famsubbe.subscriber.SubscriberDetailResponse
 import com.almonium.famsubbe.subscriber.SubscriberDebtPaymentItemResult
@@ -28,7 +29,6 @@ import java.io.ByteArrayOutputStream
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.YearMonth
-import java.time.ZoneId
 import java.util.*
 
 @Service
@@ -42,8 +42,6 @@ class InvoiceService(
     private val invoiceEmailService: InvoiceEmailService,
     @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean
 ) {
-    private val invoiceZone = ZoneId.of("Europe/Kyiv")
-
     private companion object {
         const val BILLING_EXEMPT_NOTE = "Settled automatically: subscriber is billing-exempt"
     }
@@ -70,7 +68,7 @@ class InvoiceService(
         check(entries.isNotEmpty()) { "No uninvoiced ledger entries found in the selected period" }
 
         val now = Instant.now()
-        val invoiceDate = now.atZone(invoiceZone).toLocalDate()
+        val invoiceDate = BillingTime.dateOf(now)
         val generationRun = invoiceGenerationRunRepository.save(
             InvoiceGenerationRun().apply {
                 this.fromMonth = request.fromMonth
@@ -371,7 +369,7 @@ class InvoiceService(
             .orElseThrow { IllegalArgumentException("Subscriber not found: ${request.subscriberId}") }
 
         val now = Instant.now()
-        val invoiceDate = request.invoiceDate ?: now.atZone(invoiceZone).toLocalDate()
+        val invoiceDate = request.invoiceDate ?: BillingTime.dateOf(now)
         val invoiceMonth = YearMonth.from(invoiceDate)
         val invoice = invoiceRepository.save(
             Invoice().apply {
@@ -751,7 +749,7 @@ class InvoiceService(
             .orElseThrow { NoSuchElementException("Subscriber not found with id: $subscriberId") }
 
         // Get active subscriptions (memberships that are currently active)
-        val currentMonth = YearMonth.now()
+        val currentMonth = BillingTime.currentMonth()
         val activeMemberships = membershipRepository.findActiveBySubscriberAndMonth(subscriberId, currentMonth)
         
         val activeSubscriptions = activeMemberships.map { membership ->
