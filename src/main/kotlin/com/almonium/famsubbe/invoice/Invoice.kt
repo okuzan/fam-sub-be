@@ -82,6 +82,10 @@ class Invoice {
     @Column(name = "balance_paid_amount", precision = 19, scale = 2)
     var balancePaidAmount: BigDecimal? = null
 
+    /** The bank transfer that settled this invoice; cleared if it leaves PAID. */
+    @Column(name = "paid_by_bank_transaction_id")
+    var paidByBankTransactionId: UUID? = null
+
     @Enumerated(EnumType.STRING)
     @Column(name = "origin", nullable = false)
     var origin: InvoiceOrigin = InvoiceOrigin.SUBSCRIPTION_LEDGER

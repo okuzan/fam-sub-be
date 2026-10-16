@@ -177,7 +177,8 @@ class InvoiceService(
             sentAt = sentAt,
             emailSent = emailSent,
             notes = notes,
-            origin = origin.name
+            origin = origin.name,
+            paidByBankTransactionId = paidByBankTransactionId
         )
 
     private fun initialInvoiceStatus(subscriber: Subscriber): InvoiceStatus =
@@ -221,6 +222,7 @@ class InvoiceService(
             invoice.balancePaidAmount = null
         }
 
+        if (status != InvoiceStatus.PAID) invoice.paidByBankTransactionId = null
         invoice.transitionTo(status)
         val updatedInvoice = invoiceRepository.save(invoice)
 
@@ -422,7 +424,11 @@ class InvoiceService(
      * cannot cover so newer invoices never jump older debt. Whatever is left
      * stays as credit.
      */
-    fun applyIncomingPayment(subscriber: Subscriber, amount: BigDecimal): IncomingPaymentResult {
+    fun applyIncomingPayment(
+        subscriber: Subscriber,
+        amount: BigDecimal,
+        bankTransactionId: UUID? = null
+    ): IncomingPaymentResult {
         require(amount > BigDecimal.ZERO) { "Payment amount must be positive" }
 
         subscriber.balance = (subscriber.balance ?: BigDecimal.ZERO).add(amount)
@@ -438,6 +444,7 @@ class InvoiceService(
         val settled = mutableListOf<Invoice>()
         for (invoice in settlementOrder) {
             if ((subscriber.balance ?: BigDecimal.ZERO) < requireNotNull(invoice.totalAmount)) break
+            invoice.paidByBankTransactionId = bankTransactionId
             settled += payInvoiceFromBalance(invoice)
         }
 

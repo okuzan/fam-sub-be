@@ -37,6 +37,8 @@ class SubscriberCabinetService(
         )
     }
 
+    fun getSubscriberId(email: String): UUID = requireNotNull(findSubscriberByEmail(email).id)
+
     fun getInvoices(email: String): List<SubscriberInvoiceSummaryResponse> {
         val subscriber = findSubscriberByEmail(email)
         return invoiceRepository.findAllFiltered(requireNotNull(subscriber.id))

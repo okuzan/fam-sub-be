@@ -17,4 +17,6 @@ object BillingTime {
     fun currentMonth(): YearMonth = YearMonth.now(ZONE)
 
     fun dateOf(instant: Instant): LocalDate = instant.atZone(ZONE).toLocalDate()
+
+    fun today(): LocalDate = LocalDate.now(ZONE)
 }

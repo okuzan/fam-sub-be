@@ -39,6 +39,10 @@ class AdminBankPaymentController(
             )
         )
 
+    @GetMapping("/{id}")
+    fun getBankPayment(@PathVariable id: UUID): ResponseEntity<BankTransactionResponse> =
+        ResponseEntity.ok(bankPaymentService.getTransaction(id))
+
     @PostMapping("/sync")
     fun sync(authentication: Authentication): ResponseEntity<BankSyncResult> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)

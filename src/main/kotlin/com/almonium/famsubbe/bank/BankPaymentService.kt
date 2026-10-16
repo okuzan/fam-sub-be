@@ -113,6 +113,37 @@ class BankPaymentService(
         return transactions.map { it.toResponse(suggestions[it.id].orEmpty()) }
     }
 
+    @Transactional(readOnly = true)
+    fun getTransaction(transactionId: UUID): BankTransactionResponse =
+        findTransaction(transactionId).toResponse(emptyList())
+
+    @Transactional(readOnly = true)
+    fun getSubscriberPayments(subscriberId: UUID, limit: Int): List<SubscriberPaymentResponse> {
+        val payments = transactionRepository.findBySubscriberIdAndStatusOrderByOccurredAtDesc(
+            subscriberId,
+            BankTransactionStatus.APPLIED,
+            PageRequest.of(0, limit.coerceIn(1, MAX_LIMIT))
+        )
+        val settledByPayment = invoiceRepository
+            .findByPaidByBankTransactionIdIn(payments.mapNotNull { it.id })
+            .groupBy { it.paidByBankTransactionId }
+
+        return payments.map { payment ->
+            SubscriberPaymentResponse(
+                id = requireNotNull(payment.id),
+                occurredAt = requireNotNull(payment.occurredAt),
+                amount = requireNotNull(payment.amount),
+                senderName = payment.senderName,
+                settledPeriods = settledByPayment[payment.id].orEmpty()
+                    .sortedBy { it.fromMonth }
+                    .map { invoice ->
+                        if (invoice.fromMonth == invoice.toMonth) "${invoice.fromMonth}"
+                        else "${invoice.fromMonth}..${invoice.toMonth}"
+                    }
+            )
+        }
+    }
+
     @Transactional
     fun assign(transactionId: UUID, request: BankPaymentAssignRequest, accountId: UUID): BankPaymentResolution {
         val transaction = findTransaction(transactionId)
@@ -174,7 +205,13 @@ class BankPaymentService(
         method: BankMatchMethod,
         accountId: UUID?
     ): IncomingPaymentResult {
-        val result = invoiceService.applyIncomingPayment(subscriber, requireNotNull(transaction.amount))
+        // Invoices point at the transfer that paid them, so it needs its id first.
+        if (transaction.id == null) transactionRepository.saveAndFlush(transaction)
+        val result = invoiceService.applyIncomingPayment(
+            subscriber,
+            requireNotNull(transaction.amount),
+            transaction.id
+        )
 
         transaction.status = BankTransactionStatus.APPLIED
         transaction.subscriber = subscriber

@@ -13,6 +13,12 @@ interface BankTransactionRepository : JpaRepository<BankTransaction, UUID> {
     fun findAllByOrderByOccurredAtDesc(pageable: Pageable): List<BankTransaction>
 
     fun findByStatusOrderByOccurredAtDesc(status: BankTransactionStatus, pageable: Pageable): List<BankTransaction>
+
+    fun findBySubscriberIdAndStatusOrderByOccurredAtDesc(
+        subscriberId: UUID,
+        status: BankTransactionStatus,
+        pageable: Pageable
+    ): List<BankTransaction>
 }
 
 @Repository

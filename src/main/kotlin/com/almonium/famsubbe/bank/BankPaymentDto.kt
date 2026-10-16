@@ -62,6 +62,16 @@ data class BankPaymentResolution(
     val senderRemembered: Boolean
 )
 
+/** A payment as the subscriber sees it in their cabinet. */
+data class SubscriberPaymentResponse(
+    val id: UUID,
+    val occurredAt: Instant,
+    val amount: BigDecimal,
+    val senderName: String?,
+    /** The invoices it paid, as "2026-06" or "2026-04..2026-05"; the rest went to balance. */
+    val settledPeriods: List<String>
+)
+
 data class BankSenderResponse(
     val id: UUID,
     val senderName: String?,

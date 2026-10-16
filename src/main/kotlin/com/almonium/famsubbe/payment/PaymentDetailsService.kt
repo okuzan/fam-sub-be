@@ -1,6 +1,11 @@
 package com.almonium.famsubbe.payment
 
 import com.almonium.famsubbe.config.PaymentProperties
+import com.almonium.famsubbe.invoice.Invoice
+import com.almonium.famsubbe.util.BillingTime
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 import com.almonium.famsubbe.subscriber.PaymentCode
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
@@ -53,6 +58,17 @@ class PaymentDetailsService(
             amountDue = amountDue,
             credit = owed.negate().max(BigDecimal.ZERO),
             unpaidInvoiceCount = unpaidInvoices.size,
+            unpaidInvoices = unpaidInvoices
+                .sortedWith(compareByDescending<Invoice> { it.invoiceDate }.thenByDescending { it.createdAt })
+                .map { invoice ->
+                    PayPageInvoice(
+                        fromMonth = requireNotNull(invoice.fromMonth),
+                        toMonth = requireNotNull(invoice.toMonth),
+                        invoiceDate = requireNotNull(invoice.invoiceDate),
+                        amount = requireNotNull(invoice.totalAmount),
+                        openDays = ChronoUnit.DAYS.between(requireNotNull(invoice.invoiceDate), BillingTime.today())
+                    )
+                },
             recipientName = details.recipientName,
             iban = details.iban,
             cardNumber = details.cardNumber,
@@ -82,10 +98,20 @@ data class PayPageResponse(
     /** Prepaid credit left over after every unpaid invoice. */
     val credit: BigDecimal,
     val unpaidInvoiceCount: Int,
+    /** Newest first. */
+    val unpaidInvoices: List<PayPageInvoice>,
     val recipientName: String,
     val iban: String,
     val cardNumber: String,
     val purpose: String,
     /** Carries amountDue when it is above zero; null until the recipient tax number is configured. */
     val nbuQrUrl: String?
+)
+
+data class PayPageInvoice(
+    val fromMonth: YearMonth,
+    val toMonth: YearMonth,
+    val invoiceDate: LocalDate,
+    val amount: BigDecimal,
+    val openDays: Long
 )

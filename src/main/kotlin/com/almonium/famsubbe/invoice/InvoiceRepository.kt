@@ -41,4 +41,6 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
     fun findByInvoiceGenerationRunId(invoiceGenerationRunId: UUID): List<Invoice>
 
     fun findByStatusOrderByCreatedAtAsc(status: InvoiceStatus): List<Invoice>
+
+    fun findByPaidByBankTransactionIdIn(bankTransactionIds: Collection<UUID>): List<Invoice>
 }

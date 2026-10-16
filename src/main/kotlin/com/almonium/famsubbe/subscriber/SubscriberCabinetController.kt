@@ -1,6 +1,8 @@
 package com.almonium.famsubbe.subscriber
 
 import com.almonium.famsubbe.account.AccountService
+import com.almonium.famsubbe.bank.BankPaymentService
+import com.almonium.famsubbe.bank.SubscriberPaymentResponse
 import com.almonium.famsubbe.util.AuthenticationUtil
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
@@ -14,6 +16,7 @@ import java.util.*
 @RequestMapping("/subscriber")
 class SubscriberCabinetController(
     private val subscriberCabinetService: SubscriberCabinetService,
+    private val bankPaymentService: BankPaymentService,
     private val accountService: AccountService
 ) {
 
@@ -21,6 +24,13 @@ class SubscriberCabinetController(
     fun getCabinet(authentication: Authentication): ResponseEntity<SubscriberCabinetResponse> {
         val email = resolveEmail(authentication)
         return ResponseEntity.ok(subscriberCabinetService.getCabinet(email))
+    }
+
+    /** Bank transfers that were applied to this subscriber, newest first. */
+    @GetMapping("/payments")
+    fun getPayments(authentication: Authentication): ResponseEntity<List<SubscriberPaymentResponse>> {
+        val subscriberId = subscriberCabinetService.getSubscriberId(resolveEmail(authentication))
+        return ResponseEntity.ok(bankPaymentService.getSubscriberPayments(subscriberId, limit = 20))
     }
 
     @GetMapping("/invoices")

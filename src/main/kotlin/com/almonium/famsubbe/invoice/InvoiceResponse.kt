@@ -22,5 +22,7 @@ data class InvoiceResponse(
     val sentAt: Instant?,
     val emailSent: Boolean,
     val notes: String?,
-    val origin: String
+    val origin: String,
+    /** Set when a bank transfer settled it; GET /admin/bank-payments/{id} describes the transfer. */
+    val paidByBankTransactionId: UUID?
 )
