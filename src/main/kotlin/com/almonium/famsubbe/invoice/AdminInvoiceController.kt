@@ -113,7 +113,9 @@ class AdminInvoiceController(
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
         val requestedStatus = InvoiceStatus.valueOf(request.status.uppercase())
-        val updatedInvoice = invoiceService.updateStatus(invoiceId, requestedStatus)
+        val change = invoiceService.updateStatus(invoiceId, requestedStatus)
+        val updatedInvoice = change.invoice
+        val refundSummary = change.balanceRefunded?.let { " and refunded $it to balance" }.orEmpty()
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.INVOICE_STATUS_UPDATED,
@@ -122,11 +124,12 @@ class AdminInvoiceController(
             subscriberId = updatedInvoice.subscriberId,
             fromMonth = updatedInvoice.fromMonth,
             toMonth = updatedInvoice.toMonth,
-            summary = "Changed invoice $invoiceId status from ${invoiceBefore.status} to ${updatedInvoice.status}",
+            summary = "Changed invoice $invoiceId status from ${invoiceBefore.status} to ${updatedInvoice.status}$refundSummary",
             metadata = mapOf(
                 "statusBefore" to invoiceBefore.status,
                 "statusAfter" to updatedInvoice.status,
-                "totalAmount" to updatedInvoice.totalAmount
+                "totalAmount" to updatedInvoice.totalAmount,
+                "balanceRefunded" to change.balanceRefunded
             )
         )
         return ResponseEntity.ok(updatedInvoice)

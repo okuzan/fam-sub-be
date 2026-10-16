@@ -58,7 +58,7 @@ class InvoiceServiceStatusTest {
         `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
         `when`(ledgerEntryRepository.findByInvoice(invoice)).thenReturn(listOf(entry))
 
-        val result = service.updateStatus(invoice.id!!, InvoiceStatus.VOID)
+        val result = service.updateStatus(invoice.id!!, InvoiceStatus.VOID).invoice
 
         assertEquals(InvoiceStatus.VOID.name, result.status)
         assertNull(entry.invoice)
@@ -73,6 +73,37 @@ class InvoiceServiceStatusTest {
             service.updateStatus(invoice.id!!, InvoiceStatus.DRAFT)
         }
         assertEquals(InvoiceStatus.VOID, invoice.status)
+    }
+
+    @Test
+    fun `reopening an invoice paid from balance refunds the balance`() {
+        subscriber.balance = BigDecimal("150.00")
+        val invoice = invoice(InvoiceStatus.SENT)
+        `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
+        `when`(subscriberRepository.save(any(Subscriber::class.java))).thenAnswer { it.getArgument<Subscriber>(0) }
+
+        service.payFromBalance(invoice.id!!)
+        assertEquals(BigDecimal("50.00"), subscriber.balance)
+        assertEquals(BigDecimal("100.00"), invoice.balancePaidAmount)
+
+        val change = service.updateStatus(invoice.id!!, InvoiceStatus.SENT)
+
+        assertEquals(BigDecimal("100.00"), change.balanceRefunded)
+        assertEquals(BigDecimal("150.00"), subscriber.balance)
+        assertNull(invoice.balancePaidAmount)
+        assertEquals(InvoiceStatus.SENT, invoice.status)
+    }
+
+    @Test
+    fun `reopening an invoice paid some other way refunds nothing`() {
+        subscriber.balance = BigDecimal("20.00")
+        val invoice = invoice(InvoiceStatus.PAID)
+        `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
+
+        val change = service.updateStatus(invoice.id!!, InvoiceStatus.DRAFT)
+
+        assertNull(change.balanceRefunded)
+        assertEquals(BigDecimal("20.00"), subscriber.balance)
     }
 
     @Test

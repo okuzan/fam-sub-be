@@ -75,6 +75,13 @@ class Invoice {
     @Column(name = "notes", columnDefinition = "TEXT")
     var notes: String? = null
 
+    /**
+     * The part of the total settled from the subscriber's prepaid balance. It is
+     * refunded if the invoice leaves PAID; null when it was settled any other way.
+     */
+    @Column(name = "balance_paid_amount", precision = 19, scale = 2)
+    var balancePaidAmount: BigDecimal? = null
+
     @Enumerated(EnumType.STRING)
     @Column(name = "origin", nullable = false)
     var origin: InvoiceOrigin = InvoiceOrigin.SUBSCRIPTION_LEDGER

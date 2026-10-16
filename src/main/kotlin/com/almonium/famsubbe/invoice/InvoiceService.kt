@@ -246,11 +246,11 @@ class InvoiceService(
             calculatedAt = requireNotNull(calculatedAt)
         )
 
-    fun updateStatus(invoiceId: UUID, status: InvoiceStatus): InvoiceResponse {
+    fun updateStatus(invoiceId: UUID, status: InvoiceStatus): InvoiceStatusChange {
         // Voiding has to release the ledger entries, so it never goes through a
         // bare status write.
         if (status == InvoiceStatus.VOID) {
-            return voidInvoice(invoiceId, null)
+            return InvoiceStatusChange(voidInvoice(invoiceId, null), balanceRefunded = null)
         }
 
         val invoice = invoiceRepository.findById(invoiceId)
@@ -260,10 +260,22 @@ class InvoiceService(
         // so reopening it would bill the same cost twice.
         check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be reopened" }
 
+        // Reopening an invoice that was paid from balance gives that money back,
+        // otherwise the subscriber's credit is simply lost.
+        val refund = invoice.balancePaidAmount?.takeIf {
+            invoice.status == InvoiceStatus.PAID && status != InvoiceStatus.PAID
+        }
+        if (refund != null) {
+            val subscriber = requireNotNull(invoice.subscriber)
+            subscriber.balance = (subscriber.balance ?: BigDecimal.ZERO).add(refund)
+            subscriberRepository.save(subscriber)
+            invoice.balancePaidAmount = null
+        }
+
         invoice.setStatus(status)
         val updatedInvoice = invoiceRepository.save(invoice)
 
-        return updatedInvoice.toResponse()
+        return InvoiceStatusChange(updatedInvoice.toResponse(), balanceRefunded = refund)
     }
 
     fun generateInvoicePdf(invoiceId: UUID): ByteArray {
@@ -529,7 +541,7 @@ class InvoiceService(
         subscriber.balance = currentBalance.subtract(invoiceAmount)
         subscriberRepository.save(subscriber)
 
-        // Mark invoice as paid
+        invoice.balancePaidAmount = invoiceAmount
         invoice.setStatus(InvoiceStatus.PAID)
 
         return invoiceRepository.save(invoice)
