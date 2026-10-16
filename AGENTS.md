@@ -74,9 +74,18 @@ charge+subscriber, grouped by a `CostCalculationBatch`) → `InvoiceService`
 groups uninvoiced ledger entries per subscriber into an `Invoice`
 (DRAFT → SENT → PAID, or VOID).
 
+Around that chain: `InvoiceDeliveryService` sends every invoice email, after
+the invoice has committed and in its own short transaction per invoice, and
+only then moves it to SENT. `SubscriberStandingService` is the one place that
+computes what a subscriber owes (unpaid invoices minus balance), for the admin
+view, the cabinet, and every email. `SituationEmailService` sends the
+on-demand and Saturday "where you stand" emails. `BillingTime` owns the
+Europe/Kyiv zone: use `BillingTime.currentMonth()`, never `YearMonth.now()`.
+
 Two write paths bypass the ledger: manual/duplicated invoices
 (`InvoiceOrigin.MANUAL`) and `Subscriber.balance`, a prepaid credit that
-`payFromBalance` draws down. Undo is handled by `RecoveryService`, which
+`payFromBalance` draws down. The amount drawn is recorded in
+`Invoice.balancePaidAmount`, and moving that invoice out of PAID refunds it. Undo is handled by `RecoveryService`, which
 deletes a whole cost run or invoice run and stamps the batch/run as undone;
 that is why `CostCalculationBatch` and `InvoiceGenerationRun` exist.
 
@@ -107,7 +116,11 @@ Conventions worth preserving:
 ## Authentication
 
 Google OIDC only, with a server-side session cookie (`JSESSIONID`) and CORS
-credentials allowed for `app.web-domain`. `AccountOidcUserService` refuses to
+credentials allowed for `app.web-domain`. CSRF protection is
+`RequestedWithHeaderFilter`, not Spring's token: every non-GET request must
+carry `X-Requested-With`, and the client sends it through `apiFetch`. Never
+exempt an endpoint from it. A release that needs both sides deploys the
+frontend first. `AccountOidcUserService` refuses to
 create an account unless the email already matches a `Subscriber` row or a
 pending `AdminInvite` — signup is closed by design. Admin rights are granted
 only by accepting an emailed invite token (SHA-256 hashed at rest, 7-day
@@ -118,7 +131,12 @@ for Google-created accounts and nothing authenticates against it.
 
 `./gradlew build`. Note that `FamSubBeApplicationTests` is a `@SpringBootTest`
 that needs a live Postgres reachable via `.env`, so a local build requires the
-dev database to be up. CI deliberately runs `bootJar -x test` and therefore
+dev database to be up. To run that test without the dev
+database, point it at a throwaway container, e.g. `docker run --rm -p
+127.0.0.1:55432:5432 -e POSTGRES_USER=t -e POSTGRES_PASSWORD=t -e
+POSTGRES_DB=fam_sub postgres:16` with `DB_HOST=127.0.0.1 DB_PORT=55432
+DB_USERNAME=t DB_PASSWORD=t`. Environment variables override `.env`, and Flyway
+builds the schema from V0. CI deliberately runs `bootJar -x test` and therefore
 never executes tests — if you add a test, it only ever runs locally, so prefer
 plain JUnit + Mockito unit tests (as in `invoice/`, `accounting/`, `finance/`)
 over Spring-context tests.
@@ -150,7 +168,9 @@ deliberate, or they need their own commit and a decision from the owner.
   created already PAID and their balance is never touched. Enabling it also
   settles every invoice they currently owe. It is a waiver, not a payment
   method.
-- Voiding a ledger invoice releases its ledger entries back to the uninvoiced
+- An invoice can reach VOID only through `voidInvoice`, including when the
+  status endpoint is asked for VOID, and it can never leave VOID. Voiding a
+  ledger invoice releases its ledger entries back to the uninvoiced
   pool so the cost can be regenerated. That is the only way to redo part of an
   invoice run after it has gone out — `RecoveryService.undoInvoiceRun` requires
   every invoice in the run to still be DRAFT.
