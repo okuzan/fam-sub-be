@@ -13,6 +13,8 @@ import java.util.*
 interface LedgerEntryRepository : JpaRepository<LedgerEntry, UUID> {
     fun existsByChargeId(chargeId: UUID): Boolean
 
+    fun existsBySubscriberIdAndInvoiceIsNull(subscriberId: UUID): Boolean
+
     @Query("""
         select distinct le.charge.id
         from LedgerEntry le

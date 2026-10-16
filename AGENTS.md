@@ -107,6 +107,11 @@ code (`NbuQrCode`), which needs the recipient's РНОКПП in
 `app.payment`, because that is the only account that is read. Applying goes through `InvoiceService.applyIncomingPayment`: credit the
 balance, then pay invoices from it.
 
+A subscriber is archived when they have no current or upcoming membership,
+nothing unpaid or waiting to be invoiced, and a zero balance
+(`SubscriberService.isArchived`). It is derived on every read, never stored,
+so adding a membership or a charge brings them back on its own.
+
 Two write paths bypass the ledger: manual/duplicated invoices
 (`InvoiceOrigin.MANUAL`) and `Subscriber.balance`, a prepaid credit that
 `payFromBalance` draws down. The amount drawn is recorded in

@@ -1,20 +1,26 @@
 package com.almonium.famsubbe.subscriber
 
+import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.invoice.InvoiceRepository
+import com.almonium.famsubbe.subscription.MembershipRepository
+import com.almonium.famsubbe.util.BillingTime
 import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.YearMonth
 import java.util.*
 
 @Service
 @Transactional
 class SubscriberService(
     private val subscriberRepository: SubscriberRepository,
-    private val invoiceRepository: InvoiceRepository
+    private val invoiceRepository: InvoiceRepository,
+    private val membershipRepository: MembershipRepository,
+    private val ledgerEntryRepository: LedgerEntryRepository
 ) {
 
     @Transactional(readOnly = true)
@@ -92,16 +98,45 @@ class SubscriberService(
     }
 
     private fun Subscriber.toResponse(): SubscriberResponse {
+        val subscriberId = requireNotNull(id)
+        val memberships = membershipRepository.findBySubscriber(this)
+        val balance = balance ?: BigDecimal.ZERO
+        val owesSomething = invoiceRepository.findBySubscriberAndStatusIn(this, SubscriberStandingService.UNPAID_STATUSES).isNotEmpty() ||
+            ledgerEntryRepository.existsBySubscriberIdAndInvoiceIsNull(subscriberId)
+        val endMonths = memberships.map { it.endMonth }
+
         return SubscriberResponse(
-            id = this.id!!,
+            id = subscriberId,
             name = this.name!!,
             surname = this.surname,
             email = this.email!!,
-            balance = this.balance ?: BigDecimal.ZERO,
+            balance = balance,
             billingExempt = this.billingExempt,
             createdAt = this.createdAt!!,
-            updatedAt = this.updatedAt!!
+            updatedAt = this.updatedAt!!,
+            archived = isArchived(endMonths, owesSomething, balance, BillingTime.currentMonth()),
+            formerServices = memberships.mapNotNull { it.subscriptionService?.name }.distinct().sorted(),
+            lastMembershipEndMonth = endMonths.takeIf { months -> months.none { it == null } }
+                ?.filterNotNull()?.maxOrNull()?.toString(),
+            lastInvoicePaidAt = invoiceRepository.findBySubscriberAndStatusIn(this, listOf(InvoiceStatus.PAID))
+                .mapNotNull { it.statusChangedAt }.maxOrNull()
         )
+    }
+
+    companion object {
+        /**
+         * Archived subscribers are former members with nothing left between
+         * them and the group. Credit keeps someone active: it is still theirs.
+         */
+        fun isArchived(
+            membershipEndMonths: List<YearMonth?>,
+            owesSomething: Boolean,
+            balance: BigDecimal,
+            currentMonth: YearMonth
+        ): Boolean =
+            membershipEndMonths.all { it != null && it < currentMonth } &&
+                !owesSomething &&
+                balance.signum() == 0
     }
 
     private fun String?.cleanSurname(): String? = this?.trim()?.replace(Regex("\\s+"), " ")?.takeIf { it.isNotEmpty() }
