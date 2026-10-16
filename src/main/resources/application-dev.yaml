@@ -1,6 +1,9 @@
 app:
   web-domain: http://localhost:9000
   api-domain: http://localhost:${server.port}
+  # Dev shares the Mono token, and its one-call-a-minute limit, with prod:
+  # sync from the admin page instead.
+  bank.mono.sync-enabled: false
   email.dry-run: true
 spring.config.import:
   - optional:file:.env[.properties]

@@ -414,6 +414,40 @@ class InvoiceService(
         )
     }
 
+    /**
+     * Money that reached us from a subscriber, such as a bank transfer. It is
+     * credited to their balance, then settles unpaid invoices from it: first an
+     * invoice of exactly the paid amount, since that is plainly what the payer
+     * meant, then the rest oldest first, stopping at the first one the balance
+     * cannot cover so newer invoices never jump older debt. Whatever is left
+     * stays as credit.
+     */
+    fun applyIncomingPayment(subscriber: Subscriber, amount: BigDecimal): IncomingPaymentResult {
+        require(amount > BigDecimal.ZERO) { "Payment amount must be positive" }
+
+        subscriber.balance = (subscriber.balance ?: BigDecimal.ZERO).add(amount)
+        subscriberRepository.save(subscriber)
+
+        val unpaid = invoiceRepository.findBySubscriberAndStatusIn(
+            subscriber,
+            listOf(InvoiceStatus.DRAFT, InvoiceStatus.SENT)
+        ).sortedWith(compareBy<Invoice> { it.invoiceDate }.thenBy { it.createdAt })
+        val exactMatch = unpaid.firstOrNull { it.totalAmount?.compareTo(amount) == 0 }
+        val settlementOrder = listOfNotNull(exactMatch) + unpaid.filter { it !== exactMatch }
+
+        val settled = mutableListOf<Invoice>()
+        for (invoice in settlementOrder) {
+            if ((subscriber.balance ?: BigDecimal.ZERO) < requireNotNull(invoice.totalAmount)) break
+            settled += payInvoiceFromBalance(invoice)
+        }
+
+        return IncomingPaymentResult(
+            settledInvoiceIds = settled.map { requireNotNull(it.id) },
+            settledAmount = settled.map { requireNotNull(it.totalAmount) }.fold(BigDecimal.ZERO, BigDecimal::add),
+            balanceAfter = subscriber.balance ?: BigDecimal.ZERO
+        )
+    }
+
     private fun payInvoiceFromBalance(invoice: Invoice): Invoice {
         check(invoice.status != InvoiceStatus.PAID) { "Invoice is already marked as paid" }
         check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be paid from balance" }

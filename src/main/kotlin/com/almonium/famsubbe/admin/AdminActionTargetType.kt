@@ -11,5 +11,7 @@ enum class AdminActionTargetType {
     // Retired: see AdminActionType.PINNED_POST_GENERATED.
     PINNED_POST,
     ACCOUNT,
-    ADMIN_INVITE
+    ADMIN_INVITE,
+    BANK_TRANSACTION,
+    BANK_SENDER
 }

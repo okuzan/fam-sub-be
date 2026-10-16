@@ -64,3 +64,11 @@ app:
         name: Privat
         currency: ₴
         number: "5169360022967743"
+  bank:
+    mono:
+      api-url: https://api.monobank.ua
+      token: ${MONO_API_TOKEN:}
+      # The UAH account behind the mono card above (444111******1360).
+      account-id: eqWuI5af-i_FrRG55-eGJw
+      sync-interval: PT5M
+      auto-apply-tolerance: 20.00

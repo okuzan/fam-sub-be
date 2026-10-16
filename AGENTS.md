@@ -82,6 +82,17 @@ view, the cabinet, and every email. `SituationEmailService` sends the
 on-demand and Saturday "where you stand" emails. `BillingTime` owns the
 Europe/Kyiv zone: use `BillingTime.currentMonth()`, never `YearMonth.now()`.
 
+Incoming money is read from the bank, not entered by hand: `BankSyncService`
+polls the Monobank personal statement (`app.bank.mono`, token in
+`MONO_API_TOKEN`) every five minutes in prod. Polling rather than Mono's
+webhook is deliberate, because the webhook cannot send `X-Requested-With`.
+Each credit from another person becomes a `BankTransaction`, unique per bank
+operation. `BankPaymentService` applies it on its own when the sender is
+remembered (`BankSender`) and the amount is within what the subscriber owes
+plus `auto-apply-tolerance`; otherwise it waits on the admin bank payments
+page. Applying goes through `InvoiceService.applyIncomingPayment`: credit the
+balance, then pay invoices from it.
+
 Two write paths bypass the ledger: manual/duplicated invoices
 (`InvoiceOrigin.MANUAL`) and `Subscriber.balance`, a prepaid credit that
 `payFromBalance` draws down. The amount drawn is recorded in
