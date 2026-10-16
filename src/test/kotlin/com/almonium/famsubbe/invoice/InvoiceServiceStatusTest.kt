@@ -2,11 +2,8 @@ package com.almonium.famsubbe.invoice
 
 import com.almonium.famsubbe.accounting.LedgerEntry
 import com.almonium.famsubbe.accounting.LedgerEntryRepository
-import com.almonium.famsubbe.reporting.WeeklySituationInvoiceDto
-import com.almonium.famsubbe.subscriber.ActiveSubscriptionDto
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
-import com.almonium.famsubbe.subscription.MembershipRepository
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
@@ -19,23 +16,17 @@ import java.util.Optional
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class InvoiceServiceStatusTest {
     private val invoiceRepository = mock(InvoiceRepository::class.java)
     private val ledgerEntryRepository = mock(LedgerEntryRepository::class.java)
     private val subscriberRepository = mock(SubscriberRepository::class.java)
-    private val invoiceEmailService = FakeInvoiceEmailService()
     private val service = InvoiceService(
         mock(InvoiceGenerationRunRepository::class.java),
         invoiceRepository,
         ledgerEntryRepository,
-        subscriberRepository,
-        mock(MembershipRepository::class.java),
-        invoiceEmailService,
-        false
+        subscriberRepository
     )
 
     private val subscriber = Subscriber().apply {
@@ -106,37 +97,6 @@ class InvoiceServiceStatusTest {
         assertEquals(BigDecimal("20.00"), subscriber.balance)
     }
 
-    @Test
-    fun `manual invoice stays DRAFT when its email fails`() {
-        `when`(subscriberRepository.findById(subscriber.id!!)).thenReturn(Optional.of(subscriber))
-        invoiceEmailService.succeeds = false
-
-        val result = service.createManualInvoice(manualRequest(), UUID.randomUUID())
-
-        assertEquals(InvoiceStatus.DRAFT.name, result.status)
-        assertFalse(result.emailSent)
-        assertNull(result.sentAt)
-    }
-
-    @Test
-    fun `manual invoice becomes SENT once its email goes out`() {
-        `when`(subscriberRepository.findById(subscriber.id!!)).thenReturn(Optional.of(subscriber))
-        invoiceEmailService.succeeds = true
-
-        val result = service.createManualInvoice(manualRequest(), UUID.randomUUID())
-
-        assertEquals(InvoiceStatus.SENT.name, result.status)
-        assertTrue(result.emailSent)
-    }
-
-    private fun manualRequest() = ManualInvoiceCreateRequest(
-        subscriberId = subscriber.id!!,
-        amount = BigDecimal("100.00"),
-        invoiceDate = LocalDate.of(2026, 10, 1),
-        notes = "Adjustment",
-        sendEmail = true
-    )
-
     private fun invoice(status: InvoiceStatus) = Invoice().apply {
         id = UUID.randomUUID()
         subscriber = this@InvoiceServiceStatusTest.subscriber
@@ -149,37 +109,4 @@ class InvoiceServiceStatusTest {
         statusChangedAt = Instant.now()
         createdByAccountId = UUID.randomUUID()
     }
-}
-
-private class FakeInvoiceEmailService : InvoiceEmailService {
-    var succeeds = true
-
-    override fun sendInvoiceEmail(invoice: Invoice, entries: List<LedgerEntry>, totalAmountOwed: BigDecimal) = succeeds
-
-    override fun sendSituationEmail(
-        toEmail: String,
-        subscriberName: String,
-        totalOwed: BigDecimal,
-        subscriberBalance: BigDecimal,
-        activeSubscriptions: List<ActiveSubscriptionDto>,
-        unpaidInvoices: List<WeeklySituationInvoiceDto>
-    ) = succeeds
-
-    override fun sendWeeklySituationEmail(
-        toEmail: String,
-        subscriberName: String,
-        totalOwed: BigDecimal,
-        subscriberBalance: BigDecimal,
-        activeSubscriptions: List<ActiveSubscriptionDto>,
-        unpaidInvoices: List<WeeklySituationInvoiceDto>
-    ) = succeeds
-
-    override fun sendDebtPaidEmail(
-        toEmail: String,
-        subscriberName: String,
-        paidInvoicesCount: Int,
-        totalPaidAmount: BigDecimal,
-        balanceAfter: BigDecimal,
-        creditWrittenOff: BigDecimal
-    ) = succeeds
 }

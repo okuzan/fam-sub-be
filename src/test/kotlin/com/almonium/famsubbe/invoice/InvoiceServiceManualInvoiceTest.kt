@@ -3,7 +3,6 @@ package com.almonium.famsubbe.invoice
 import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
-import com.almonium.famsubbe.subscription.MembershipRepository
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
@@ -20,16 +19,11 @@ class InvoiceServiceManualInvoiceTest {
     private val invoiceRepository = mock(InvoiceRepository::class.java)
     private val ledgerEntryRepository = mock(LedgerEntryRepository::class.java)
     private val subscriberRepository = mock(SubscriberRepository::class.java)
-    private val membershipRepository = mock(MembershipRepository::class.java)
-    private val invoiceEmailService = mock(InvoiceEmailService::class.java)
     private val service = InvoiceService(
         invoiceGenerationRunRepository,
         invoiceRepository,
         ledgerEntryRepository,
-        subscriberRepository,
-        membershipRepository,
-        invoiceEmailService,
-        false
+        subscriberRepository
     )
 
     @Test

@@ -1,31 +1,17 @@
 package com.almonium.famsubbe.invoice
 
-import com.almonium.famsubbe.util.BillingTime
-import com.almonium.famsubbe.subscriber.ActiveSubscriptionDto
-import com.almonium.famsubbe.subscriber.SubscriberDetailResponse
 import com.almonium.famsubbe.subscriber.SubscriberDebtPaymentItemResult
 import com.almonium.famsubbe.subscriber.SubscriberDebtPaymentResult
-import com.almonium.famsubbe.subscriber.UnpaidInvoiceDto
-import com.almonium.famsubbe.reporting.WeeklySituationInvoiceDto
-import com.almonium.famsubbe.reporting.WeeklySituationLedgerEntryDto
 import com.almonium.famsubbe.accounting.LedgerEntry
+import com.almonium.famsubbe.util.BillingTime
 import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
-import com.almonium.famsubbe.subscription.MembershipRepository
-import com.itextpdf.kernel.font.PdfFont
-import com.itextpdf.kernel.font.PdfFontFactory
-import com.itextpdf.kernel.pdf.PdfDocument
-import com.itextpdf.kernel.pdf.PdfWriter
-import com.itextpdf.layout.Document
-import com.itextpdf.layout.element.Paragraph
 import jakarta.persistence.criteria.Predicate
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.io.ByteArrayOutputStream
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.YearMonth
@@ -37,10 +23,7 @@ class InvoiceService(
     private val invoiceGenerationRunRepository: InvoiceGenerationRunRepository,
     private val invoiceRepository: InvoiceRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
-    private val subscriberRepository: SubscriberRepository,
-    private val membershipRepository: MembershipRepository,
-    private val invoiceEmailService: InvoiceEmailService,
-    @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean
+    private val subscriberRepository: SubscriberRepository
 ) {
     private companion object {
         const val BILLING_EXEMPT_NOTE = "Settled automatically: subscriber is billing-exempt"
@@ -112,11 +95,9 @@ class InvoiceService(
             subscriberEntries.forEach { it.invoice = invoice }
             ledgerEntryRepository.saveAll(subscriberEntries)
 
-            // The invoice is only SENT once the mail actually went out. Claiming it
-            // up front is how generated invoices used to be marked delivered while
-            // nothing was ever sent.
+            // Emails go out after this transaction commits, from InvoiceDeliveryService,
+            // which moves the invoice to SENT only once the mail really went out.
             val emailRequested = request.sendEmail && !exempt
-            val emailSent = emailRequested && sendNewInvoiceEmail(invoice, subscriberEntries, subscriber)
 
             createdInvoices += invoice
             totalAssigned += subscriberEntries.size
@@ -131,12 +112,11 @@ class InvoiceService(
                 totalAmount = invoiceTotal,
                 ledgerEntryCount = subscriberEntries.size,
                 emailRequested = emailRequested,
-                emailSent = invoice.emailSent,
-                message = when {
-                    exempt -> "Created settled invoice for billing-exempt subscriber with ${subscriberEntries.size} ledger entries"
-                    emailRequested && !emailSent ->
-                        "Created invoice with ${subscriberEntries.size} ledger entries, but the email could not be sent"
-                    else -> "Created invoice with ${subscriberEntries.size} ledger entries"
+                emailSent = false,
+                message = if (exempt) {
+                    "Created settled invoice for billing-exempt subscriber with ${subscriberEntries.size} ledger entries"
+                } else {
+                    "Created invoice with ${subscriberEntries.size} ledger entries"
                 }
             )
         }
@@ -200,37 +180,6 @@ class InvoiceService(
             origin = origin.name
         )
 
-    /**
-     * Sends the invoice email for a freshly created invoice and advances it to
-     * SENT only if the mail really went out. A dry-run send reports success but
-     * must not move the invoice out of DRAFT.
-     */
-    private fun sendNewInvoiceEmail(
-        invoice: Invoice,
-        entries: List<LedgerEntry>,
-        subscriber: Subscriber
-    ): Boolean {
-        val success = invoiceEmailService.sendInvoiceEmail(
-            invoice,
-            entries.sortedBy { it.recordedMonth },
-            calculateTotalAmountOwed(subscriber)
-        )
-
-        if (!success || isDryRun) {
-            return false
-        }
-
-        markSent(invoice)
-        return true
-    }
-
-    private fun markSent(invoice: Invoice) {
-        invoice.emailSent = true
-        invoice.sentAt = Instant.now()
-        invoice.setStatus(InvoiceStatus.SENT)
-        invoiceRepository.save(invoice)
-    }
-
     private fun initialInvoiceStatus(subscriber: Subscriber): InvoiceStatus =
         if (subscriber.billingExempt) InvoiceStatus.PAID else InvoiceStatus.DRAFT
 
@@ -272,62 +221,10 @@ class InvoiceService(
             invoice.balancePaidAmount = null
         }
 
-        invoice.setStatus(status)
+        invoice.transitionTo(status)
         val updatedInvoice = invoiceRepository.save(invoice)
 
         return InvoiceStatusChange(updatedInvoice.toResponse(), balanceRefunded = refund)
-    }
-
-    fun generateInvoicePdf(invoiceId: UUID): ByteArray {
-        val invoice = invoiceRepository.findById(invoiceId)
-            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
-
-        val entries = ledgerEntryRepository.findByInvoiceId(invoiceId)
-
-        val outputStream = ByteArrayOutputStream()
-        val writer = PdfWriter(outputStream)
-        val pdf = PdfDocument(writer)
-        val document = Document(pdf)
-
-        // Read the font as bytes rather than resolving it to a filesystem path.
-        // URL.toURI().path is null for a `jar:` URL and mangles any path with
-        // spaces or non-ASCII characters, so the path form only works by accident
-        // of the image running the application exploded.
-        val fontBytes = javaClass.classLoader.getResourceAsStream("fonts/NotoSans.ttf")
-            ?.use { it.readBytes() }
-            ?: throw IllegalStateException("Font file not found: fonts/NotoSans.ttf")
-
-        val font: PdfFont = PdfFontFactory.createFont(
-            fontBytes,
-            com.itextpdf.io.font.PdfEncodings.IDENTITY_H,
-            PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED
-        )
-
-        document.add(Paragraph("Invoice #${invoice.id}").setFont(font))
-        document.add(Paragraph("Subscriber: ${invoice.subscriber?.name ?: ""}").setFont(font))
-        document.add(Paragraph("Invoice date: ${invoice.invoiceDate}").setFont(font))
-        document.add(Paragraph("Period: ${invoice.fromMonth} - ${invoice.toMonth}").setFont(font))
-        document.add(Paragraph("Origin: ${invoice.origin.name}").setFont(font))
-        document.add(Paragraph("Total: ₴${invoice.totalAmount}").setFont(font))
-        invoice.notes?.takeIf { it.isNotBlank() }?.let {
-            document.add(Paragraph("Notes: $it").setFont(font))
-        }
-        document.add(Paragraph(" ").setFont(font))
-
-        if (entries.isEmpty()) {
-            document.add(Paragraph("No ledger entries attached to this invoice.").setFont(font))
-        } else {
-            document.add(Paragraph("Ledger Entries:").setFont(font))
-            entries.forEach { entry ->
-                document.add(
-                    Paragraph("- ${entry.subscriptionService?.name ?: ""}: ₴${entry.amount} (${entry.recordedMonth})")
-                        .setFont(font)
-                )
-            }
-        }
-
-        document.close()
-        return outputStream.toByteArray()
     }
 
     fun createManualInvoice(
@@ -358,10 +255,6 @@ class InvoiceService(
                 this.origin = InvoiceOrigin.MANUAL
             }
         )
-
-        if (request.sendEmail && !subscriber.billingExempt) {
-            sendNewInvoiceEmail(invoice, emptyList(), subscriber)
-        }
 
         return invoice.toResponse()
     }
@@ -398,10 +291,6 @@ class InvoiceService(
                 this.origin = InvoiceOrigin.MANUAL
             }
         )
-
-        if (request.sendEmail && !subscriber.billingExempt) {
-            sendNewInvoiceEmail(invoice, emptyList(), subscriber)
-        }
 
         return invoice.toResponse()
     }
@@ -485,7 +374,7 @@ class InvoiceService(
 
         val items = pendingInvoices.map { invoice ->
             val statusBefore = invoice.status.name
-            invoice.setStatus(InvoiceStatus.PAID)
+            invoice.transitionTo(InvoiceStatus.PAID)
             val updatedInvoice = invoiceRepository.save(invoice)
 
             SubscriberDebtPaymentItemResult(
@@ -542,7 +431,7 @@ class InvoiceService(
         subscriberRepository.save(subscriber)
 
         invoice.balancePaidAmount = invoiceAmount
-        invoice.setStatus(InvoiceStatus.PAID)
+        invoice.transitionTo(InvoiceStatus.PAID)
 
         return invoiceRepository.save(invoice)
     }
@@ -596,90 +485,6 @@ class InvoiceService(
             .map { it.toResponse() }
     }
 
-    @Transactional
-    fun sendInvoiceEmail(invoiceId: UUID): Boolean {
-        val invoice = invoiceRepository.findById(invoiceId)
-            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
-
-        check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be emailed" }
-        
-        val entries = ledgerEntryRepository.findByInvoice(invoice)
-            .sortedBy { it.recordedMonth }
-        val success = invoiceEmailService.sendInvoiceEmail(
-            invoice,
-            entries,
-            calculateTotalAmountOwed(requireNotNull(invoice.subscriber))
-        )
-        
-        if (success && !isDryRun && invoice.status == InvoiceStatus.DRAFT) {
-            markSent(invoice)
-        }
-        
-        return success
-    }
-
-    @Transactional
-    fun sendDraftInvoiceEmails(): InvoiceBulkEmailResult {
-        val draftInvoices = invoiceRepository.findByStatusOrderByCreatedAtAsc(InvoiceStatus.DRAFT)
-        val items = draftInvoices.map { invoice ->
-            val invoiceId = requireNotNull(invoice.id)
-            val subscriber = requireNotNull(invoice.subscriber)
-            val subscriberId = requireNotNull(subscriber.id)
-            val subscriberName = requireNotNull(subscriber.name)
-            val statusBefore = invoice.status.name
-
-            try {
-                val entries = ledgerEntryRepository.findByInvoice(invoice)
-                    .sortedBy { it.recordedMonth }
-                val success = invoiceEmailService.sendInvoiceEmail(
-                    invoice,
-                    entries,
-                    calculateTotalAmountOwed(subscriber)
-                )
-                val updated = success && !isDryRun && invoice.status == InvoiceStatus.DRAFT
-
-                if (updated) {
-                    markSent(invoice)
-                }
-
-                InvoiceBulkEmailItemResult(
-                    invoiceId = invoiceId,
-                    subscriberId = subscriberId,
-                    subscriberName = subscriberName,
-                    statusBefore = statusBefore,
-                    statusAfter = invoice.status.name,
-                    sent = success,
-                    updated = updated,
-                    message = if (success) {
-                        "Invoice email sent successfully"
-                    } else {
-                        "Failed to send invoice email"
-                    }
-                )
-            } catch (e: Exception) {
-                InvoiceBulkEmailItemResult(
-                    invoiceId = invoiceId,
-                    subscriberId = subscriberId,
-                    subscriberName = subscriberName,
-                    statusBefore = statusBefore,
-                    statusAfter = invoice.status.name,
-                    sent = false,
-                    updated = false,
-                    message = e.message ?: "Failed to send invoice email"
-                )
-            }
-        }
-
-        return InvoiceBulkEmailResult(
-            attemptedCount = items.size,
-            sentCount = items.count { it.sent },
-            updatedCount = items.count { it.updated },
-            failedCount = items.count { !it.sent },
-            dryRun = isDryRun,
-            items = items
-        )
-    }
-
     fun updateInvoiceNotes(invoiceId: UUID, notes: String?): InvoiceResponse {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
@@ -702,7 +507,7 @@ class InvoiceService(
             invoice.notes = listOfNotNull(invoice.notes, "Voided: $normalizedReason")
                 .joinToString("\n")
         }
-        invoice.setStatus(InvoiceStatus.VOID)
+        invoice.transitionTo(InvoiceStatus.VOID)
 
         // Release the ledger entries back into the uninvoiced pool. Without this a
         // voided invoice keeps its entries forever and the cost silently
@@ -714,24 +519,6 @@ class InvoiceService(
         }
 
         return invoiceRepository.save(invoice).toResponse()
-    }
-
-    private fun Invoice.setStatus(status: InvoiceStatus) {
-        if (this.status != status) {
-            this.status = status
-            this.statusChangedAt = Instant.now()
-        }
-    }
-
-    private fun calculateTotalAmountOwed(subscriber: Subscriber): BigDecimal {
-        val totalUnpaidAmount = invoiceRepository.findBySubscriberAndStatusIn(
-            subscriber,
-            listOf(InvoiceStatus.DRAFT, InvoiceStatus.SENT)
-        )
-            .map { it.totalAmount ?: BigDecimal.ZERO }
-            .fold(BigDecimal.ZERO, BigDecimal::add)
-
-        return totalUnpaidAmount - (subscriber.balance ?: BigDecimal.ZERO)
     }
 
     fun deleteInvoice(invoiceId: UUID): String {
@@ -750,93 +537,4 @@ class InvoiceService(
 
         return "Invoice deleted"
     }
-
-    @Transactional(readOnly = true)
-    fun getSubscriberDetails(subscriberId: UUID): SubscriberDetailResponse {
-        val subscriber = subscriberRepository.findById(subscriberId)
-            .orElseThrow { NoSuchElementException("Subscriber not found with id: $subscriberId") }
-
-        // Get active subscriptions (memberships that are currently active)
-        val currentMonth = BillingTime.currentMonth()
-        val activeMemberships = membershipRepository.findActiveBySubscriberAndMonth(subscriberId, currentMonth)
-        
-        val activeSubscriptions = activeMemberships.map { membership ->
-            ActiveSubscriptionDto(
-                id = membership.id!!,
-                serviceName = membership.subscriptionService?.name ?: "",
-                servicePrice = membership.subscriptionService?.price ?: BigDecimal.ZERO,
-                startMonth = membership.startMonth?.toString() ?: "",
-                endMonth = membership.endMonth?.toString()
-            )
-        }
-
-        // Get unpaid invoices (DRAFT and SENT status)
-        val unpaidInvoices = invoiceRepository.findAll(
-            { root, _, cb ->
-                val predicates = mutableListOf<Predicate>()
-                predicates.add(cb.equal(root.get<Subscriber>("subscriber").get<UUID>("id"), subscriberId))
-                predicates.add(root.get<InvoiceStatus>("status").`in`(InvoiceStatus.DRAFT, InvoiceStatus.SENT))
-                cb.and(*predicates.toTypedArray())
-            },
-            Sort.by(
-                Sort.Order.desc("invoiceDate"),
-                Sort.Order.desc("createdAt")
-            )
-        )
-
-        val unpaidInvoicesDto = unpaidInvoices.map { invoice ->
-            UnpaidInvoiceDto(
-                id = invoice.id!!,
-                totalAmount = invoice.totalAmount ?: BigDecimal.ZERO,
-                fromMonth = invoice.fromMonth?.toString() ?: "",
-                toMonth = invoice.toMonth?.toString() ?: "",
-                invoiceDate = requireNotNull(invoice.invoiceDate),
-                createdAt = invoice.createdAt ?: Instant.now(),
-                status = invoice.status.name,
-                notes = invoice.notes,
-                origin = invoice.origin.name
-            )
-        }
-
-        // Calculate total amount owed (sum of unpaid invoices minus balance)
-        val totalUnpaidAmount = unpaidInvoices
-            .map { it.totalAmount ?: BigDecimal.ZERO }
-            .fold(BigDecimal.ZERO) { acc, amount -> acc + amount }
-        
-        val totalAmountOwed = totalUnpaidAmount - (subscriber.balance ?: BigDecimal.ZERO)
-
-        return SubscriberDetailResponse(
-            id = subscriber.id!!,
-            name = subscriber.name ?: "",
-            email = subscriber.email ?: "",
-            balance = subscriber.balance ?: BigDecimal.ZERO,
-            totalAmountOwed = totalAmountOwed,
-            activeSubscriptions = activeSubscriptions,
-            unpaidInvoices = unpaidInvoicesDto
-        )
-    }
-
-    @Transactional(readOnly = true)
-    fun buildSituationEmailInvoices(unpaidInvoices: List<UnpaidInvoiceDto>): List<WeeklySituationInvoiceDto> =
-        unpaidInvoices.map { invoice ->
-            WeeklySituationInvoiceDto(
-                id = invoice.id,
-                totalAmount = invoice.totalAmount,
-                fromMonth = invoice.fromMonth,
-                toMonth = invoice.toMonth,
-                invoiceDate = invoice.invoiceDate,
-                createdAt = invoice.createdAt,
-                status = invoice.status,
-                notes = invoice.notes?.trim()?.takeIf { it.isNotBlank() },
-                origin = invoice.origin,
-                ledgerEntries = ledgerEntryRepository.findByInvoiceId(invoice.id).map { entry ->
-                    WeeklySituationLedgerEntryDto(
-                        recordedMonth = entry.recordedMonth?.toString() ?: "",
-                        subscriptionServiceName = entry.subscriptionService?.name ?: "",
-                        notes = entry.notes,
-                        amount = entry.amount ?: BigDecimal.ZERO
-                    )
-                }
-            )
-        }
 }

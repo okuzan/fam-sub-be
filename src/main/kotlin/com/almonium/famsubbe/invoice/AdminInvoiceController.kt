@@ -28,6 +28,8 @@ import java.util.*
 @RequestMapping("/admin/invoices")
 class AdminInvoiceController(
     private val invoiceService: InvoiceService,
+    private val invoiceDeliveryService: InvoiceDeliveryService,
+    private val invoicePdfService: InvoicePdfService,
     private val accountService: AccountService,
     private val adminActionService: AdminActionService,
     private val adminAuditLogService: AdminAuditLogService
@@ -39,7 +41,7 @@ class AdminInvoiceController(
         authentication: Authentication
     ): ResponseEntity<InvoiceGenerationResult> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val result = invoiceService.generateInvoices(request, performedByAccountId)
+        val result = invoiceDeliveryService.generate(request, performedByAccountId)
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.INVOICE_GENERATION_RUN,
@@ -96,7 +98,7 @@ class AdminInvoiceController(
     fun getInvoicePdf(
         @PathVariable invoiceId: UUID
     ): ResponseEntity<ByteArrayResource> {
-        val pdfBytes = invoiceService.generateInvoicePdf(invoiceId)
+        val pdfBytes = invoicePdfService.generateInvoicePdf(invoiceId)
 
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_PDF)
@@ -141,7 +143,7 @@ class AdminInvoiceController(
         authentication: Authentication
     ): ResponseEntity<InvoiceResponse> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val invoice = invoiceService.createManualInvoice(request, performedByAccountId)
+        val invoice = invoiceDeliveryService.createManual(request, performedByAccountId)
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.MANUAL_INVOICE_CREATED,
@@ -167,7 +169,7 @@ class AdminInvoiceController(
         authentication: Authentication
     ): ResponseEntity<InvoiceResponse> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val invoice = invoiceService.duplicateInvoice(invoiceId, request, performedByAccountId)
+        val invoice = invoiceDeliveryService.duplicate(invoiceId, request, performedByAccountId)
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.INVOICE_DUPLICATED,
@@ -243,7 +245,7 @@ class AdminInvoiceController(
     ): ResponseEntity<Map<String, String>> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
-        val success = invoiceService.sendInvoiceEmail(invoiceId)
+        val success = invoiceDeliveryService.send(invoiceId)
         if (success) {
             val invoice = invoiceService.getInvoice(invoiceId).invoice
             adminAuditLogService.log(
@@ -272,7 +274,7 @@ class AdminInvoiceController(
     @PostMapping("/drafts/email")
     fun sendDraftInvoiceEmails(authentication: Authentication): ResponseEntity<InvoiceBulkEmailResult> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val result = invoiceService.sendDraftInvoiceEmails()
+        val result = invoiceDeliveryService.sendDrafts()
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.INVOICE_BULK_EMAIL_SENT,

@@ -90,3 +90,17 @@ class Invoice {
     @JoinColumn(name = "invoice_generation_run_id", updatable = false)
     var invoiceGenerationRun: InvoiceGenerationRun? = null
 }
+
+/** Changes status and stamps statusChangedAt, but only when the status really changes. */
+internal fun Invoice.transitionTo(newStatus: InvoiceStatus) {
+    if (status != newStatus) {
+        status = newStatus
+        statusChangedAt = Instant.now()
+    }
+}
+
+internal fun Invoice.markSent() {
+    emailSent = true
+    sentAt = Instant.now()
+    transitionTo(InvoiceStatus.SENT)
+}
