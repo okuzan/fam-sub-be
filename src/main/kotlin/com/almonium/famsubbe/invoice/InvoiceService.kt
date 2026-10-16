@@ -118,7 +118,7 @@ class InvoiceService(
             // up front is how generated invoices used to be marked delivered while
             // nothing was ever sent.
             val emailRequested = request.sendEmail && !exempt
-            val emailSent = emailRequested && sendGeneratedInvoiceEmail(invoice, subscriberEntries, subscriber)
+            val emailSent = emailRequested && sendNewInvoiceEmail(invoice, subscriberEntries, subscriber)
 
             createdInvoices += invoice
             totalAssigned += subscriberEntries.size
@@ -174,18 +174,11 @@ class InvoiceService(
     @Transactional(readOnly = true)
     fun getSuggestedInvoicePeriod(): InvoiceSuggestion {
         val lastInvoice = invoiceRepository.findFirstByOriginOrderByToMonthDesc(InvoiceOrigin.SUBSCRIPTION_LEDGER)
-        val lastInvoicedToMonth = lastInvoice?.toMonth
-        
-        val oldestUninvoicedMonth = ledgerEntryRepository.findOldestUninvoicedMonth()
-        val latestUninvoicedMonth = ledgerEntryRepository.findLatestUninvoicedMonth()
-        
-        val suggestedFromMonth = oldestUninvoicedMonth
-        val suggestedToMonth = latestUninvoicedMonth
 
         return InvoiceSuggestion(
-            lastInvoicedToMonth = lastInvoicedToMonth,
-            suggestedFromMonth = suggestedFromMonth,
-            suggestedToMonth = suggestedToMonth
+            lastInvoicedToMonth = lastInvoice?.toMonth,
+            suggestedFromMonth = ledgerEntryRepository.findOldestUninvoicedMonth(),
+            suggestedToMonth = ledgerEntryRepository.findLatestUninvoicedMonth()
         )
     }
 
@@ -210,11 +203,11 @@ class InvoiceService(
         )
 
     /**
-     * Sends the invoice email for a freshly generated invoice and advances it to
-     * SENT only if the mail really went out. Mirrors [sendInvoiceEmail]: a dry-run
-     * send reports success but must not move the invoice out of DRAFT.
+     * Sends the invoice email for a freshly created invoice and advances it to
+     * SENT only if the mail really went out. A dry-run send reports success but
+     * must not move the invoice out of DRAFT.
      */
-    private fun sendGeneratedInvoiceEmail(
+    private fun sendNewInvoiceEmail(
         invoice: Invoice,
         entries: List<LedgerEntry>,
         subscriber: Subscriber
@@ -229,19 +222,19 @@ class InvoiceService(
             return false
         }
 
+        markSent(invoice)
+        return true
+    }
+
+    private fun markSent(invoice: Invoice) {
         invoice.emailSent = true
         invoice.sentAt = Instant.now()
         invoice.setStatus(InvoiceStatus.SENT)
         invoiceRepository.save(invoice)
-        return true
     }
 
-    private fun initialInvoiceStatus(subscriber: Subscriber, sendEmail: Boolean): InvoiceStatus =
-        when {
-            subscriber.billingExempt -> InvoiceStatus.PAID
-            sendEmail -> InvoiceStatus.SENT
-            else -> InvoiceStatus.DRAFT
-        }
+    private fun initialInvoiceStatus(subscriber: Subscriber): InvoiceStatus =
+        if (subscriber.billingExempt) InvoiceStatus.PAID else InvoiceStatus.DRAFT
 
     private fun LedgerEntry.toInvoiceLedgerEntryResponse(): InvoiceLedgerEntryResponse =
         InvoiceLedgerEntryResponse(
@@ -260,8 +253,18 @@ class InvoiceService(
     }
 
     fun updateStatus(invoiceId: UUID, status: InvoiceStatus): InvoiceResponse {
+        // Voiding has to release the ledger entries, so it never goes through a
+        // bare status write.
+        if (status == InvoiceStatus.VOID) {
+            return voidInvoice(invoiceId, null)
+        }
+
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+
+        // A voided invoice has already given its ledger entries back to the pool,
+        // so reopening it would bill the same cost twice.
+        check(invoice.status != InvoiceStatus.VOID) { "Voided invoices cannot be reopened" }
 
         invoice.setStatus(status)
         val updatedInvoice = invoiceRepository.save(invoice)
@@ -338,12 +341,10 @@ class InvoiceService(
                 this.toMonth = invoiceMonth
                 this.invoiceDate = request.invoiceDate
                 this.totalAmount = request.amount
-                this.status = initialInvoiceStatus(subscriber, request.sendEmail)
+                this.status = initialInvoiceStatus(subscriber)
                 this.createdAt = now
                 this.statusChangedAt = now
                 this.createdByAccountId = performedByAccountId
-                this.sentAt = if (!exempt && request.sendEmail) now else null
-                this.emailSent = !exempt && request.sendEmail
                 this.notes = listOfNotNull(
                     request.notes.trim().takeIf { it.isNotBlank() },
                     BILLING_EXEMPT_NOTE.takeIf { exempt }
@@ -353,7 +354,7 @@ class InvoiceService(
         )
 
         if (request.sendEmail && !subscriber.billingExempt) {
-            invoiceEmailService.sendInvoiceEmail(invoice, emptyList(), calculateTotalAmountOwed(subscriber))
+            sendNewInvoiceEmail(invoice, emptyList(), subscriber)
         }
 
         return invoice.toResponse()
@@ -374,18 +375,15 @@ class InvoiceService(
         val invoiceMonth = YearMonth.from(invoiceDate)
         val invoice = invoiceRepository.save(
             Invoice().apply {
-                val exempt = subscriber.billingExempt
                 this.subscriber = subscriber
                 this.fromMonth = invoiceMonth
                 this.toMonth = invoiceMonth
                 this.invoiceDate = invoiceDate
                 this.totalAmount = request.amount ?: requireNotNull(source.totalAmount)
-                this.status = initialInvoiceStatus(subscriber, request.sendEmail)
+                this.status = initialInvoiceStatus(subscriber)
                 this.createdAt = now
                 this.statusChangedAt = now
                 this.createdByAccountId = performedByAccountId
-                this.sentAt = if (!exempt && request.sendEmail) now else null
-                this.emailSent = !exempt && request.sendEmail
                 this.notes = if (request.notes == null) {
                     source.notes
                 } else {
@@ -396,7 +394,7 @@ class InvoiceService(
         )
 
         if (request.sendEmail && !subscriber.billingExempt) {
-            invoiceEmailService.sendInvoiceEmail(invoice, emptyList(), calculateTotalAmountOwed(subscriber))
+            sendNewInvoiceEmail(invoice, emptyList(), subscriber)
         }
 
         return invoice.toResponse()
@@ -608,10 +606,7 @@ class InvoiceService(
         )
         
         if (success && !isDryRun && invoice.status == InvoiceStatus.DRAFT) {
-            invoice.emailSent = true
-            invoice.sentAt = Instant.now()
-            invoice.setStatus(InvoiceStatus.SENT)
-            invoiceRepository.save(invoice)
+            markSent(invoice)
         }
         
         return success
@@ -638,10 +633,7 @@ class InvoiceService(
                 val updated = success && !isDryRun && invoice.status == InvoiceStatus.DRAFT
 
                 if (updated) {
-                    invoice.emailSent = true
-                    invoice.sentAt = Instant.now()
-                    invoice.setStatus(InvoiceStatus.SENT)
-                    invoiceRepository.save(invoice)
+                    markSent(invoice)
                 }
 
                 InvoiceBulkEmailItemResult(
