@@ -55,20 +55,17 @@ app:
       from-address: noreply@almonium.com
       from-name: FamSub
   payment:
-    methods:
-      mono:
-        name: Mono
-        currency: ₴
-        number: "4441111068471360"
-      privat:
-        name: Privat
-        currency: ₴
-        number: "5169360022967743"
+    # Everyone pays into the Mono account that app.bank.mono reads, so every
+    # payment can be recognised.
+    recipient-name: Кузан Олег
+    iban: UA583220010000026205363007788
+    card-number: "4441111068471360"
+    recipient-tax-id: ${PAYMENT_RECIPIENT_TAX_ID:}
   bank:
     mono:
       api-url: https://api.monobank.ua
       token: ${MONO_API_TOKEN:}
-      # The UAH account behind the mono card above (444111******1360).
+      # The UAH account behind app.payment above (card 444111******1360).
       account-id: eqWuI5af-i_FrRG55-eGJw
       sync-interval: PT5M
       auto-apply-tolerance: 20.00

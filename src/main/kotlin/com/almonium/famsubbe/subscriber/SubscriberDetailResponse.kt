@@ -9,6 +9,8 @@ data class SubscriberDetailResponse(
     val id: UUID,
     val name: String,
     val email: String,
+    /** The secret in their pay page link, <web-domain>/pay/<payToken>. */
+    val payToken: String,
     val balance: BigDecimal,
     val totalAmountOwed: BigDecimal,
     val activeSubscriptions: List<ActiveSubscriptionDto>,

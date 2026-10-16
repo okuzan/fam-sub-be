@@ -15,13 +15,12 @@ data class AppEmailProperties(
     val dryRun: Boolean = false
 )
 
+/** Where subscribers pay: the one Mono account that BankSyncService reads. */
 @ConfigurationProperties(prefix = "app.payment")
 data class PaymentProperties(
-    val methods: Map<String, PaymentMethod>
-)
-
-data class PaymentMethod(
-    val name: String,
-    val currency: String,
-    val number: String
+    val recipientName: String,
+    val iban: String,
+    val cardNumber: String,
+    /** The recipient's РНОКПП, which the NBU QR code requires. Blank: the pay page shows no QR. */
+    val recipientTaxId: String = ""
 )

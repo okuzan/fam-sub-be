@@ -29,6 +29,7 @@ class SubscriberCabinetService(
 
         return SubscriberCabinetResponse(
             subscriber = subscriber.toProfileResponse(),
+            payToken = requireNotNull(subscriber.payToken),
             balance = subscriber.balance ?: BigDecimal.ZERO,
             totalAmountOwed = SubscriberStandingService.amountOwed(unpaidInvoices, subscriber),
             activeSubscriptions = standingService.activeSubscriptions(subscriberId),

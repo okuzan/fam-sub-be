@@ -1,6 +1,7 @@
 package com.almonium.famsubbe.invoice
 
 import com.almonium.famsubbe.accounting.LedgerEntry
+import com.almonium.famsubbe.payment.PaymentDetails
 import com.almonium.famsubbe.reporting.WeeklySituationInvoiceDto
 import com.almonium.famsubbe.subscriber.ActiveSubscriptionDto
 import java.math.BigDecimal
@@ -17,7 +18,8 @@ internal class FakeInvoiceEmailService : InvoiceEmailService {
         totalOwed: BigDecimal,
         subscriberBalance: BigDecimal,
         activeSubscriptions: List<ActiveSubscriptionDto>,
-        unpaidInvoices: List<WeeklySituationInvoiceDto>
+        unpaidInvoices: List<WeeklySituationInvoiceDto>,
+        payment: PaymentDetails
     ) = succeeds
 
     override fun sendWeeklySituationEmail(
@@ -26,7 +28,8 @@ internal class FakeInvoiceEmailService : InvoiceEmailService {
         totalOwed: BigDecimal,
         subscriberBalance: BigDecimal,
         activeSubscriptions: List<ActiveSubscriptionDto>,
-        unpaidInvoices: List<WeeklySituationInvoiceDto>
+        unpaidInvoices: List<WeeklySituationInvoiceDto>,
+        payment: PaymentDetails
     ) = succeeds
 
     override fun sendDebtPaidEmail(

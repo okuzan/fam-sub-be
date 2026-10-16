@@ -9,6 +9,8 @@ import java.util.*
 
 data class SubscriberCabinetResponse(
     val subscriber: SubscriberCabinetProfileResponse,
+    /** The secret in their pay page link, <web-domain>/pay/<payToken>. */
+    val payToken: String,
     val balance: BigDecimal,
     val totalAmountOwed: BigDecimal,
     val activeSubscriptions: List<ActiveSubscriptionDto>,

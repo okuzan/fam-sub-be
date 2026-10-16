@@ -4,6 +4,7 @@ import com.almonium.famsubbe.invoice.IncomingPaymentResult
 import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.invoice.InvoiceService
+import com.almonium.famsubbe.subscriber.PaymentCode
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
 import com.almonium.famsubbe.subscriber.SubscriberStandingService
@@ -16,9 +17,9 @@ import java.time.Instant
 import java.util.*
 
 /**
- * Turns incoming bank transfers into subscriber payments. A transfer from a
- * remembered sender applies on its own; anything else waits for an admin to
- * assign or ignore it. Applying a payment credits the subscriber's balance and
+ * Turns incoming bank transfers into subscriber payments. A transfer carrying a
+ * subscriber's payment code, or from a remembered sender, applies on its own;
+ * anything else waits for an admin to assign or ignore it. Applying a payment credits the subscriber's balance and
  * settles their invoices from it (see [InvoiceService.applyIncomingPayment]).
  */
 @Service
@@ -40,7 +41,11 @@ class BankPaymentService(
      */
     @Transactional
     fun importMonoItem(item: MonoStatementItem): BankImportOutcome {
-        val sender = BankSenderIdentity.of(item) ?: return BankImportOutcome.NOT_A_PAYMENT
+        if (item.amount <= 0) return BankImportOutcome.NOT_A_PAYMENT
+        // A coded transfer counts even when the bank names no sender.
+        val code = PaymentCode.findIn(item.comment, item.description)
+        val sender = BankSenderIdentity.of(item)
+        if (sender == null && code == null) return BankImportOutcome.NOT_A_PAYMENT
         if (transactionRepository.existsByProviderAndExternalId(BankProvider.MONO, item.id)) {
             return BankImportOutcome.DUPLICATE
         }
@@ -56,14 +61,21 @@ class BankPaymentService(
             comment = item.comment
             counterName = item.counterName
             counterIban = item.counterIban
-            senderKey = sender.key
-            senderName = sender.name
+            senderKey = sender?.key
+            senderName = sender?.name
             createdAt = now
         }
 
-        val rule = senderRepository.findBySenderKey(sender.key)
+        val codedSubscriber = code?.let { subscriberRepository.findByPaymentCode(it) }
+        val rule = sender?.let { senderRepository.findBySenderKey(it.key) }
         val ruleSubscriber = rule?.subscriber
         when {
+            // The purpose carries the code the pay page prefilled: whose money it
+            // is is beyond doubt, whatever the amount and whoever sent it.
+            codedSubscriber != null -> {
+                applyTo(transaction, codedSubscriber, BankMatchMethod.PAYMENT_CODE, null)
+                if (rule == null) remember(transaction, codedSubscriber, null)
+            }
             rule?.ignored == true -> {
                 transaction.status = BankTransactionStatus.IGNORED
                 transaction.reviewNote = "Sender is on the ignore list"

@@ -3,7 +3,9 @@ package com.almonium.famsubbe.reporting
 import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.invoice.InvoiceEmailService
 import com.almonium.famsubbe.invoice.InvoiceRepository
+import com.almonium.famsubbe.payment.PaymentDetailsService
 import com.almonium.famsubbe.subscriber.SubscriberDetailResponse
+import com.almonium.famsubbe.subscriber.SubscriberRepository
 import com.almonium.famsubbe.subscriber.SubscriberStandingService
 import com.almonium.famsubbe.subscriber.UnpaidInvoiceDto
 import com.almonium.famsubbe.util.BillingTime
@@ -30,6 +32,8 @@ class SituationEmailService(
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val standingService: SubscriberStandingService,
     private val invoiceEmailService: InvoiceEmailService,
+    private val subscriberRepository: SubscriberRepository,
+    private val paymentDetailsService: PaymentDetailsService,
     @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean
 ) {
     private val log = LoggerFactory.getLogger(SituationEmailService::class.java)
@@ -45,7 +49,8 @@ class SituationEmailService(
             totalOwed = details.totalAmountOwed,
             subscriberBalance = details.balance,
             activeSubscriptions = details.activeSubscriptions,
-            unpaidInvoices = toEmailInvoices(details.unpaidInvoices)
+            unpaidInvoices = toEmailInvoices(details.unpaidInvoices),
+            payment = paymentFor(details)
         )
         if (!sent) {
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to send email")
@@ -103,7 +108,8 @@ class SituationEmailService(
                     totalOwed = details.totalAmountOwed,
                     subscriberBalance = details.balance,
                     activeSubscriptions = details.activeSubscriptions,
-                    unpaidInvoices = toEmailInvoices(details.unpaidInvoices)
+                    unpaidInvoices = toEmailInvoices(details.unpaidInvoices),
+                    payment = paymentFor(details)
                 )
 
                 WeeklySituationEmailItemResult(
@@ -142,6 +148,12 @@ class SituationEmailService(
             items = items
         )
     }
+
+    private fun paymentFor(details: SubscriberDetailResponse) =
+        paymentDetailsService.forSubscriber(
+            subscriberRepository.findById(details.id).orElseThrow(),
+            details.totalAmountOwed
+        )
 
     private fun toEmailInvoices(unpaidInvoices: List<UnpaidInvoiceDto>): List<WeeklySituationInvoiceDto> =
         unpaidInvoices.map { invoice ->

@@ -1,11 +1,12 @@
 package com.almonium.famsubbe.invoice
 
 import com.almonium.famsubbe.config.AppEmailProperties
-import com.almonium.famsubbe.config.PaymentProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties
 import com.almonium.famsubbe.subscriber.ActiveSubscriptionDto
 import com.almonium.famsubbe.reporting.WeeklySituationInvoiceDto
 import com.almonium.famsubbe.accounting.LedgerEntry
+import com.almonium.famsubbe.payment.PaymentDetails
+import com.almonium.famsubbe.payment.PaymentDetailsService
 import com.almonium.famsubbe.util.HtmlFileWriter
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -26,7 +27,7 @@ class DefaultInvoiceEmailService(
     private val htmlFileWriter: HtmlFileWriter,
     private val zeptoProperties: ZeptoMailProperties,
     private val appEmailProperties: AppEmailProperties,
-    private val paymentProperties: PaymentProperties,
+    private val paymentDetailsService: PaymentDetailsService,
     @Value($$"${app.web-domain}") private val webDomain: String
 ) : InvoiceEmailService {
 
@@ -44,7 +45,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("entries", entries)
             context.setVariable("origin", invoice.origin)
             context.setVariable("totalAmountOwed", totalAmountOwed)
-            context.setVariable("paymentMethods", paymentProperties.methods)
+            context.setVariable("payment", paymentDetailsService.forSubscriber(subscriber, totalAmountOwed))
             context.setVariable("cabinetUrl", "$webDomain/subscriber/cabinet")
             context.setVariable("invoicePeriod", formatInvoicePeriod(invoice.fromMonth, invoice.toMonth))
 
@@ -64,11 +65,12 @@ class DefaultInvoiceEmailService(
         totalOwed: BigDecimal,
         subscriberBalance: BigDecimal,
         activeSubscriptions: List<ActiveSubscriptionDto>,
-        unpaidInvoices: List<WeeklySituationInvoiceDto>
+        unpaidInvoices: List<WeeklySituationInvoiceDto>,
+        payment: PaymentDetails
     ): Boolean = sendSituation(
         template = "situation-email",
         subject = "Your Subscription Account Status",
-        toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices
+        toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices, payment
     )
 
     override fun sendWeeklySituationEmail(
@@ -77,11 +79,12 @@ class DefaultInvoiceEmailService(
         totalOwed: BigDecimal,
         subscriberBalance: BigDecimal,
         activeSubscriptions: List<ActiveSubscriptionDto>,
-        unpaidInvoices: List<WeeklySituationInvoiceDto>
+        unpaidInvoices: List<WeeklySituationInvoiceDto>,
+        payment: PaymentDetails
     ): Boolean = sendSituation(
         template = "weekly-situation-email",
         subject = "Weekly Subscription Account Check-up",
-        toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices
+        toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices, payment
     )
 
     private fun sendSituation(
@@ -92,7 +95,8 @@ class DefaultInvoiceEmailService(
         totalOwed: BigDecimal,
         subscriberBalance: BigDecimal,
         activeSubscriptions: List<ActiveSubscriptionDto>,
-        unpaidInvoices: List<WeeklySituationInvoiceDto>
+        unpaidInvoices: List<WeeklySituationInvoiceDto>,
+        payment: PaymentDetails
     ): Boolean {
         return try {
             val context = Context()
@@ -103,7 +107,7 @@ class DefaultInvoiceEmailService(
             context.setVariable("unpaidInvoices", unpaidInvoices)
             context.setVariable("unpaidInvoicesCount", unpaidInvoices.size)
             context.setVariable("activeSubscriptionsCount", activeSubscriptions.size)
-            context.setVariable("paymentMethods", paymentProperties.methods)
+            context.setVariable("payment", payment)
 
             val htmlContent = templateEngine.process(template, context)
             sendEmail(toEmail, subscriberName, subject, htmlContent)

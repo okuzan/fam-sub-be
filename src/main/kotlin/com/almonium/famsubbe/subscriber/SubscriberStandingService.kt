@@ -33,6 +33,7 @@ class SubscriberStandingService(
             id = requireNotNull(subscriber.id),
             name = subscriber.name.orEmpty(),
             email = subscriber.email.orEmpty(),
+            payToken = requireNotNull(subscriber.payToken),
             balance = subscriber.balance ?: BigDecimal.ZERO,
             totalAmountOwed = amountOwed(unpaidInvoices, subscriber),
             activeSubscriptions = activeSubscriptions(subscriberId),

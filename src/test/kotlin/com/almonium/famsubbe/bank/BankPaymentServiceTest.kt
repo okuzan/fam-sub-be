@@ -22,10 +22,11 @@ class BankPaymentServiceTest {
     private val senderRepository = mock(BankSenderRepository::class.java)
     private val invoiceService = mock(InvoiceService::class.java)
     private val standingService = mock(SubscriberStandingService::class.java)
+    private val subscriberRepository = mock(SubscriberRepository::class.java)
     private val service = BankPaymentService(
         transactionRepository,
         senderRepository,
-        mock(SubscriberRepository::class.java),
+        subscriberRepository,
         mock(InvoiceRepository::class.java),
         invoiceService,
         standingService,
@@ -65,6 +66,27 @@ class BankPaymentServiceTest {
 
         assertEquals(BankImportOutcome.NEEDS_REVIEW, outcome)
         verify(invoiceService, never()).applyIncomingPayment(subscriber, BigDecimal("5000.00"))
+    }
+
+    @Test
+    fun `a payment carrying a payment code applies to its subscriber and teaches the sender`() {
+        `when`(subscriberRepository.findByPaymentCode("7K2Q9X")).thenReturn(subscriber)
+        `when`(invoiceService.applyIncomingPayment(subscriber, BigDecimal("5000.00")))
+            .thenReturn(IncomingPaymentResult(emptyList(), BigDecimal.ZERO, BigDecimal("5000.00")))
+
+        val outcome = service.importMonoItem(item(500000).copy(comment = "FamSub FS-7K2Q9X"))
+
+        assertEquals(BankImportOutcome.APPLIED, outcome)
+        verify(senderRepository).save(any(BankSender::class.java))
+    }
+
+    @Test
+    fun `a coded payment counts even when the bank names no sender`() {
+        `when`(subscriberRepository.findByPaymentCode("7K2Q9X")).thenReturn(subscriber)
+
+        val outcome = service.importMonoItem(item(3193, description = "FamSub FS-7K2Q9X"))
+
+        assertEquals(BankImportOutcome.APPLIED, outcome)
     }
 
     @Test

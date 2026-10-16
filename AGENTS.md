@@ -87,10 +87,15 @@ polls the Monobank personal statement (`app.bank.mono`, token in
 `MONO_API_TOKEN`) every five minutes in prod. Polling rather than Mono's
 webhook is deliberate, because the webhook cannot send `X-Requested-With`.
 Each credit from another person becomes a `BankTransaction`, unique per bank
-operation. `BankPaymentService` applies it on its own when the sender is
+operation. `BankPaymentService` applies it on its own when its purpose carries
+a subscriber's `PaymentCode` (`FamSub FS-XXXXXX`), or when the sender is
 remembered (`BankSender`) and the amount is within what the subscriber owes
-plus `auto-apply-tolerance`; otherwise it waits on the admin bank payments
-page. Applying goes through `InvoiceService.applyIncomingPayment`: credit the
+plus `auto-apply-tolerance`. Anything else waits on the admin bank payments
+page. Every email links to the public pay page `/pay/<Subscriber.payToken>`
+(`/public/pay/{token}` here). The page prefills that purpose through an NBU QR
+code (`NbuQrCode`), which needs the recipient's РНОКПП in
+`PAYMENT_RECIPIENT_TAX_ID`. Payments go only to the Mono account in
+`app.payment`, because that is the only account that is read. Applying goes through `InvoiceService.applyIncomingPayment`: credit the
 balance, then pay invoices from it.
 
 Two write paths bypass the ledger: manual/duplicated invoices
