@@ -45,6 +45,7 @@ class SubscriberService(
     fun createSubscriber(request: SubscriberCreateRequest): SubscriberResponse {
         val subscriber = Subscriber().apply {
             name = request.name
+            surname = request.surname.cleanSurname()
             email = request.email.lowercase().trim()
             balance = request.balance
             billingExempt = request.billingExempt
@@ -61,6 +62,7 @@ class SubscriberService(
 
         subscriber.apply {
             name = request.name
+            surname = request.surname.cleanSurname()
             email = request.email.lowercase().trim()
             balance = request.balance
             billingExempt = updatedBillingExempt
@@ -93,6 +95,7 @@ class SubscriberService(
         return SubscriberResponse(
             id = this.id!!,
             name = this.name!!,
+            surname = this.surname,
             email = this.email!!,
             balance = this.balance ?: BigDecimal.ZERO,
             billingExempt = this.billingExempt,
@@ -100,4 +103,6 @@ class SubscriberService(
             updatedAt = this.updatedAt!!
         )
     }
+
+    private fun String?.cleanSurname(): String? = this?.trim()?.replace(Regex("\\s+"), " ")?.takeIf { it.isNotEmpty() }
 }

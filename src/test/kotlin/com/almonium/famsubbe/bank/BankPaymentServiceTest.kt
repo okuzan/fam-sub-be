@@ -69,6 +69,50 @@ class BankPaymentServiceTest {
     }
 
     @Test
+    fun `a payment whose sender holds a subscriber's name and surname applies on its own`() {
+        withSurnames()
+        `when`(standingService.amountOwed(subscriber)).thenReturn(BigDecimal("31.93"))
+
+        val outcome = service.importMonoItem(item(3193, description = "Від: ЧЕРНИШОВА Поліна Олегівна"))
+
+        assertEquals(BankImportOutcome.APPLIED, outcome)
+        verify(invoiceService).applyIncomingPayment(subscriber, BigDecimal("31.93"))
+    }
+
+    @Test
+    fun `a surname alone does not match, so a sister's transfer is not taken for hers`() {
+        withSurnames()
+
+        val outcome = service.importMonoItem(item(3193, description = "Від: Олена Чернишова"))
+
+        assertEquals(BankImportOutcome.NEEDS_REVIEW, outcome)
+        verify(invoiceService, never()).applyIncomingPayment(subscriber, BigDecimal("31.93"))
+    }
+
+    @Test
+    fun `a name match well above what they owe waits for review`() {
+        withSurnames()
+        `when`(standingService.amountOwed(subscriber)).thenReturn(BigDecimal("31.93"))
+
+        val outcome = service.importMonoItem(item(500000))
+
+        assertEquals(BankImportOutcome.NEEDS_REVIEW, outcome)
+    }
+
+    @Test
+    fun `a name match wins over a remembered sender pointing elsewhere`() {
+        withSurnames()
+        val other = Subscriber().apply { id = UUID.randomUUID(); name = "Софія" }
+        `when`(senderRepository.findBySenderKey("name:поліна чернишова"))
+            .thenReturn(BankSender().apply { subscriber = other })
+        `when`(standingService.amountOwed(subscriber)).thenReturn(BigDecimal("31.93"))
+
+        service.importMonoItem(item(3193))
+
+        verify(invoiceService).applyIncomingPayment(subscriber, BigDecimal("31.93"))
+    }
+
+    @Test
     fun `a payment carrying a payment code applies to its subscriber and teaches the sender`() {
         `when`(subscriberRepository.findByPaymentCode("7K2Q9X")).thenReturn(subscriber)
         `when`(invoiceService.applyIncomingPayment(subscriber, BigDecimal("5000.00")))
@@ -117,6 +161,12 @@ class BankPaymentServiceTest {
         val outcome = service.importMonoItem(item(3193, description = "З Білої картки"))
 
         assertEquals(BankImportOutcome.NOT_A_PAYMENT, outcome)
+    }
+
+    private fun withSurnames() {
+        subscriber.surname = "Чернишова"
+        val sister = Subscriber().apply { id = UUID.randomUUID(); name = "Софія"; surname = "Чернишова" }
+        `when`(subscriberRepository.findBySurnameIsNotNull()).thenReturn(listOf(subscriber, sister))
     }
 
     private fun rememberSender() {

@@ -30,6 +30,8 @@ enum class BankTransactionStatus {
 enum class BankMatchMethod {
     /** The purpose carried the subscriber's payment code. */
     PAYMENT_CODE,
+    /** The sender's name holds the subscriber's name and surname. */
+    NAME,
     /** The sender was already known. */
     SENDER_RULE,
     /** An admin assigned it. */

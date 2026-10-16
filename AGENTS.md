@@ -88,9 +88,12 @@ polls the Monobank personal statement (`app.bank.mono`, token in
 webhook is deliberate, because the webhook cannot send `X-Requested-With`.
 Each credit from another person becomes a `BankTransaction`, unique per bank
 operation. `BankPaymentService` applies it on its own when its purpose carries
-a subscriber's `PaymentCode` (`FamSub FS-XXXXXX`), or when the sender is
-remembered (`BankSender`) and the amount is within what the subscriber owes
-plus `auto-apply-tolerance`. Anything else waits on the admin bank payments
+a subscriber's `PaymentCode` (`FamSub FS-XXXXXX`). Failing that, it matches by
+who sent it: first the sender name holding exactly one subscriber's `name` and
+`surname` (any order and case; no surname, no match), then a remembered sender
+(`BankSender`) as the fallback for people paying under someone else's name.
+Either sender match applies only when the amount is within what the
+subscriber owes plus `auto-apply-tolerance`. Anything else waits on the admin bank payments
 page. Every email links to the public pay page `/pay/<Subscriber.payToken>`
 (`/public/pay/{token}` here). The page prefills that purpose through an NBU QR
 code (`NbuQrCode`), which needs the recipient's РНОКПП in

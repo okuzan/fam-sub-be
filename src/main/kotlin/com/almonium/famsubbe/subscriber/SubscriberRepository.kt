@@ -11,4 +11,5 @@ interface SubscriberRepository : JpaRepository<Subscriber, UUID> {
     fun findByEmailIgnoreCase(email: String): Subscriber?
     fun findByPayToken(payToken: String): Subscriber?
     fun findByPaymentCode(paymentCode: String): Subscriber?
+    fun findBySurnameIsNotNull(): List<Subscriber>
 }

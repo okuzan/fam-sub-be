@@ -17,9 +17,11 @@ import java.time.Instant
 import java.util.*
 
 /**
- * Turns incoming bank transfers into subscriber payments. A transfer carrying a
- * subscriber's payment code, or from a remembered sender, applies on its own;
- * anything else waits for an admin to assign or ignore it. Applying a payment credits the subscriber's balance and
+ * Turns incoming bank transfers into subscriber payments. A transfer applies on
+ * its own when its purpose carries a subscriber's payment code, when the
+ * sender's name holds exactly one subscriber's name and surname, or, failing
+ * both, when the sender is remembered; anything else waits for an admin to
+ * assign or ignore it. Applying a payment credits the subscriber's balance and
  * settles their invoices from it (see [InvoiceService.applyIncomingPayment]).
  */
 @Service
@@ -67,6 +69,7 @@ class BankPaymentService(
         }
 
         val codedSubscriber = code?.let { subscriberRepository.findByPaymentCode(it) }
+        val namedSubscriber = sender?.let { subscriberNamed(it.name) }
         val rule = sender?.let { senderRepository.findBySenderKey(it.key) }
         val ruleSubscriber = rule?.subscriber
         when {
@@ -76,21 +79,15 @@ class BankPaymentService(
                 applyTo(transaction, codedSubscriber, BankMatchMethod.PAYMENT_CODE, null)
                 if (rule == null) remember(transaction, codedSubscriber, null)
             }
+            namedSubscriber != null -> applyIfOwed(transaction, namedSubscriber, BankMatchMethod.NAME)
+            // Remembered senders are the fallback, for someone paying under a
+            // name that is not the subscriber's own.
             rule?.ignored == true -> {
                 transaction.status = BankTransactionStatus.IGNORED
                 transaction.reviewNote = "Sender is on the ignore list"
                 transaction.resolvedAt = now
             }
-            ruleSubscriber != null -> {
-                val amount = requireNotNull(transaction.amount)
-                val owed = standingService.amountOwed(ruleSubscriber)
-                if (amount <= owed + monoProperties.autoApplyTolerance) {
-                    applyTo(transaction, ruleSubscriber, BankMatchMethod.SENDER_RULE, null)
-                } else {
-                    transaction.reviewNote = "₴$amount is more than ${ruleSubscriber.name} owes " +
-                        "(₴${owed.max(BigDecimal.ZERO)}). Check it is FamSub money before applying."
-                }
-            }
+            ruleSubscriber != null -> applyIfOwed(transaction, ruleSubscriber, BankMatchMethod.SENDER_RULE)
         }
 
         transactionRepository.saveAndFlush(transaction)
@@ -199,6 +196,35 @@ class BankPaymentService(
         return response
     }
 
+    /**
+     * Applies a payment recognised by who sent it, unless it is more than they
+     * owe: friends also send each other money that has nothing to do with FamSub.
+     */
+    private fun applyIfOwed(transaction: BankTransaction, subscriber: Subscriber, method: BankMatchMethod) {
+        val amount = requireNotNull(transaction.amount)
+        val owed = standingService.amountOwed(subscriber)
+        if (amount <= owed + monoProperties.autoApplyTolerance) {
+            applyTo(transaction, subscriber, method, null)
+        } else {
+            transaction.reviewNote = "₴$amount is more than ${subscriber.name} owes " +
+                "(₴${owed.max(BigDecimal.ZERO)}). Check it is FamSub money before applying."
+        }
+    }
+
+    /**
+     * The one subscriber whose name and surname both appear in [senderName], in
+     * any order and case, or null when none or several do. Subscribers without a
+     * surname never match: a first name alone is not enough to tell people apart.
+     */
+    private fun subscriberNamed(senderName: String): Subscriber? {
+        val senderWords = senderName.words()
+        return subscriberRepository.findBySurnameIsNotNull()
+            .filter { senderWords.containsAll(it.fullNameWords()) }
+            .singleOrNull()
+    }
+
+    private fun Subscriber.fullNameWords(): Set<String> = "$name $surname".words()
+
     private fun applyTo(
         transaction: BankTransaction,
         subscriber: Subscriber,
@@ -282,7 +308,11 @@ class BankPaymentService(
                     } else if (SubscriberStandingService.amountOwed(invoices, subscriber).compareTo(amount) == 0) {
                         add("owes exactly ₴$amount")
                     }
-                    if (subscriber.name.words().any { it in senderWords }) add("name matches the sender")
+                    if (subscriber.surname != null && senderWords.containsAll(subscriber.fullNameWords())) {
+                        add("name and surname match the sender")
+                    } else if (subscriber.name.words().any { it in senderWords }) {
+                        add("name matches the sender")
+                    }
                 }
                 reasons.takeIf { it.isNotEmpty() }?.let { Triple(subscriber, subscriberId == remembered, it) }
             }
@@ -301,8 +331,13 @@ class BankPaymentService(
         }
     }
 
+    /** Lowercased words, with the apostrophe variants of Ukrainian names made one. */
     private fun String?.words(): Set<String> =
-        orEmpty().lowercase().split(' ', '-').filter { it.length > 1 }.toSet()
+        orEmpty().lowercase()
+            .replace(APOSTROPHES, "'")
+            .split(' ', '-')
+            .filter { it.length > 1 }
+            .toSet()
 
     private fun BankTransaction.toResponse(suggestions: List<BankPaymentSuggestion>) = BankTransactionResponse(
         id = requireNotNull(id),
@@ -336,5 +371,6 @@ class BankPaymentService(
     private companion object {
         const val MAX_LIMIT = 500
         const val MAX_SUGGESTIONS = 5
+        val APOSTROPHES = Regex("[’ʼ`´‘]")
     }
 }

@@ -157,6 +157,7 @@ class AdminSubscriberController(
             subscriberId = subscriber.id,
             summary = "Created subscriber ${subscriber.name}",
             metadata = mapOf(
+                "surname" to subscriber.surname,
                 "email" to subscriber.email,
                 "balance" to subscriber.balance,
                 "billingExempt" to subscriber.billingExempt
@@ -181,6 +182,7 @@ class AdminSubscriberController(
             subscriberId = id,
             summary = "Updated subscriber ${subscriber.name}",
             metadata = mapOf(
+                "surname" to subscriber.surname,
                 "email" to subscriber.email,
                 "balance" to subscriber.balance,
                 "billingExempt" to subscriber.billingExempt

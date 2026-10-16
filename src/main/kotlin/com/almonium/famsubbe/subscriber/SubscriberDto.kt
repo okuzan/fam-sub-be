@@ -10,6 +10,7 @@ import java.util.*
 data class SubscriberResponse(
     val id: UUID,
     val name: String,
+    val surname: String?,
     val email: String,
     val balance: BigDecimal,
     val billingExempt: Boolean,
@@ -20,6 +21,7 @@ data class SubscriberResponse(
 data class SubscriberCreateRequest(
     @field:NotBlank(message = "name is required")
     val name: String,
+    val surname: String? = null,
     @field:NotBlank(message = "email is required")
     @field:Email(message = "email must be valid")
     val email: String,
@@ -32,6 +34,7 @@ data class SubscriberCreateRequest(
 data class SubscriberUpdateRequest(
     @field:NotBlank(message = "name is required")
     val name: String,
+    val surname: String? = null,
     @field:NotBlank(message = "email is required")
     @field:Email(message = "email must be valid")
     val email: String,

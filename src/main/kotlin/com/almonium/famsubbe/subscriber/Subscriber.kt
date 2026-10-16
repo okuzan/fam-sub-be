@@ -22,6 +22,12 @@ class Subscriber {
     @Column(nullable = false)
     var name: String? = null
 
+    /**
+     * As the bank writes it. With [name] it is how their transfers are
+     * recognised by sender; see BankPaymentService.
+     */
+    var surname: String? = null
+
     @Column(nullable = false, unique = true)
     var email: String? = null
 
