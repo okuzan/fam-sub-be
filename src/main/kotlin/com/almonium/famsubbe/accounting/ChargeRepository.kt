@@ -23,8 +23,6 @@ interface ChargeRepository : JpaRepository<Charge, UUID> {
         pageable: Pageable
     ): Page<Charge>
 
-    fun findByChargeMonth(chargeMonth: YearMonth): List<Charge>
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         select charge

@@ -54,10 +54,4 @@ class AdminCostCalculationController(
         val suggestion = costCalculationService.getSuggestedCalculationPeriod()
         return ResponseEntity.ok(suggestion)
     }
-
-    @GetMapping
-    fun getCostCalculations(): ResponseEntity<List<CostCalculationBatchResponse>> {
-        val batches = costCalculationService.getRecentCalculationBatches()
-        return ResponseEntity.ok(batches.map { it.toResponse() })
-    }
 }

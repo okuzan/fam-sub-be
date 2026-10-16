@@ -74,12 +74,6 @@ class AdminMembershipController(
         return ResponseEntity.ok(membership)
     }
 
-    @GetMapping("/{id}")
-    fun getMembership(@PathVariable id: UUID): ResponseEntity<MembershipResponse> {
-        val membership = membershipService.getMembership(id)
-        return ResponseEntity.ok(membership)
-    }
-
     @PostMapping("/{id}/end")
     fun endMembership(
         @PathVariable id: UUID,

@@ -246,10 +246,6 @@ class InvoiceService(
             calculatedAt = requireNotNull(calculatedAt)
         )
 
-    fun markAsPaid(invoiceId: UUID): InvoiceResponse {
-        return updateStatus(invoiceId, InvoiceStatus.PAID)
-    }
-
     fun updateStatus(invoiceId: UUID, status: InvoiceStatus): InvoiceResponse {
         // Voiding has to release the ledger entries, so it never goes through a
         // bare status write.

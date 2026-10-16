@@ -50,14 +50,3 @@ class CostCalculationBatch {
     @Column(name = "undo_reason", columnDefinition = "TEXT")
     var undoReason: String? = null
 }
-
-fun CostCalculationBatch.toResponse(): CostCalculationBatchResponse {
-    return CostCalculationBatchResponse(
-        id = this.id!!,
-        fromMonth = this.fromMonth.toString(),
-        toMonth = this.toMonth.toString(),
-        createdAt = this.createdAt.toString(),
-        createdByAccountId = this.createdByAccountId!!,
-        createdByAccountName = this.createdByAccount?.email
-    )
-}

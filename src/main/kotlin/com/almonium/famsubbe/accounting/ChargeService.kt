@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service
 import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
-import java.time.YearMonth
 import java.util.*
 
 @Service
@@ -79,10 +78,6 @@ class ChargeService(
             totalElements = charges.totalElements,
             totalPages = charges.totalPages
         )
-    }
-
-    fun getChargesByMonth(chargeMonth: YearMonth): List<ChargeResponse> {
-        return chargeRepository.findByChargeMonth(chargeMonth).map { mapToResponse(it) }
     }
 
     fun deleteCharge(chargeId: UUID) {

@@ -33,12 +33,6 @@ class AdminSubscriptionServiceController(
         return ResponseEntity.ok(services)
     }
 
-    @GetMapping("/{id}")
-    fun getServiceById(@PathVariable id: UUID): ResponseEntity<SubscriptionServiceResponse> {
-        val service = subscriptionServiceService.getServiceById(id)
-        return ResponseEntity.ok(service)
-    }
-
     @PostMapping
     fun createService(
         @Valid @RequestBody request: SubscriptionServiceCreateRequest,

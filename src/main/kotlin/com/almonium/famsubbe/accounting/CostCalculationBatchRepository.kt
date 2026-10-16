@@ -17,13 +17,4 @@ interface CostCalculationBatchRepository : JpaRepository<CostCalculationBatch, U
         order by batch.createdAt desc
     """)
     fun findAllVisibleOrderByCreatedAtDesc(): List<CostCalculationBatch>
-
-    @Query("""
-        select batch
-        from CostCalculationBatch batch
-        left join fetch batch.createdByAccount
-        left join fetch batch.undoneByAccount
-        where batch.id = :id
-    """)
-    fun findVisibleById(id: UUID): CostCalculationBatch?
 }

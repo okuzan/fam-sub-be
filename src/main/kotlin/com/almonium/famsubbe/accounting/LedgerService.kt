@@ -2,7 +2,6 @@ package com.almonium.famsubbe.accounting
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.YearMonth
 import java.util.*
 
 @Service
@@ -10,14 +9,6 @@ class LedgerService(
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val costCalculationBatchRepository: CostCalculationBatchRepository
 ) {
-    @Transactional(readOnly = true)
-    fun getByMonth(month: YearMonth): List<LedgerEntryResponse> =
-        filter(LedgerEntryFilterRequest(recordedMonth = month))
-
-    @Transactional(readOnly = true)
-    fun getBySubscriber(subscriberId: UUID): List<LedgerEntryResponse> =
-        filter(LedgerEntryFilterRequest(subscriberId = subscriberId))
-
     @Transactional(readOnly = true)
     fun getById(id: UUID): LedgerEntryResponse =
         filter(LedgerEntryFilterRequest(id = id)).firstOrNull()
@@ -49,18 +40,6 @@ class LedgerService(
         costCalculationBatchRepository.findAllVisibleOrderByCreatedAtDesc()
             .take(limit.coerceIn(1, 100))
             .map { it.toLedgerCalculationBatchResponse() }
-
-    @Transactional(readOnly = true)
-    fun getLatestCalculationBatch(): LedgerCalculationBatchResponse? =
-        costCalculationBatchRepository.findAllVisibleOrderByCreatedAtDesc()
-            .firstOrNull()
-            ?.toLedgerCalculationBatchResponse()
-
-    @Transactional(readOnly = true)
-    fun getCalculationBatch(calculationBatchId: UUID): LedgerCalculationBatchResponse =
-        costCalculationBatchRepository.findVisibleById(calculationBatchId)
-            ?.toLedgerCalculationBatchResponse()
-            ?: throw IllegalArgumentException("Cost calculation batch not found: $calculationBatchId")
 
     private fun resolveServiceId(serviceId: UUID?, subscriptionServiceId: UUID?): UUID? {
         require(serviceId == null || subscriptionServiceId == null || serviceId == subscriptionServiceId) {

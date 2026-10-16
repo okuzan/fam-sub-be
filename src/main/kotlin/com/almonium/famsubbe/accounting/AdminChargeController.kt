@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.YearMonth
 import java.util.*
 
 @RestController
@@ -73,12 +72,6 @@ class AdminChargeController(
         return ResponseEntity.ok(charge)
     }
 
-    @GetMapping("/{id}")
-    fun getCharge(@PathVariable id: UUID): ResponseEntity<ChargeResponse> {
-        val charge = chargeService.getCharge(id)
-        return ResponseEntity.ok(charge)
-    }
-
     @GetMapping("/service/{serviceId}")
     fun getChargesByService(
         @PathVariable serviceId: UUID,
@@ -88,12 +81,6 @@ class AdminChargeController(
         require(page >= 0) { "Page must not be negative" }
         require(size in 1..50) { "Page size must be between 1 and 50" }
         val charges = chargeService.getChargesByService(serviceId, page, size)
-        return ResponseEntity.ok(charges)
-    }
-
-    @GetMapping("/month/{yearMonth}")
-    fun getChargesByMonth(@PathVariable yearMonth: YearMonth): ResponseEntity<List<ChargeResponse>> {
-        val charges = chargeService.getChargesByMonth(yearMonth)
         return ResponseEntity.ok(charges)
     }
 

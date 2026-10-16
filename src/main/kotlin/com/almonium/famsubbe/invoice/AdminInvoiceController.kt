@@ -104,32 +104,6 @@ class AdminInvoiceController(
             .body(ByteArrayResource(pdfBytes))
     }
 
-    @PatchMapping("/{invoiceId}/mark-paid")
-    fun markInvoiceAsPaid(
-        @PathVariable invoiceId: UUID,
-        authentication: Authentication
-    ): ResponseEntity<InvoiceResponse> {
-        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
-        val updatedInvoice = invoiceService.markAsPaid(invoiceId)
-        adminAuditLogService.log(
-            createdByAccountId = performedByAccountId,
-            actionType = AdminActionType.INVOICE_MARKED_PAID,
-            targetType = AdminActionTargetType.INVOICE,
-            targetId = invoiceId,
-            subscriberId = updatedInvoice.subscriberId,
-            fromMonth = updatedInvoice.fromMonth,
-            toMonth = updatedInvoice.toMonth,
-            summary = "Marked invoice $invoiceId as paid",
-            metadata = mapOf(
-                "statusBefore" to invoiceBefore.status,
-                "statusAfter" to updatedInvoice.status,
-                "totalAmount" to updatedInvoice.totalAmount
-            )
-        )
-        return ResponseEntity.ok(updatedInvoice)
-    }
-
     @PatchMapping("/{invoiceId}/status")
     fun updateInvoiceStatus(
         @PathVariable invoiceId: UUID,

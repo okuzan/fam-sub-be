@@ -199,9 +199,4 @@ class CostCalculationService(
             suggestedToMonth = suggestedToMonth
         )
     }
-
-    @Transactional(readOnly = true)
-    fun getRecentCalculationBatches(): List<CostCalculationBatch> {
-        return costCalculationBatchRepository.findAllVisibleOrderByCreatedAtDesc().take(10)
-    }
 }
