@@ -65,29 +65,28 @@ class DefaultInvoiceEmailService(
         subscriberBalance: BigDecimal,
         activeSubscriptions: List<ActiveSubscriptionDto>,
         unpaidInvoices: List<WeeklySituationInvoiceDto>
-    ): Boolean {
-        return try {
-            val context = Context()
-            context.setVariable("name", subscriberName)
-            context.setVariable("totalOwed", totalOwed)
-            context.setVariable("subscriberBalance", subscriberBalance)
-            context.setVariable("activeSubscriptions", activeSubscriptions)
-            context.setVariable("unpaidInvoices", unpaidInvoices)
-            context.setVariable("unpaidInvoicesCount", unpaidInvoices.size)
-            context.setVariable("activeSubscriptionsCount", activeSubscriptions.size)
-            context.setVariable("paymentMethods", paymentProperties.methods)
-
-            val htmlContent = templateEngine.process("situation-email", context)
-            val subject = "Your Subscription Account Status"
-
-            sendEmail(toEmail, subscriberName, subject, htmlContent)
-        } catch (e: Exception) {
-            log.error("Failed to send situation email to {}", toEmail, e)
-            false
-        }
-    }
+    ): Boolean = sendSituation(
+        template = "situation-email",
+        subject = "Your Subscription Account Status",
+        toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices
+    )
 
     override fun sendWeeklySituationEmail(
+        toEmail: String,
+        subscriberName: String,
+        totalOwed: BigDecimal,
+        subscriberBalance: BigDecimal,
+        activeSubscriptions: List<ActiveSubscriptionDto>,
+        unpaidInvoices: List<WeeklySituationInvoiceDto>
+    ): Boolean = sendSituation(
+        template = "weekly-situation-email",
+        subject = "Weekly Subscription Account Check-up",
+        toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices
+    )
+
+    private fun sendSituation(
+        template: String,
+        subject: String,
         toEmail: String,
         subscriberName: String,
         totalOwed: BigDecimal,
@@ -106,12 +105,10 @@ class DefaultInvoiceEmailService(
             context.setVariable("activeSubscriptionsCount", activeSubscriptions.size)
             context.setVariable("paymentMethods", paymentProperties.methods)
 
-            val htmlContent = templateEngine.process("weekly-situation-email", context)
-            val subject = "Weekly Subscription Account Check-up"
-
+            val htmlContent = templateEngine.process(template, context)
             sendEmail(toEmail, subscriberName, subject, htmlContent)
         } catch (e: Exception) {
-            log.error("Failed to send weekly situation email to {}", toEmail, e)
+            log.error("Failed to send {} to {}", template, toEmail, e)
             false
         }
     }
