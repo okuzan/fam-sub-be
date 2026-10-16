@@ -82,7 +82,10 @@ the invoice has committed and in its own short transaction per invoice, and
 only then moves it to SENT. `SubscriberStandingService` is the one place that
 computes what a subscriber owes (unpaid invoices minus balance), for the admin
 view, the cabinet, and every email. `SituationEmailService` sends the
-on-demand and Saturday "where you stand" emails. `BillingTime` owns the
+on-demand and Saturday "where you stand" emails; `ReminderPolicy` decides who
+gets the Saturday one (not within a week of an invoice email, and debts under
+`app.email.reminders.small-debt-threshold` only on the first Saturday of the
+month). `BillingTime` owns the
 Europe/Kyiv zone: use `BillingTime.currentMonth()`, never `YearMonth.now()`.
 
 Incoming money is read from the bank, not entered by hand: `BankSyncService`

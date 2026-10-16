@@ -54,6 +54,11 @@ app:
       api-key: ${ZEPTO_API_KEY}
       from-address: noreply@famsub.almonium.com
       from-name: FamSub
+  email:
+    reminders:
+      # Saturday check-ups for debts under this go out only on the first
+      # Saturday of the month (see ReminderPolicy).
+      small-debt-threshold: 200
   payment:
     # Everyone pays into the Mono account that app.bank.mono reads, so every
     # payment can be recognised.

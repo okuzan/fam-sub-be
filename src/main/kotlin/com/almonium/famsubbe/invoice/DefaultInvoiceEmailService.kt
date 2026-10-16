@@ -83,7 +83,7 @@ class DefaultInvoiceEmailService(
         payment: PaymentDetails
     ): Boolean = sendSituation(
         template = "weekly-situation-email",
-        subject = "Weekly Subscription Account Check-up",
+        subject = "Subscription Account Check-up",
         toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices, payment
     )
 

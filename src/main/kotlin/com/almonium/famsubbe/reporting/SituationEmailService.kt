@@ -16,11 +16,12 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.util.*
 
 /**
  * The "where you stand" email: sent on demand from the admin subscriber view,
- * and every Saturday to everyone who owes something.
+ * and on Saturdays to whoever [ReminderPolicy] says is due a reminder.
  *
  * Deliberately not transactional: each subscriber is read in its own
  * transaction, so one failure cannot mark a shared one rollback-only, and no
@@ -34,8 +35,10 @@ class SituationEmailService(
     private val invoiceEmailService: InvoiceEmailService,
     private val subscriberRepository: SubscriberRepository,
     private val paymentDetailsService: PaymentDetailsService,
-    @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean
+    @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean,
+    @Value($$"${app.email.reminders.small-debt-threshold:200}") smallDebtThreshold: BigDecimal
 ) {
+    private val reminderPolicy = ReminderPolicy(smallDebtThreshold)
     private val log = LoggerFactory.getLogger(SituationEmailService::class.java)
 
     /** Returns the details the email was built from, for the audit record. */
@@ -71,14 +74,15 @@ class SituationEmailService(
         )
     }
 
-    fun sendWeeklySituationEmails(): WeeklySituationEmailResult {
+    fun sendWeeklySituationEmails(today: LocalDate = BillingTime.today()): WeeklySituationEmailResult {
         val subscriberIds = invoiceRepository.findSubscriberIdsWithUnpaidInvoices()
         val items = subscriberIds.map { subscriberId ->
             try {
                 val details = standingService.getDetails(subscriberId)
                 val email = details.email.trim().takeIf { it.isNotEmpty() }
 
-                if (details.totalAmountOwed <= BigDecimal.ZERO) {
+                val skipReason = reminderPolicy.skipReason(details.totalAmountOwed, details.unpaidInvoices, today)
+                if (skipReason != null) {
                     return@map WeeklySituationEmailItemResult(
                         subscriberId = subscriberId,
                         subscriberName = details.name,
@@ -86,7 +90,7 @@ class SituationEmailService(
                         totalOwed = details.totalAmountOwed,
                         sent = false,
                         skipped = true,
-                        message = "Skipped because subscriber does not currently owe anything"
+                        message = skipReason
                     )
                 }
 
