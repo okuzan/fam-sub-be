@@ -34,7 +34,10 @@ following are genuinely shared and must not be duplicated or diverged:
 
 - the Oracle Cloud ARM host, its Traefik reverse proxy, and the
   `almonium.com` domain (`famsub.almonium.com`, `api.famsub.almonium.com`);
-- the ZeptoMail account and the `noreply@almonium.com` sender identity;
+- the Zoho CPaaS (formerly ZeptoMail) account, its `agent_1` mail agent, and
+  its email credits. FamSub sends as `noreply@famsub.almonium.com`, a domain
+  of its own in that account (DKIM and bounce CNAME at Porkbun), so spam
+  complaints about FamSub mail stay off Almonium's `almonium.com` sender;
 - the Google OAuth client (`28756406725-…apps.googleusercontent.com`), whose
   redirect URIs must list this API's `/v1/login/oauth2/code/google` callbacks;
 - the `almonium-infra` Ansible repository and its vault workflow.

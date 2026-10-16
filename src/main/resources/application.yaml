@@ -52,7 +52,7 @@ app:
     zepto:
       api-url: https://api.zeptomail.eu/v1.1/email
       api-key: ${ZEPTO_API_KEY}
-      from-address: noreply@almonium.com
+      from-address: noreply@famsub.almonium.com
       from-name: FamSub
   payment:
     # Everyone pays into the Mono account that app.bank.mono reads, so every
