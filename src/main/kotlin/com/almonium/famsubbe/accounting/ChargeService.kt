@@ -4,6 +4,7 @@ import com.almonium.famsubbe.subscription.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.data.domain.PageRequest
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.YearMonth
 import java.util.*
 
@@ -18,6 +19,8 @@ class ChargeService(
     fun createCharge(request: ChargeCreateRequest): ChargeResponse {
         val subscriptionService = subscriptionServiceRepository.findById(request.subscriptionServiceId)
             .orElseThrow { IllegalArgumentException("Subscription service not found: ${request.subscriptionServiceId}") }
+
+        require(request.amount > BigDecimal.ZERO) { "Charge amount must be positive" }
 
         // Check if charge already exists for this service and month
         val existingCharge = chargeRepository.findBySubscriptionServiceAndChargeMonth(
@@ -46,9 +49,7 @@ class ChargeService(
             throw IllegalStateException("Charge is locked because ledger entries already exist")
         }
 
-        if (request.amount <= java.math.BigDecimal.ZERO) {
-            throw IllegalArgumentException("Charge amount must be positive")
-        }
+        require(request.amount > BigDecimal.ZERO) { "Charge amount must be positive" }
 
         charge.amount = request.amount
         charge.description = request.description
@@ -87,6 +88,9 @@ class ChargeService(
     fun deleteCharge(chargeId: UUID) {
         if (!chargeRepository.existsById(chargeId)) {
             throw IllegalArgumentException("Charge not found: $chargeId")
+        }
+        check(!ledgerEntryRepository.existsByChargeId(chargeId)) {
+            "Charge is locked because ledger entries already exist"
         }
         chargeRepository.deleteById(chargeId)
     }

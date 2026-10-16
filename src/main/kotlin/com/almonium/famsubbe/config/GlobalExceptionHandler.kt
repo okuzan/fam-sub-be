@@ -5,6 +5,7 @@ import jakarta.persistence.EntityNotFoundException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.ConstraintViolationException
 import org.slf4j.LoggerFactory
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -78,6 +79,23 @@ class GlobalExceptionHandler {
         return buildError(
             HttpStatus.NOT_FOUND,
             exception.message ?: "Not found",
+            request.requestURI
+        )
+    }
+
+    /**
+     * Deleting a subscriber, service, or account that still has history behind it
+     * trips a foreign key. That is a refusal, not a server fault.
+     */
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleConflict(
+        exception: DataIntegrityViolationException,
+        request: HttpServletRequest
+    ): ResponseEntity<ApiErrorResponse> {
+        logger.warn("Integrity violation for {}: {}", request.requestURI, exception.mostSpecificCause.message)
+        return buildError(
+            HttpStatus.CONFLICT,
+            "This record is still referenced by other data and cannot be changed or removed",
             request.requestURI
         )
     }

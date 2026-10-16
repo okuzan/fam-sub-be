@@ -5,16 +5,19 @@ import com.almonium.famsubbe.invoice.InvoiceRepository
 import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.*
 
 @Service
+@Transactional
 class SubscriberService(
     private val subscriberRepository: SubscriberRepository,
     private val invoiceRepository: InvoiceRepository
 ) {
 
+    @Transactional(readOnly = true)
     fun getAllSubscribers(
         namePrefix: String? = null
     ): List<SubscriberResponse> {
@@ -26,11 +29,13 @@ class SubscriberService(
         return subscribers.map { it.toResponse() }
     }
 
+    @Transactional(readOnly = true)
     fun getSubscribersWithDebt(): List<SubscriberResponse> {
         val debtorIds = invoiceRepository.findSubscriberIdsWithUnpaidInvoices()
         return subscriberRepository.findAllById(debtorIds).map { it.toResponse() }
     }
 
+    @Transactional(readOnly = true)
     fun getSubscriberById(id: UUID): SubscriberResponse {
         val subscriber = subscriberRepository.findByIdOrNull(id)
             ?: throw EntityNotFoundException("Subscriber not found")

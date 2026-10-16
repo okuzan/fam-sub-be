@@ -3,17 +3,21 @@ package com.almonium.famsubbe.subscription
 import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.util.*
 
 @Service
+@Transactional
 class SubscriptionServiceService(
     private val subscriptionServiceRepository: SubscriptionServiceRepository
 ) {
 
+    @Transactional(readOnly = true)
     fun getAllServices(): List<SubscriptionServiceResponse> {
         return subscriptionServiceRepository.findAll().map { it.toResponse() }
     }
 
+    @Transactional(readOnly = true)
     fun getServiceById(id: UUID): SubscriptionServiceResponse {
         val service = subscriptionServiceRepository.findByIdOrNull(id)
             ?: throw EntityNotFoundException("Subscription service not found")
