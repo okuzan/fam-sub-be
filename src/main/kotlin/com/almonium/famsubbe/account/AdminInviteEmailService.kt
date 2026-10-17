@@ -4,6 +4,7 @@ import com.almonium.famsubbe.config.AppEmailProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties
 import com.almonium.famsubbe.invoice.EmailLogo
 import com.almonium.famsubbe.invoice.emailContext
+import com.almonium.famsubbe.invoice.replyTo
 import com.almonium.famsubbe.util.HtmlFileWriter
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -28,7 +29,6 @@ class AdminInviteEmailService(
         val context = emailContext(
             subject,
             "Accept with $email. Ignore this if you weren’t expecting it.",
-            appEmailProperties.adminName,
             webDomain
         )
         context.setVariable("email", email)
@@ -55,6 +55,7 @@ class AdminInviteEmailService(
                 )
             ),
             "subject" to subject,
+            "reply_to" to replyTo(appEmailProperties.replyTo),
             "htmlbody" to htmlContent,
             "inline_images" to EmailLogo.inlineImages()
         )

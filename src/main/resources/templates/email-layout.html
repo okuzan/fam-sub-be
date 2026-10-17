@@ -4,8 +4,8 @@
   inline styles because Gmail drops most <style> rules; the fs-* classes only
   exist for the dark-mode overrides in the head, which Apple Mail applies.
   Each template passes its rows as `sections`, plus `subject`, `preheader`, and
-  an optional `footerNote`; the context always carries `fmt`, `adminName`,
-  `webDomain` and `webHost`.
+  an optional `footerNote`; the context always carries `fmt`, `webDomain`
+  and `webHost`.
 -->
 <html xmlns:th="http://www.thymeleaf.org" lang="en" th:fragment="layout(sections)">
 <head>
@@ -36,7 +36,7 @@
 <tr><td class="fs-card" style="background:#ffffff; border:1px solid #e4e2dc; border-radius:16px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
 <th:block th:replace="${sections}"></th:block>
 </table></td></tr>
-<tr><td style="padding:20px 6px 0;"><p class="fs-muted" style="margin:0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12.5px; line-height:19px; color:#6a6d73;" th:text="|FamSub keeps track of the subscriptions we share. Something looks off? Message ${adminName}. Replies to this address aren’t read.|">FamSub keeps track of the subscriptions we share.</p><p th:if="${footerNote}" class="fs-muted" style="margin:0; padding-top:8px; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12.5px; line-height:19px; color:#6a6d73;" th:text="${footerNote}">Why you got this.</p><div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div><a th:href="${webDomain}" href="#" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; line-height:18px; color:#4f5259; text-decoration:none;" th:text="${webHost}">famsub.almonium.com</a></td></tr>
+<tr><td style="padding:20px 6px 0;"><p class="fs-muted" style="margin:0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12.5px; line-height:19px; color:#6a6d73;" >FamSub keeps track of the subscriptions we share. Something looks off? Just reply to this email.</p><p th:if="${footerNote}" class="fs-muted" style="margin:0; padding-top:8px; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12.5px; line-height:19px; color:#6a6d73;" th:text="${footerNote}">Why you got this.</p><div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div><a th:href="${webDomain}" href="#" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; line-height:18px; color:#4f5259; text-decoration:none;" th:text="${webHost}">famsub.almonium.com</a></td></tr>
 </table></td></tr></table>
 </body>
 </html>

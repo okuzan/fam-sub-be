@@ -31,7 +31,6 @@ class DefaultInvoiceEmailService(
 
     private val log = LoggerFactory.getLogger(DefaultInvoiceEmailService::class.java)
     private val restClient = RestClient.create()
-    private val adminName = appEmailProperties.adminName
     private val cabinetUrl = "$webDomain/subscriber/cabinet"
 
     override fun sendInvoiceEmail(invoice: Invoice, entries: List<LedgerEntry>, totalAmountOwed: BigDecimal): Boolean {
@@ -49,14 +48,14 @@ class DefaultInvoiceEmailService(
             val invoiceDate = EmailFormat.date(invoice.invoiceDate)
 
             val preheader = when {
-                isPaid && exempt -> "$adminName covers your share. This one is just for your records."
+                isPaid && exempt -> "Your share is covered. This one is just for your records."
                 isPaid -> "Already paid from your credit. This one is just for your records."
                 isManual && totalAmountOwed > total ->
-                    "A one-off from $adminName. Pay it together with the rest: ${EmailFormat.money(totalAmountOwed)} in total."
-                isManual -> "A one-off from $adminName. Pay in one tap from your banking app."
+                    "A one-off charge. Pay it together with the rest: ${EmailFormat.money(totalAmountOwed)} in total."
+                isManual -> "A one-off charge. Pay in one tap from your banking app."
                 else -> "$services for ${monthsText(invoice)}. Pay in one tap from your banking app."
             }
-            val context = emailContext(buildInvoiceEmailSubject(invoice), preheader, adminName, webDomain)
+            val context = emailContext(buildInvoiceEmailSubject(invoice), preheader, webDomain)
             context.setVariable("invoice", invoice)
             context.setVariable("entries", entries)
             context.setVariable("isPaid", isPaid)
@@ -65,15 +64,15 @@ class DefaultInvoiceEmailService(
             context.setVariable(
                 "lead", when {
                     isPaid && exempt ->
-                        "Hi $name, there’s nothing to pay. $adminName covers your share, so this invoice was marked paid when it was made."
+                        "Hi $name, there’s nothing to pay. Your share is covered, so this invoice was marked paid when it was made."
                     isPaid -> "Hi $name, there’s nothing to pay. Your credit already covered this invoice."
-                    isManual -> "Hi $name, $adminName added a one-off charge for you."
+                    isManual -> "Hi $name, there’s a one-off charge for you."
                     else -> "Hi $name, here’s your share of $services for ${monthsText(invoice)}."
                 }
             )
             context.setVariable(
                 "dateLine", when {
-                    isPaid && exempt -> "Paid $invoiceDate · covered by $adminName"
+                    isPaid && exempt -> "Paid $invoiceDate · your share is covered"
                     isPaid -> "Paid $invoiceDate from your credit"
                     else -> "Sent $invoiceDate"
                 }
@@ -156,7 +155,7 @@ class DefaultInvoiceEmailService(
                 "You got this because an update on your account was requested."
             }
 
-            val context = emailContext(subject, preheader, adminName, webDomain, footerNote)
+            val context = emailContext(subject, preheader, webDomain, footerNote)
             context.setVariable("name", subscriberName)
             context.setVariable("weekly", weekly)
             context.setVariable("allClear", allClear)
@@ -199,7 +198,7 @@ class DefaultInvoiceEmailService(
                 "$settled settled across $paidInvoicesCount invoices. Nothing left to pay."
             }
 
-            val context = emailContext(subject, preheader, adminName, webDomain)
+            val context = emailContext(subject, preheader, webDomain)
             context.setVariable("name", subscriberName)
             context.setVariable("paidInvoicesCount", paidInvoicesCount)
             context.setVariable("totalPaidAmount", totalPaidAmount)
@@ -236,6 +235,7 @@ class DefaultInvoiceEmailService(
                 )
             ),
             "subject" to subject,
+            "reply_to" to replyTo(appEmailProperties.replyTo),
             "htmlbody" to htmlContent,
             "inline_images" to EmailLogo.inlineImages()
         )

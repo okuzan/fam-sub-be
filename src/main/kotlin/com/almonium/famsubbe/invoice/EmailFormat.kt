@@ -65,14 +65,12 @@ object EmailFormat {
 internal fun emailContext(
     subject: String,
     preheader: String,
-    adminName: String,
     webDomain: String,
     footerNote: String? = null
 ): Context = Context().apply {
     setVariable("subject", subject)
     setVariable("preheader", preheader)
     setVariable("footerNote", footerNote)
-    setVariable("adminName", adminName)
     setVariable("webDomain", webDomain)
     setVariable("webHost", webDomain.substringAfter("://"))
     setVariable("today", BillingTime.today())
@@ -97,3 +95,6 @@ object EmailLogo {
     /** A dry-run file has no attachments, so the preview embeds the image instead. */
     fun embedForPreview(html: String): String = html.replace("cid:$CID", "data:image/png;base64,$base64")
 }
+
+/** The ZeptoMail `reply_to` entry that sends replies to the family inbox. */
+internal fun replyTo(address: String): List<Map<String, String>> = listOf(mapOf("address" to address, "name" to "FamSub"))
