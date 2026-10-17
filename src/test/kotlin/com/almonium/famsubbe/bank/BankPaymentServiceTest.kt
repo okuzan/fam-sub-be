@@ -243,6 +243,29 @@ class BankPaymentServiceTest {
         assertEquals(BankTransactionStatus.APPLIED, transfer.status)
     }
 
+    @Test
+    fun `a transfer already recorded by hand is linked to them without touching their balance`() {
+        subscriber.balance = BigDecimal("5.00")
+        val transfer = appliedTransfer(BigDecimal("31.93")).apply {
+            status = BankTransactionStatus.UNMATCHED
+            subscriber = null
+            matchMethod = null
+        }
+        `when`(subscriberRepository.findById(requireNotNull(subscriber.id))).thenReturn(Optional.of(subscriber))
+
+        val result = service.markAlreadyRecorded(
+            requireNotNull(transfer.id),
+            BankPaymentAlreadyRecordedRequest(requireNotNull(subscriber.id), rememberSender = false),
+            UUID.randomUUID()
+        )
+
+        assertEquals(BankTransactionStatus.IGNORED, transfer.status)
+        assertEquals(true, result.transaction.alreadyRecorded)
+        assertEquals(subscriber.id, result.transaction.subscriberId)
+        assertEquals(BigDecimal("5.00"), subscriber.balance)
+        verify(invoiceService, never()).applyIncomingPayment(subscriber, BigDecimal("31.93"))
+    }
+
     private fun appliedTransfer(amount: BigDecimal) = BankTransaction().apply {
         id = UUID.randomUUID()
         occurredAt = Instant.now()

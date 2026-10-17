@@ -125,6 +125,33 @@ class AdminBankPaymentController(
         return ResponseEntity.ok(resolution)
     }
 
+    @PostMapping("/{id}/already-recorded")
+    fun markAlreadyRecorded(
+        @PathVariable id: UUID,
+        @RequestBody request: BankPaymentAlreadyRecordedRequest,
+        authentication: Authentication
+    ): ResponseEntity<BankPaymentResolution> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val resolution = bankPaymentService.markAlreadyRecorded(id, request, performedByAccountId)
+        val transaction = resolution.transaction
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.BANK_PAYMENT_ALREADY_RECORDED,
+            targetType = AdminActionTargetType.BANK_TRANSACTION,
+            targetId = id,
+            subscriberId = transaction.subscriberId,
+            summary = "Marked bank payment of ${transaction.amount} from ${transaction.senderName} " +
+                "as already recorded for ${transaction.subscriberName}",
+            metadata = mapOf(
+                "amount" to transaction.amount,
+                "senderName" to transaction.senderName,
+                "occurredAt" to transaction.occurredAt.toString(),
+                "senderRemembered" to resolution.senderRemembered
+            )
+        )
+        return ResponseEntity.ok(resolution)
+    }
+
     @PostMapping("/{id}/undo")
     fun undo(@PathVariable id: UUID, authentication: Authentication): ResponseEntity<BankPaymentUndoResult> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)

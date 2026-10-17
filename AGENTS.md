@@ -109,7 +109,9 @@ code (`NbuQrCode`), which needs the recipient's РНОКПП in
 `app.payment`, because that is the only account that is read. Applying goes through `InvoiceService.applyIncomingPayment`: credit the
 balance, then pay invoices from it. `BankPaymentService.undo` takes a mistaken one back: it
 reopens the invoices that payment paid, debits the balance, and returns the
-transfer to review. It refuses when the credit has since paid something else.
+transfer to review. It refuses when the credit has since paid something else. A transfer whose money was
+already recorded by hand is filed with `markAlreadyRecorded`: IGNORED, but
+linked to the subscriber, with their balance untouched.
 
 Outgoing bills are read from the same statement. Every subscription is paid
 from that Mono card, and each card payment carries the merchant's own amount

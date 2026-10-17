@@ -34,6 +34,8 @@ data class BankTransactionResponse(
     val settledInvoiceCount: Int,
     val settledAmount: BigDecimal?,
     val resolvedAt: Instant?,
+    /** IGNORED because an admin had already recorded this money by hand; [subscriberId] says whose. */
+    val alreadyRecorded: Boolean,
     /** Who the money most likely belongs to; only for UNMATCHED payments. */
     val suggestions: List<BankPaymentSuggestion>
 )
@@ -45,6 +47,12 @@ data class BankPaymentSuggestion(
 )
 
 data class BankPaymentAssignRequest(
+    val subscriberId: UUID,
+    /** Apply this sender's future payments to the same subscriber on their own. */
+    val rememberSender: Boolean = true
+)
+
+data class BankPaymentAlreadyRecordedRequest(
     val subscriberId: UUID,
     /** Apply this sender's future payments to the same subscriber on their own. */
     val rememberSender: Boolean = true

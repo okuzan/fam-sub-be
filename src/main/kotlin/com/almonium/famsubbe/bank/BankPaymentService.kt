@@ -185,6 +185,40 @@ class BankPaymentService(
     }
 
     /**
+     * Files a transfer whose money an admin had already recorded by hand: it is
+     * linked to that subscriber and filed as IGNORED, and their balance and
+     * invoices stay as they are.
+     */
+    @Transactional
+    fun markAlreadyRecorded(
+        transactionId: UUID,
+        request: BankPaymentAlreadyRecordedRequest,
+        accountId: UUID
+    ): BankPaymentResolution {
+        val transaction = findTransaction(transactionId)
+        check(transaction.status == BankTransactionStatus.UNMATCHED) {
+            "Only payments waiting for review can be marked as already recorded"
+        }
+        val subscriber = subscriberRepository.findById(request.subscriberId)
+            .orElseThrow { NoSuchElementException("Subscriber not found: ${request.subscriberId}") }
+
+        transaction.status = BankTransactionStatus.IGNORED
+        transaction.subscriber = subscriber
+        transaction.matchMethod = null
+        transaction.reviewNote = ALREADY_RECORDED_NOTE
+        transaction.resolvedAt = Instant.now()
+        transaction.resolvedByAccountId = accountId
+
+        val remembered = request.rememberSender && remember(transaction, subscriber, accountId)
+        return BankPaymentResolution(
+            transaction = transactionRepository.save(transaction).toResponse(emptyList()),
+            settledInvoiceIds = emptyList(),
+            balanceAfter = subscriber.balance,
+            senderRemembered = remembered
+        )
+    }
+
+    /**
      * Takes back a payment applied by mistake: reopens the invoices it paid,
      * which returns what they drew from the balance, then takes the transfer
      * off the balance, and puts the transfer back in review. Refused when part
@@ -406,6 +440,7 @@ class BankPaymentService(
         settledInvoiceCount = settledInvoiceCount,
         settledAmount = settledAmount,
         resolvedAt = resolvedAt,
+        alreadyRecorded = status == BankTransactionStatus.IGNORED && subscriber != null,
         suggestions = suggestions
     )
 
@@ -422,6 +457,7 @@ class BankPaymentService(
     private companion object {
         const val MAX_LIMIT = 500
         const val MAX_SUGGESTIONS = 5
+        const val ALREADY_RECORDED_NOTE = "Already recorded by hand"
         const val FULL_NAME_REASON = "name and surname match the sender"
         val APOSTROPHES = Regex("[’ʼ`´‘]")
     }
