@@ -1,104 +1,42 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Your Invoice</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { padding: 20px; text-align: center; border-bottom: 2px solid #007bff; }
-        .header.unpaid { background-color: #f8f9fa; border-bottom: 2px solid #007bff; }
-        .header.paid { background-color: #d4edda; border-bottom: 2px solid #28a745; }
-        .header.void { background-color: #f1f3f5; border-bottom: 2px solid #6c757d; }
-        .status-badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-top: 10px; }
-        .status-paid { background-color: #28a745; color: white; }
-        .status-unpaid { background-color: #ffc107; color: #333; }
-        .status-void { background-color: #6c757d; color: white; }
-        .content { padding: 20px 0; }
-        .invoice-details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .footer { font-size: 12px; color: #6c757d; text-align: center; margin-top: 20px; border-top: 1px solid #dee2e6; padding-top: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .total { font-weight: bold; font-size: 1.2em; text-align: right; margin-top: 20px; }
-        .notes { margin-top: 20px; padding: 10px; border-left: 4px solid #17a2b8; background-color: #f8f9fa; font-style: italic; }
-        .cabinet-link { margin-top: 8px; text-align: right; }
-        .cabinet-link a { color: #007bff; text-decoration: none; font-size: 14px; }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: layout(~{::sections})}">
 <body>
-    <div th:class="${invoice.status.name() == 'PAID'} ? 'header paid' : (${invoice.status.name() == 'VOID'} ? 'header void' : 'header unpaid')">
-        <h2 th:if="${origin.name() == 'MANUAL'}">New Invoice</h2>
-        <h2 th:if="${origin.name() == 'SUBSCRIPTION_LEDGER'}">Subscription Invoice for <span th:text="${invoicePeriod}"></span></h2>
-        <div th:if="${invoice.status.name() == 'PAID'}" class="status-badge status-paid">PAID</div>
-        <div th:if="${invoice.status.name() == 'VOID'}" class="status-badge status-void">VOID</div>
-        <div th:if="${invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}" class="status-badge status-unpaid">UNPAID</div>
-    </div>
-    
-    <div class="content">
-        <p>Dear <span th:text="${subscriber.name}">Customer</span>,</p>
-        
-        <div class="invoice-details">
-            <p><strong>Invoice ID:</strong> <span th:text="${invoice.id}"></span></p>
-            <p><strong>Invoice Date:</strong> <span th:text="${#temporals.format(invoice.invoiceDate, 'MMM dd, yyyy')}"></span></p>
-            <p th:if="${invoice.status.name() == 'PAID'}"><strong>Payment Date:</strong> <span th:text="${invoice.sentAt != null ? #temporals.format(invoice.sentAt, 'MMM dd, yyyy HH:mm') : #dates.format(#dates.createNow(), 'MMM dd, yyyy HH:mm')}"></span></p>
-        </div>
+<th:block th:fragment="sections">
 
-        <p th:if="${invoice.status.name() == 'VOID'}">This invoice has been voided and should not be paid.</p>
-        <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">Please find the details of your one-off invoice below.</p>
-        <p th:if="${origin.name() == 'MANUAL' && invoice.status.name() == 'PAID'}">Below is your paid one-off invoice for your records.</p>
-        <p th:if="${origin.name() == 'SUBSCRIPTION_LEDGER' && invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">Please find the details of your recent invoice below.</p>
-        <p th:if="${origin.name() == 'SUBSCRIPTION_LEDGER' && invoice.status.name() == 'PAID'}">Below is the breakdown of your paid invoice for your records.</p>
-        
-        <table th:if="${not #lists.isEmpty(entries)}">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="entry : ${entries}">
-                    <td th:text="${#temporals.format(entry.recordedMonth.atDay(1), 'MMM yyyy')}">Date</td>
-                    <td th:text="${entry.subscriptionService.name}">Description</td>
-                    <td th:text="${entry.notes ?: 'Subscription Charge'}">Notes</td>
-                    <td th:text="${'₴' + entry.amount}">₴0.00</td>
-                </tr>
-            </tbody>
+<tr><td class="fs-line" style="padding:32px 36px 28px;">
+    <table th:replace="~{email-layout :: eyebrow(text=${isPaid} ? |Receipt · ${isManual ? 'one-off' : period}| : |New invoice · ${isManual ? 'one-off' : period}|, badge=${isPaid} ? 'PAID' : null)}"></table>
+    <div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+    <p th:replace="~{email-layout :: lead(text=${lead})}"></p>
+    <div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+    <div th:replace="~{email-layout :: bigAmount(amount=${invoice.totalAmount})}"></div>
+    <div style="height:6px; line-height:6px; font-size:0;">&nbsp;</div>
+    <p th:replace="~{email-layout :: small(text=${dateLine})}"></p>
+    <th:block th:if="${isManual and invoice.notes != null}">
+        <div style="height:20px; line-height:20px; font-size:0;">&nbsp;</div>
+        <table th:replace="~{email-layout :: note(label='Note', text=${invoice.notes})}"></table>
+    </th:block>
+</td></tr>
+
+<tr th:if="${not #lists.isEmpty(entries)}"><td class="fs-line" style="padding:26px 36px; border-top:1px solid #e4e2dc;">
+    <div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;" th:text="${isPaid} ? 'What it covered' : 'What it’s for'">What it’s for</div>
+    <div style="height:4px; line-height:4px; font-size:0;">&nbsp;</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <th:block th:each="entry, stat : ${entries}"><tr th:replace="~{email-layout :: line(label=${entry.subscriptionService.name}, sub=${entry.notes != null} ? |${fmt.month(entry.recordedMonth)} · ${entry.notes}| : ${fmt.month(entry.recordedMonth)}, amount=${fmt.money(entry.amount)}, first=${stat.first})}"></tr></th:block>
+        <tr th:replace="~{email-layout :: line(label=${isPaid} ? 'Total, paid' : 'Invoice total', amount=${fmt.money(invoice.totalAmount)}, strong=true)}"></tr>
+    </table>
+</td></tr>
+
+<th:block th:unless="${isPaid}">
+    <tr><td class="fs-soft fs-line" style="padding:14px 36px; border-top:1px solid #e4e2dc; background:#faf9f7;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+            <tr th:replace="~{email-layout :: line(label='Your total right now', sub=${totalNote}, amount=${fmt.money(totalAmountOwed)}, first=true, strong=true)}"></tr>
         </table>
-        <p th:if="${#lists.isEmpty(entries)}"><em>No ledger entries found for this invoice.</em></p>
-        
-        <div class="total">
-            Total Amount: <span th:text="${'₴' + invoice.totalAmount}">₴0.00</span>
-        </div>
-        <div class="total">
-            Total Currently Owed: <span th:text="${'₴' + totalAmountOwed}">₴0.00</span>
-        </div>
-        <div class="cabinet-link" th:if="${invoice.status.name() != 'VOID'}">
-            <a th:href="${cabinetUrl}">View invoices included in this balance</a>
-        </div>
-        
-        <div class="notes" th:if="${invoice.notes}">
-            <strong>Notes:</strong> <span th:text="${invoice.notes}"></span>
-        </div>
-        
-        <th:block th:if="${invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">
-            <div th:replace="~{situation-email-fragments :: paymentMethods}"></div>
-        </th:block>
-        
-        <div th:if="${invoice.status.name() != 'PAID' && invoice.status.name() != 'VOID'}">
-            <p>Please ensure payment is made at your earliest convenience.</p>
-            <p>Thank you for your business!</p>
-        </div>
-        <div th:if="${invoice.status.name() == 'PAID'}">
-            <p>Thank you for your payment!</p>
-        </div>
-    </div>
-    
-    <div class="footer">
-        This is an automated message. Please do not reply to this email.
-    </div>
+    </td></tr>
+    <th:block th:if="${toPay > 0}"><tr th:replace="~{email-layout :: payBlock}"></tr></th:block>
+    <tr th:replace="~{email-layout :: cardLink(text='See every invoice in this total in your cabinet', url=${cabinetUrl})}"></tr>
+</th:block>
+<th:block th:if="${isPaid}"><tr th:replace="~{email-layout :: cardLink(text='Your invoices are all in your cabinet', url=${cabinetUrl})}"></tr></th:block>
 
+</th:block>
 </body>
 </html>

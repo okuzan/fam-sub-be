@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.invoice
 
+import com.almonium.famsubbe.account.AdminInviteEmailService
 import com.almonium.famsubbe.config.AppEmailProperties
 import com.almonium.famsubbe.config.PaymentProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties
@@ -39,16 +40,18 @@ class PaymentEmailRenderingTest {
         mock(SubscriberStandingService::class.java),
         "https://famsub.example"
     )
+    private val templateEngine = SpringTemplateEngine().apply {
+        setTemplateResolver(ClassLoaderTemplateResolver().apply {
+            prefix = "templates/"
+            suffix = ".html"
+            characterEncoding = "UTF-8"
+        })
+    }
+    private val zepto = ZeptoMailProperties("https://mail.example", "key", "noreply@example.com", "FamSub")
     private val emailService = DefaultInvoiceEmailService(
-        SpringTemplateEngine().apply {
-            setTemplateResolver(ClassLoaderTemplateResolver().apply {
-                prefix = "templates/"
-                suffix = ".html"
-                characterEncoding = "UTF-8"
-            })
-        },
+        templateEngine,
         htmlFileWriter,
-        ZeptoMailProperties("https://mail.example", "key", "noreply@example.com", "FamSub"),
+        zepto,
         AppEmailProperties(dryRun = true),
         paymentDetailsService,
         "https://famsub.example"
@@ -90,6 +93,28 @@ class PaymentEmailRenderingTest {
         emailService.sendWeeklySituationEmail("polina@example.com", "Поліна", BigDecimal("31.93"), BigDecimal.ZERO, emptyList(), emptyList(), payment)
 
         assertTrue(rendered.size == 2 && rendered.all { "https://famsub.example/pay/token123" in it })
+    }
+
+    @Test
+    fun `an all-clear situation email asks for nothing`() {
+        val payment = paymentDetailsService.forSubscriber(subscriber, BigDecimal.ZERO)
+
+        emailService.sendSituationEmail("polina@example.com", "Поліна", BigDecimal("-35.00"), BigDecimal("35.00"), emptyList(), emptyList(), payment)
+
+        val html = rendered.single()
+        assertContains(html, "You’re all paid up, Поліна")
+        assertFalse("/pay/" in html)
+    }
+
+    @Test
+    fun `the debt paid email and the admin invite render`() {
+        emailService.sendDebtPaidEmail("polina@example.com", "Поліна", 3, BigDecimal("2008.00"), BigDecimal.ZERO, BigDecimal.ZERO)
+        AdminInviteEmailService(htmlFileWriter, zepto, AppEmailProperties(dryRun = true), templateEngine, "https://famsub.example")
+            .sendInvite("friend@example.com", "https://famsub.example/admin-invites/accept?token=abc")
+
+        assertContains(rendered[0], "All 3 of your open invoices are now marked paid.")
+        assertContains(rendered[1], "https://famsub.example/admin-invites/accept?token=abc")
+        assertTrue(rendered.none { "cid:" in it }, "a dry run embeds the logo instead of referencing an attachment")
     }
 
     private fun invoice(status: InvoiceStatus) = Invoice().apply {

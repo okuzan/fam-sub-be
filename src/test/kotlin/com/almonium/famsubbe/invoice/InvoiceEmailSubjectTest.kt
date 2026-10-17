@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
 class InvoiceEmailSubjectTest {
 
     @Test
-    fun `manual invoice subject includes amount and normalized notes`() {
+    fun `manual invoice subject leads with its normalized notes`() {
         val invoice = invoice(
             origin = InvoiceOrigin.MANUAL,
             amount = "450",
@@ -19,7 +19,7 @@ class InvoiceEmailSubjectTest {
         )
 
         assertEquals(
-            "New Invoice: ₴450.00 — Netflix annual adjustment — 1 Jul 2026",
+            "Netflix annual adjustment: 450,00\u00a0₴",
             buildInvoiceEmailSubject(invoice)
         )
     }
@@ -34,7 +34,7 @@ class InvoiceEmailSubjectTest {
         )
 
         assertEquals(
-            "New Invoice: ₴450.00 — Subscriptions, Jul 2026",
+            "Your Jul 2026 share: 450,00\u00a0₴",
             buildInvoiceEmailSubject(invoice)
         )
     }
@@ -49,7 +49,7 @@ class InvoiceEmailSubjectTest {
         )
 
         assertEquals(
-            "New Invoice: ₴450.00 — Subscriptions, Jun–Jul 2026",
+            "Your Jun–Jul 2026 share: 450,00\u00a0₴",
             buildInvoiceEmailSubject(invoice)
         )
     }
@@ -64,9 +64,27 @@ class InvoiceEmailSubjectTest {
         )
 
         assertEquals(
-            "New Invoice: ₴450.00 — Subscriptions, Dec 2025–Jan 2026",
+            "Your Dec 2025–Jan 2026 share: 450,00\u00a0₴",
             buildInvoiceEmailSubject(invoice)
         )
+    }
+
+    @Test
+    fun `an invoice that is already paid is a receipt`() {
+        val invoice = invoice(
+            origin = InvoiceOrigin.SUBSCRIPTION_LEDGER,
+            amount = "117.00",
+            fromMonth = "2026-09",
+            toMonth = "2026-10"
+        ).apply { status = InvoiceStatus.PAID }
+
+        assertEquals("Receipt for Sep–Oct 2026: nothing to pay", buildInvoiceEmailSubject(invoice))
+    }
+
+    @Test
+    fun `money groups thousands with non-breaking spaces`() {
+        assertEquals("1\u00a0968,00\u00a0₴", EmailFormat.money(BigDecimal("1968")))
+        assertEquals("−40,00\u00a0₴", EmailFormat.minus(BigDecimal("40")))
     }
 
     private fun invoice(

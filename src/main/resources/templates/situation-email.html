@@ -1,35 +1,65 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Account Situation Update</title>
-    <style th:replace="~{situation-email-fragments :: styles}"></style>
-</head>
+<!-- "Where you stand": on demand, on Saturdays (`weekly`), and the all-clear version when nothing is owed. -->
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: layout(~{::sections})}">
 <body>
-    <div th:replace="~{situation-email-fragments :: header('Account Situation Update')}"></div>
+<th:block th:fragment="sections">
 
-    <div class="content">
-        <p>Dear <span th:text="${name}">Customer</span>,</p>
+<tr><td class="fs-line" style="padding:32px 36px 28px;">
+    <table th:replace="~{email-layout :: eyebrow(text=|${allClear ? 'All clear' : (weekly ? 'Saturday check-in' : 'Where you stand')} · ${fmt.date(today)}|)}"></table>
+    <div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+    <th:block th:if="${allClear}">
+        <div th:replace="~{email-layout :: headline(text=|You’re all paid up, ${name}|)}"></div>
+        <div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+        <p th:replace="~{email-layout :: small(text='Nothing to pay right now.')}"></p>
+    </th:block>
+    <th:block th:unless="${allClear}">
+        <p th:replace="~{email-layout :: lead(text=${weekly} ? |Hi ${name}, your weekly check-in. This is still open. Whenever you’re ready, the button below has everything filled in.| : |Hi ${name}, here’s everything open on your account right now.|)}"></p>
+        <div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+        <div th:replace="~{email-layout :: bigAmount(amount=${toPay})}"></div>
+        <div style="height:6px; line-height:6px; font-size:0;">&nbsp;</div>
+        <p th:replace="~{email-layout :: small(text=|${unpaidInvoicesCount} open ${unpaidInvoicesCount == 1 ? 'invoice' : 'invoices'}${credit > 0 ? ' · your ' + fmt.money(credit) + ' credit is already taken off' : ''}|)}"></p>
+    </th:block>
+</td></tr>
 
-        <p>This account situation was sent on demand. It summarizes the current unpaid invoices, notes, and active subscriptions we have on record.</p>
+<tr th:unless="${allClear}"><td class="fs-line" style="padding:26px 36px; border-top:1px solid #e4e2dc;">
+    <div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;">Open invoices</div>
+    <div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+    <table th:each="invoice : ${unpaidInvoices}" th:with="manual=${invoice.origin == 'MANUAL'}, days=${fmt.daysOpen(invoice.invoiceDate)}" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <tr>
+            <td class="fs-ink fs-line" style="padding:14px 16px 2px 0; border-top:1px solid #eceae5; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:15.5px; line-height:22px; font-weight:700; color:#26282d;"><th:block th:text="${manual} ? (${invoice.notes} ?: 'One-off') : ${fmt.periodOf(invoice.fromMonth, invoice.toMonth)}">Aug 2026</th:block><br><span class="fs-muted" style="font-size:13px; line-height:19px; font-weight:400; color:#4f5259;" th:text="${manual} ? |One-off · sent ${fmt.dayMonth(invoice.invoiceDate)}| : |Sent ${fmt.dayMonth(invoice.invoiceDate)} · open ${days} ${days == 1 ? 'day' : 'days'}|">Sent 2 Sep · open 64 days</span></td>
+            <td align="right" class="fs-ink fs-line" style="padding:14px 0 2px; border-top:1px solid #eceae5; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:15.5px; line-height:22px; font-weight:600; color:#26282d; white-space:nowrap; vertical-align:top;" th:text="${fmt.money(invoice.totalAmount)}">186,00 ₴</td>
+        </tr>
+        <tr th:each="entry : ${invoice.ledgerEntries}">
+            <td class="fs-muted" style="padding:3px 16px 0 14px; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:13.5px; line-height:20px; color:#4f5259;" th:text="|${entry.subscriptionServiceName} · ${fmt.shortMonth(entry.recordedMonth)}|">Netflix Premium · Aug</td>
+            <td align="right" class="fs-muted" style="padding:3px 0 0; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13.5px; line-height:20px; color:#4f5259; white-space:nowrap;" th:text="${fmt.money(entry.amount)}">127,50 ₴</td>
+        </tr>
+        <tr><td style="padding:0 0 12px;"></td><td></td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <tr th:replace="~{email-layout :: line(label='Open invoices', amount=${fmt.money(unpaidSum)})}"></tr>
+        <th:block th:if="${credit > 0}"><tr th:replace="~{email-layout :: line(label='Your credit', amount=${fmt.minus(credit)}, green=true)}"></tr></th:block>
+        <tr th:replace="~{email-layout :: line(label='To pay', amount=${fmt.money(toPay)}, strong=true)}"></tr>
+    </table>
+</td></tr>
 
-        <div th:replace="~{situation-email-fragments :: summary('Current Situation')}"></div>
-        <div th:replace="~{situation-email-fragments :: activeSubscriptions}"></div>
-        <div th:replace="~{situation-email-fragments :: unpaidInvoices}"></div>
-        <div th:replace="~{situation-email-fragments :: total}"></div>
+<tr th:if="${allClear}"><td class="fs-soft fs-line" style="padding:14px 36px; border-top:1px solid #e4e2dc; background:#faf9f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <tr th:replace="~{email-layout :: line(label='Open invoices', amount=${unpaidInvoicesCount == 0} ? 'None' : ${fmt.money(unpaidSum)}, first=true)}"></tr>
+        <th:block th:if="${spareCredit > 0}"><tr th:replace="~{email-layout :: line(label='Your credit', sub='Goes toward your next invoice', amount=${fmt.money(spareCredit)}, green=true)}"></tr></th:block>
+    </table>
+</td></tr>
 
-        <div th:if="${totalOwed gt 0}">
-            <p>Please settle the outstanding amount when you can so access to active subscriptions stays uninterrupted.</p>
-            <div th:replace="~{situation-email-fragments :: paymentMethods}"></div>
-        </div>
-        <div th:if="${totalOwed eq 0}">
-            <p>Everything is fully paid for right now.</p>
-        </div>
+<tr th:unless="${#lists.isEmpty(activeSubscriptions)}"><td class="fs-line" style="padding:26px 36px; border-top:1px solid #e4e2dc;">
+    <div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;">Your subscriptions</div>
+    <div style="height:4px; line-height:4px; font-size:0;">&nbsp;</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <th:block th:each="subscription, stat : ${activeSubscriptions}"><tr th:replace="~{email-layout :: line(label=${subscription.serviceName}, sub=${subscription.endMonth != null} ? |Since ${fmt.monthYear(subscription.startMonth)} · until ${fmt.monthYear(subscription.endMonth)}| : |Since ${fmt.monthYear(subscription.startMonth)}|, amount='', first=${stat.first})}"></tr></th:block>
+    </table>
+</td></tr>
 
-        <p>If something looks wrong, please reach out and we will check it.</p>
-        <p>Thank you.</p>
-    </div>
+<th:block th:if="${toPay > 0}"><tr th:replace="~{email-layout :: payBlock}"></tr></th:block>
+<th:block th:if="${allClear}"><tr th:replace="~{email-layout :: cardLink(text='Open your cabinet', url=${cabinetUrl})}"></tr></th:block>
 
-    <div th:replace="~{situation-email-fragments :: footer('This is an automated on-demand message. Please do not reply to this email.')}"></div>
+</th:block>
 </body>
 </html>

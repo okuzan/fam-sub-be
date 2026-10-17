@@ -12,7 +12,9 @@ data class ZeptoMailProperties(
 
 @ConfigurationProperties(prefix = "app.email")
 data class AppEmailProperties(
-    val dryRun: Boolean = false
+    val dryRun: Boolean = false,
+    /** Who subscribers are told to message, and who covers billing-exempt shares. */
+    val adminName: String = "Олег"
 )
 
 /** Where subscribers pay: the one Mono account that BankSyncService reads. */

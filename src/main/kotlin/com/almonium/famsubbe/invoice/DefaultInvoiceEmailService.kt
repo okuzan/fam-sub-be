@@ -14,9 +14,7 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import org.thymeleaf.TemplateEngine
-import org.thymeleaf.context.Context
 import java.math.BigDecimal
-import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -33,26 +31,61 @@ class DefaultInvoiceEmailService(
 
     private val log = LoggerFactory.getLogger(DefaultInvoiceEmailService::class.java)
     private val restClient = RestClient.create()
+    private val adminName = appEmailProperties.adminName
+    private val cabinetUrl = "$webDomain/subscriber/cabinet"
 
     override fun sendInvoiceEmail(invoice: Invoice, entries: List<LedgerEntry>, totalAmountOwed: BigDecimal): Boolean {
         val subscriber = invoice.subscriber ?: return false
         val toEmail = subscriber.email ?: return false
 
         return try {
-            val context = Context()
+            val name = subscriber.name.orEmpty()
+            val total = requireNotNull(invoice.totalAmount)
+            val isPaid = invoice.status == InvoiceStatus.PAID
+            val isManual = invoice.origin == InvoiceOrigin.MANUAL
+            val exempt = subscriber.billingExempt
+            val credit = (subscriber.balance ?: BigDecimal.ZERO).max(BigDecimal.ZERO)
+            val services = EmailFormat.joinNatural(entries.mapNotNull { it.subscriptionService?.name }.distinct())
+            val invoiceDate = EmailFormat.date(invoice.invoiceDate)
+
+            val preheader = when {
+                isPaid && exempt -> "$adminName covers your share. This one is just for your records."
+                isPaid -> "Already paid from your credit. This one is just for your records."
+                isManual && totalAmountOwed > total ->
+                    "A one-off from $adminName. Pay it together with the rest: ${EmailFormat.money(totalAmountOwed)} in total."
+                isManual -> "A one-off from $adminName. Pay in one tap from your banking app."
+                else -> "$services for ${monthsText(invoice)}. Pay in one tap from your banking app."
+            }
+            val context = emailContext(buildInvoiceEmailSubject(invoice), preheader, adminName, webDomain)
             context.setVariable("invoice", invoice)
-            context.setVariable("subscriber", subscriber)
             context.setVariable("entries", entries)
-            context.setVariable("origin", invoice.origin)
+            context.setVariable("isPaid", isPaid)
+            context.setVariable("isManual", isManual)
+            context.setVariable("period", formatInvoicePeriod(invoice.fromMonth, invoice.toMonth))
+            context.setVariable(
+                "lead", when {
+                    isPaid && exempt ->
+                        "Hi $name, there’s nothing to pay. $adminName covers your share, so this invoice was marked paid when it was made."
+                    isPaid -> "Hi $name, there’s nothing to pay. Your credit already covered this invoice."
+                    isManual -> "Hi $name, $adminName added a one-off charge for you."
+                    else -> "Hi $name, here’s your share of $services for ${monthsText(invoice)}."
+                }
+            )
+            context.setVariable(
+                "dateLine", when {
+                    isPaid && exempt -> "Paid $invoiceDate · covered by $adminName"
+                    isPaid -> "Paid $invoiceDate from your credit"
+                    else -> "Sent $invoiceDate"
+                }
+            )
             context.setVariable("totalAmountOwed", totalAmountOwed)
+            context.setVariable("totalNote", totalNote(totalAmountOwed + credit - total, credit))
+            context.setVariable("toPay", totalAmountOwed.max(BigDecimal.ZERO))
             context.setVariable("payment", paymentDetailsService.forSubscriber(subscriber, totalAmountOwed))
-            context.setVariable("cabinetUrl", "$webDomain/subscriber/cabinet")
-            context.setVariable("invoicePeriod", formatInvoicePeriod(invoice.fromMonth, invoice.toMonth))
+            context.setVariable("cabinetUrl", cabinetUrl)
 
             val htmlContent = templateEngine.process("invoice-email", context)
-            val subject = buildInvoiceEmailSubject(invoice)
-
-            sendEmail(toEmail, subscriber.name, subject, htmlContent)
+            sendEmail(toEmail, name, context.getVariable("subject") as String, htmlContent)
         } catch (e: Exception) {
             log.error("Failed to send invoice email to {}", toEmail, e)
             false
@@ -68,8 +101,7 @@ class DefaultInvoiceEmailService(
         unpaidInvoices: List<WeeklySituationInvoiceDto>,
         payment: PaymentDetails
     ): Boolean = sendSituation(
-        template = "situation-email",
-        subject = "Your Subscription Account Status",
+        weekly = false,
         toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices, payment
     )
 
@@ -82,14 +114,12 @@ class DefaultInvoiceEmailService(
         unpaidInvoices: List<WeeklySituationInvoiceDto>,
         payment: PaymentDetails
     ): Boolean = sendSituation(
-        template = "weekly-situation-email",
-        subject = "Subscription Account Check-up",
+        weekly = true,
         toEmail, subscriberName, totalOwed, subscriberBalance, activeSubscriptions, unpaidInvoices, payment
     )
 
     private fun sendSituation(
-        template: String,
-        subject: String,
+        weekly: Boolean,
         toEmail: String,
         subscriberName: String,
         totalOwed: BigDecimal,
@@ -99,20 +129,51 @@ class DefaultInvoiceEmailService(
         payment: PaymentDetails
     ): Boolean {
         return try {
-            val context = Context()
-            context.setVariable("name", subscriberName)
-            context.setVariable("totalOwed", totalOwed)
-            context.setVariable("subscriberBalance", subscriberBalance)
-            context.setVariable("activeSubscriptions", activeSubscriptions)
-            context.setVariable("unpaidInvoices", unpaidInvoices)
-            context.setVariable("unpaidInvoicesCount", unpaidInvoices.size)
-            context.setVariable("activeSubscriptionsCount", activeSubscriptions.size)
-            context.setVariable("payment", payment)
+            val allClear = totalOwed <= BigDecimal.ZERO
+            val toPay = totalOwed.max(BigDecimal.ZERO)
+            val credit = subscriberBalance.max(BigDecimal.ZERO)
+            val spareCredit = totalOwed.negate().max(BigDecimal.ZERO)
+            val count = unpaidInvoices.size
+            val invoicesText = "$count open ${if (count == 1) "invoice" else "invoices"}"
 
-            val htmlContent = templateEngine.process(template, context)
+            val subject = when {
+                weekly -> "Saturday check-in: ${EmailFormat.money(toPay)} still open"
+                !allClear -> "Where you stand: ${EmailFormat.money(toPay)} to pay"
+                spareCredit > BigDecimal.ZERO -> "All clear: nothing to pay, ${EmailFormat.money(spareCredit)} credit"
+                else -> "All clear: nothing to pay"
+            }
+            val preheader = when {
+                weekly -> "A gentle weekly nudge. One tap pays it all from your banking app."
+                !allClear -> invoicesText + (if (credit > BigDecimal.ZERO) ", credit already applied" else "") +
+                    ". Everything you need to pay is inside."
+                spareCredit > BigDecimal.ZERO ->
+                    "Nothing to pay. Your ${EmailFormat.money(spareCredit)} credit goes toward the next invoice."
+                else -> "Nothing to pay right now."
+            }
+            val footerNote = if (weekly) {
+                "You get this on Saturdays while something is open."
+            } else {
+                "You got this because an update on your account was requested."
+            }
+
+            val context = emailContext(subject, preheader, adminName, webDomain, footerNote)
+            context.setVariable("name", subscriberName)
+            context.setVariable("weekly", weekly)
+            context.setVariable("allClear", allClear)
+            context.setVariable("toPay", toPay)
+            context.setVariable("credit", credit)
+            context.setVariable("spareCredit", spareCredit)
+            context.setVariable("unpaidSum", unpaidInvoices.fold(BigDecimal.ZERO) { sum, it -> sum + it.totalAmount })
+            context.setVariable("unpaidInvoices", unpaidInvoices)
+            context.setVariable("unpaidInvoicesCount", count)
+            context.setVariable("activeSubscriptions", activeSubscriptions)
+            context.setVariable("payment", payment)
+            context.setVariable("cabinetUrl", cabinetUrl)
+
+            val htmlContent = templateEngine.process("situation-email", context)
             sendEmail(toEmail, subscriberName, subject, htmlContent)
         } catch (e: Exception) {
-            log.error("Failed to send {} to {}", template, toEmail, e)
+            log.error("Failed to send {} situation email to {}", if (weekly) "weekly" else "on-demand", toEmail, e)
             false
         }
     }
@@ -126,17 +187,27 @@ class DefaultInvoiceEmailService(
         creditWrittenOff: BigDecimal
     ): Boolean {
         return try {
-            val context = Context()
+            val subject = if (paidInvoicesCount == 1) {
+                "Thanks, $subscriberName: your invoice is paid"
+            } else {
+                "Thanks, $subscriberName: all $paidInvoicesCount invoices are paid"
+            }
+            val settled = EmailFormat.money(totalPaidAmount)
+            val preheader = if (paidInvoicesCount == 1) {
+                "$settled settled. Nothing left to pay."
+            } else {
+                "$settled settled across $paidInvoicesCount invoices. Nothing left to pay."
+            }
+
+            val context = emailContext(subject, preheader, adminName, webDomain)
             context.setVariable("name", subscriberName)
             context.setVariable("paidInvoicesCount", paidInvoicesCount)
             context.setVariable("totalPaidAmount", totalPaidAmount)
             context.setVariable("balanceAfter", balanceAfter)
             context.setVariable("creditWrittenOff", creditWrittenOff)
-            context.setVariable("cabinetUrl", "$webDomain/subscriber/cabinet")
+            context.setVariable("cabinetUrl", cabinetUrl)
 
             val htmlContent = templateEngine.process("debt-paid-email", context)
-            val subject = "Your Debt Has Been Paid"
-
             sendEmail(toEmail, subscriberName, subject, htmlContent)
         } catch (e: Exception) {
             log.error("Failed to send debt paid email to {}", toEmail, e)
@@ -147,7 +218,7 @@ class DefaultInvoiceEmailService(
     private fun sendEmail(toEmail: String, toName: String?, subject: String, htmlContent: String): Boolean {
         if (appEmailProperties.dryRun) {
             log.info("Email sending is disabled. Skipping sending email to {}", toEmail)
-            htmlFileWriter.saveHtmlToFile(htmlContent)
+            htmlFileWriter.saveHtmlToFile(EmailLogo.embedForPreview(htmlContent))
             return true
         }
 
@@ -165,7 +236,8 @@ class DefaultInvoiceEmailService(
                 )
             ),
             "subject" to subject,
-            "htmlbody" to htmlContent
+            "htmlbody" to htmlContent,
+            "inline_images" to EmailLogo.inlineImages()
         )
 
         return try {
@@ -189,26 +261,45 @@ class DefaultInvoiceEmailService(
             false
         }
     }
+
+    /** "Includes 186,00 ₴ from other open invoices, less 40,00 ₴ credit", or nothing when the total is just this invoice. */
+    private fun totalNote(otherOpen: BigDecimal, credit: BigDecimal): String? {
+        val parts = listOfNotNull(
+            otherOpen.takeIf { it > BigDecimal.ZERO }?.let { "includes ${EmailFormat.money(it)} from other open invoices" },
+            credit.takeIf { it > BigDecimal.ZERO }?.let { "less ${EmailFormat.money(it)} credit" }
+        )
+        return parts.joinToString(", ").replaceFirstChar { it.uppercase() }.ifEmpty { null }
+    }
 }
 
 internal fun buildInvoiceEmailSubject(invoice: Invoice): String {
-    val amount = requireNotNull(invoice.totalAmount).setScale(2).toPlainString()
-    val detail = when (invoice.origin) {
-        InvoiceOrigin.MANUAL -> invoice.notes
-            ?.replace(Regex("\\s+"), " ")
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { "$it — ${formatInvoiceDate(requireNotNull(invoice.invoiceDate))}" }
-            ?: "Manual charge — ${formatInvoiceDate(requireNotNull(invoice.invoiceDate))}"
-        InvoiceOrigin.SUBSCRIPTION_LEDGER ->
-            "Subscriptions, ${formatInvoicePeriod(invoice.fromMonth, invoice.toMonth)}"
-    }
+    val amount = EmailFormat.money(invoice.totalAmount)
+    val period = formatInvoicePeriod(invoice.fromMonth, invoice.toMonth)
+    val notes = invoice.notes
+        ?.replace(Regex("\\s+"), " ")
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
 
-    return "New Invoice: ₴$amount — $detail"
+    return when {
+        invoice.status == InvoiceStatus.PAID && invoice.origin == InvoiceOrigin.MANUAL ->
+            "Receipt for ${notes ?: "a one-off charge"}: nothing to pay"
+        invoice.status == InvoiceStatus.PAID -> "Receipt for $period: nothing to pay"
+        invoice.origin == InvoiceOrigin.MANUAL -> "${notes ?: "One-off charge"}: $amount"
+        else -> "Your $period share: $amount"
+    }
 }
 
-internal fun formatInvoiceDate(invoiceDate: LocalDate): String =
-    invoiceDate.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH))
+/** September · September and October · July to September, for the invoice's first line. */
+private fun monthsText(invoice: Invoice): String {
+    val from = requireNotNull(invoice.fromMonth)
+    val to = requireNotNull(invoice.toMonth)
+    val month = DateTimeFormatter.ofPattern(if (from.year == to.year) "MMMM" else "MMMM yyyy", Locale.ENGLISH)
+    return when (to) {
+        from -> from.format(month)
+        from.plusMonths(1) -> "${from.format(month)} and ${to.format(month)}"
+        else -> "${from.format(month)} to ${to.format(month)}"
+    }
+}
 
 internal fun formatInvoicePeriod(fromMonth: YearMonth?, toMonth: YearMonth?): String {
     val from = requireNotNull(fromMonth)

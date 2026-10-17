@@ -58,6 +58,9 @@ app:
       from-address: noreply@famsub.almonium.com
       from-name: FamSub
   email:
+    # Named in every email as the person to message, and as who covers
+    # billing-exempt shares.
+    admin-name: Олег
     reminders:
       # Saturday check-ups for debts under this go out only on the first
       # Saturday of the month (see ReminderPolicy).

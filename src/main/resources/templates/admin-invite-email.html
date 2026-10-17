@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: layout(~{::sections})}">
+<body>
+<th:block th:fragment="sections">
+
+<tr><td class="fs-line" style="padding:32px 36px 28px;">
+    <table th:replace="~{email-layout :: eyebrow(text='Admin invite')}"></table>
+    <div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+    <div th:replace="~{email-layout :: headline(text='Help run FamSub')}"></div>
+    <div style="height:10px; line-height:10px; font-size:0;">&nbsp;</div>
+    <p th:replace="~{email-layout :: lead(text='You’ve been invited to become a FamSub admin. Admins look after the shared subscriptions, invoices and payments for everyone.')}"></p>
+    <div style="height:24px; line-height:24px; font-size:0;">&nbsp;</div>
+    <table th:replace="~{email-layout :: button(text='Accept invite', url=${inviteUrl})}"></table>
+    <div style="height:22px; line-height:22px; font-size:0;">&nbsp;</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;"><tr><td class="fs-soft fs-line" style="background:#faf9f7; border:1px solid #eceae5; border-radius:10px; padding:14px 16px;"><div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;">Use this Google account</div><div style="height:6px; line-height:6px; font-size:0;">&nbsp;</div><div class="fs-ink" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:16px; line-height:24px; font-weight:600; color:#26282d;" th:text="${email}">someone@gmail.com</div><div style="height:4px; line-height:4px; font-size:0;">&nbsp;</div><p th:replace="~{email-layout :: small(text='Other accounts can’t accept this invite.')}"></p></td></tr></table>
+    <div style="height:20px; line-height:20px; font-size:0;">&nbsp;</div>
+    <p th:replace="~{email-layout :: small(text='Didn’t expect this? Ignore this email and nothing changes. The link works for 7 days.')}"></p>
+</td></tr>
+
+</th:block>
+</body>
+</html>

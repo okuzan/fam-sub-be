@@ -2,39 +2,42 @@ package com.almonium.famsubbe.account
 
 import com.almonium.famsubbe.config.AppEmailProperties
 import com.almonium.famsubbe.config.ZeptoMailProperties
+import com.almonium.famsubbe.invoice.EmailLogo
+import com.almonium.famsubbe.invoice.emailContext
 import com.almonium.famsubbe.util.HtmlFileWriter
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
+import org.thymeleaf.TemplateEngine
 
 @Service
 class AdminInviteEmailService(
     private val htmlFileWriter: HtmlFileWriter,
     private val zeptoProperties: ZeptoMailProperties,
-    private val appEmailProperties: AppEmailProperties
+    private val appEmailProperties: AppEmailProperties,
+    private val templateEngine: TemplateEngine,
+    @Value($$"${app.web-domain}") private val webDomain: String
 ) {
     private val log = LoggerFactory.getLogger(AdminInviteEmailService::class.java)
     private val restClient = RestClient.create()
 
     fun sendInvite(email: String, inviteUrl: String): Boolean {
-        val subject = "FamSub admin invitation"
-        val htmlContent = """
-            <!DOCTYPE html>
-            <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <h2>FamSub admin invitation</h2>
-                <p>You have been invited to become a FamSub administrator.</p>
-                <p><a href="$inviteUrl">Accept admin invitation</a></p>
-                <p>This invitation can only be accepted with this Google account: <strong>$email</strong>.</p>
-                <p>If you did not expect this invitation, you can ignore this email.</p>
-            </body>
-            </html>
-        """.trimIndent()
+        val subject = "You’re invited to be a FamSub admin"
+        val context = emailContext(
+            subject,
+            "Accept with $email. Ignore this if you weren’t expecting it.",
+            appEmailProperties.adminName,
+            webDomain
+        )
+        context.setVariable("email", email)
+        context.setVariable("inviteUrl", inviteUrl)
+        val htmlContent = templateEngine.process("admin-invite-email", context)
 
         if (appEmailProperties.dryRun) {
             log.info("Email sending is disabled. Skipping admin invite email to {}", email)
-            htmlFileWriter.saveHtmlToFile(htmlContent)
+            htmlFileWriter.saveHtmlToFile(EmailLogo.embedForPreview(htmlContent))
             return true
         }
 
@@ -52,7 +55,8 @@ class AdminInviteEmailService(
                 )
             ),
             "subject" to subject,
-            "htmlbody" to htmlContent
+            "htmlbody" to htmlContent,
+            "inline_images" to EmailLogo.inlineImages()
         )
 
         return try {

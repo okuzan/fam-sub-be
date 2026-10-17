@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!--
+  The frame and building blocks every FamSub email shares. Layout is tables and
+  inline styles because Gmail drops most <style> rules; the fs-* classes only
+  exist for the dark-mode overrides in the head, which Apple Mail applies.
+  Each template passes its rows as `sections`, plus `subject`, `preheader`, and
+  an optional `footerNote`; the context always carries `fmt`, `adminName`,
+  `webDomain` and `webHost`.
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:fragment="layout(sections)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <title th:text="${subject}">FamSub</title>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            .fs-bg { background:#17181a !important; }
+            .fs-card { background:#232427 !important; border-color:#34363b !important; }
+            .fs-soft { background:#1d1e21 !important; }
+            .fs-line { border-color:#34363b !important; }
+            .fs-ink { color:#ecebe7 !important; }
+            .fs-muted { color:#a9abb1 !important; }
+            .fs-purpose { background:#3a2f1d !important; border-color:#5a4627 !important; }
+            .fs-purpose-ink { color:#f0d6a8 !important; }
+            .fs-btn { background:#2f8a63 !important; }
+        }
+    </style>
+</head>
+<body class="fs-bg" style="margin:0; padding:0; background:#f2f1ed;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="fs-bg" style="border-collapse:collapse; border-spacing:0; background:#f2f1ed;"><tr><td align="center" style="padding:28px 20px 34px;">
+<div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;" th:text="${preheader}"></div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0; max-width:600px;">
+<tr><td style="padding:0 4px 16px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;"><tr><td style="vertical-align:middle;"><img src="cid:famsub-mark" width="24" height="24" alt="" style="display:block; border:0;"></td><td class="fs-ink" style="padding-left:9px; vertical-align:middle; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:17px; line-height:24px; font-weight:700; color:#26282d;">FamSub</td></tr></table></td></tr>
+<tr><td class="fs-card" style="background:#ffffff; border:1px solid #e4e2dc; border-radius:16px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+<th:block th:replace="${sections}"></th:block>
+</table></td></tr>
+<tr><td style="padding:20px 6px 0;"><p class="fs-muted" style="margin:0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12.5px; line-height:19px; color:#6a6d73;" th:text="|FamSub keeps track of the subscriptions we share. Something looks off? Message ${adminName}. Replies to this address aren’t read.|">FamSub keeps track of the subscriptions we share.</p><p th:if="${footerNote}" class="fs-muted" style="margin:0; padding-top:8px; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12.5px; line-height:19px; color:#6a6d73;" th:text="${footerNote}">Why you got this.</p><div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div><a th:href="${webDomain}" href="#" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; line-height:18px; color:#4f5259; text-decoration:none;" th:text="${webHost}">famsub.almonium.com</a></td></tr>
+</table></td></tr></table>
+</body>
+</html>
+
+<!-- ───────────── Building blocks ───────────── -->
+
+<!-- A small uppercase label, optionally with a status badge on the right: eyebrow(text=…, badge=…). -->
+<table th:fragment="eyebrow" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;"><tr><td style="vertical-align:middle;"><div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;" th:text="${text}">Label</div></td><td th:if="${badge}" align="right" style="vertical-align:middle;"><span style="display:inline-block; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:14px; font-weight:600; letter-spacing:1px; padding:4px 8px; border-radius:5px; background:#e7f1eb; color:#14513a;" th:text="${badge}">PAID</span></td></tr></table>
+
+<p th:fragment="lead" class="fs-ink" style="margin:0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:16px; line-height:25px; color:#26282d;" th:text="${text}">Hi.</p>
+
+<div th:fragment="headline" class="fs-ink" style="font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:26px; line-height:32px; font-weight:700; letter-spacing:-0.4px; color:#26282d;" th:text="${text}">Headline</div>
+
+<div th:fragment="bigAmount" class="fs-ink" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:40px; line-height:46px; font-weight:500; letter-spacing:-1.5px; color:#26282d; white-space:nowrap;" th:text="${fmt.money(amount)}">0,00 ₴</div>
+
+<p th:fragment="small" class="fs-muted" style="margin:0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:13.5px; line-height:20px; color:#4f5259;" th:text="${text}">Detail.</p>
+
+<!-- One label/amount row of a list table: line(label=…, sub=…, amount=…, first=…, strong=…, green=…). -->
+<tr th:fragment="line">
+    <td class="fs-ink fs-line" style="padding:11px 16px 11px 0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:15px; line-height:22px; font-weight:400; color:#26282d; vertical-align:top;"
+        th:styleappend="(${first} ? '' : 'border-top:1px solid #eceae5; ') + (${strong} ? 'font-weight:700;' : '')"><th:block th:text="${label}">Label</th:block><th:block th:if="${sub}"><br><span class="fs-muted" style="font-size:13px; line-height:19px; font-weight:400; color:#4f5259;" th:text="${sub}">Detail</span></th:block></td>
+    <td align="right" th:class="${green} ? 'fs-line' : 'fs-ink fs-line'" style="padding:11px 0; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:15px; line-height:22px; font-weight:500; color:#26282d; white-space:nowrap; vertical-align:top;"
+        th:styleappend="(${first} ? '' : 'border-top:1px solid #eceae5; ') + (${strong} ? 'font-weight:600; ' : '') + (${green} ? 'color:#1c6b4b;' : '')" th:text="${amount}">0,00 ₴</td>
+</tr>
+
+<!-- A boxed note: note(label=…, text=…). -->
+<table th:fragment="note" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;"><tr><td class="fs-soft fs-line" style="background:#faf9f7; border:1px solid #eceae5; border-radius:10px; padding:14px 16px;"><div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;" th:text="${label}">Note</div><div style="height:6px; line-height:6px; font-size:0;">&nbsp;</div><p class="fs-ink" style="margin:0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:15px; line-height:23px; color:#26282d;" th:text="${text}">Note text</p></td></tr></table>
+
+<!-- A green call to action: button(text=…, url=…). -->
+<table th:fragment="button" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;"><tr><td align="center" class="fs-btn" style="background:#1c6b4b; border-radius:12px;"><a th:href="${url}" href="#" style="display:block; padding:17px 24px; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:17px; line-height:20px; font-weight:700; color:#ffffff; text-decoration:none; text-align:center; border-radius:12px;" th:text="${text}">Go</a></td></tr></table>
+
+<!-- The card's last row, a link onward: cardLink(text=…, url=…). -->
+<tr th:fragment="cardLink"><td class="fs-line" style="padding:20px 36px 24px; border-top:1px solid #e4e2dc;"><a th:href="${url}" href="#" style="font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:15px; line-height:22px; font-weight:600; color:#1c6b4b; text-decoration:none;" th:text="|${text} →|">Open your cabinet →</a></td></tr>
+
+<!-- How to pay `toPay`, from `payment`. The purpose is what the bank sync matches on, so it is the loudest thing here. -->
+<tr th:fragment="payBlock"><td class="fs-line" style="padding:26px 36px; border-top:1px solid #e4e2dc;">
+<table th:replace="~{email-layout :: button(text=|Pay ${fmt.money(toPay)} in your banking app|, url=${payment.payUrl})}"></table>
+<p class="fs-muted" style="margin:0; padding-top:10px; text-align:center; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:13.5px; line-height:20px; color:#4f5259;">Opens your bank’s app with the amount and purpose filled in.</p>
+<div style="height:26px; line-height:26px; font-size:0;">&nbsp;</div>
+<div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;">Or transfer it yourself</div>
+<div style="height:10px; line-height:10px; font-size:0;">&nbsp;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;"><tr><td class="fs-purpose" style="background:#f6eee1; border:1px solid #ecd9b8; border-radius:12px; padding:16px 18px;">
+<div class="fs-purpose-ink" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#5b3a0e;">Payment purpose · copy exactly</div>
+<div class="fs-ink" style="padding-top:6px; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:22px; line-height:30px; font-weight:600; color:#26282d; user-select:all;" th:text="${payment.purpose}">FamSub FS-XXXXXX</div>
+<div class="fs-purpose-ink" style="padding-top:6px; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:13.5px; line-height:20px; color:#5b3a0e;">Keep it as is. FamSub reads this code to recognise your payment and mark your invoices paid.</div>
+</td></tr></table>
+<div style="height:6px; line-height:6px; font-size:0;">&nbsp;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+<tr th:each="detail : ${ {{'Recipient', payment.recipientName}, {'IBAN', payment.iban}, {'Amount', fmt.money(toPay)}} }"><td class="fs-muted fs-line" style="padding:10px 14px 10px 0; border-top:1px solid #eceae5; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:20px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; color:#6a6d73; width:96px; vertical-align:top;" th:text="${detail[0]}">Label</td><td class="fs-ink fs-line" style="padding:10px 0; border-top:1px solid #eceae5; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:14.5px; line-height:20px; font-weight:500; color:#26282d; vertical-align:top; user-select:all;" th:text="${detail[1]}">Value</td></tr>
+</table>
+</td></tr>

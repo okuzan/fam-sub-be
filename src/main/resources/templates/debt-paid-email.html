@@ -1,53 +1,27 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Debt Paid Notification</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #d4edda; padding: 20px; text-align: center; border-bottom: 2px solid #28a745; }
-        .content { padding: 20px 0; }
-        .footer { font-size: 12px; color: #6c757d; text-align: center; margin-top: 20px; border-top: 1px solid #dee2e6; padding-top: 20px; }
-        .summary-box { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border: 1px solid #dee2e6; }
-        .status-badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-top: 10px; background-color: #28a745; color: white; }
-        .cabinet-link { margin-top: 16px; }
-        .cabinet-link a { color: #007bff; text-decoration: none; }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: layout(~{::sections})}">
 <body>
-    <div class="header">
-        <h2>Your Debt Has Been Paid</h2>
-        <div class="status-badge">PAID</div>
-    </div>
+<th:block th:fragment="sections">
 
-    <div class="content">
-        <p>Dear <span th:text="${name}">Customer</span>,</p>
+<tr><td class="fs-line" style="padding:32px 36px 28px;">
+    <table th:replace="~{email-layout :: eyebrow(text='Payment received', badge='PAID')}"></table>
+    <div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+    <div th:replace="~{email-layout :: headline(text=|Thanks, ${name}. Everything’s paid.|)}"></div>
+    <div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+    <p th:replace="~{email-layout :: small(text=${paidInvoicesCount == 1} ? 'Your open invoice is now marked paid. Nothing else to do.' : |All ${paidInvoicesCount} of your open invoices are now marked paid. Nothing else to do.|)}"></p>
+</td></tr>
 
-        <p>We are writing to let you know that your outstanding subscription debt has been paid off.</p>
+<tr><td class="fs-line" style="padding:26px 36px; border-top:1px solid #e4e2dc;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <tr th:replace="~{email-layout :: line(label='Invoices paid', amount=${paidInvoicesCount}, first=true)}"></tr>
+        <tr th:replace="~{email-layout :: line(label='Total settled', amount=${fmt.money(totalPaidAmount)})}"></tr>
+        <th:block th:if="${creditWrittenOff > 0}"><tr th:replace="~{email-layout :: line(label='Credit written off', amount=${fmt.money(creditWrittenOff)})}"></tr></th:block>
+        <tr th:replace="~{email-layout :: line(label='Balance now', amount=${fmt.money(balanceAfter)}, strong=true)}"></tr>
+    </table>
+</td></tr>
 
-        <div class="summary-box">
-            <h3>Payment Summary</h3>
-            <ul>
-                <li>Invoices Paid: <span th:text="${paidInvoicesCount}">0</span></li>
-                <li>Total Paid Amount: <span th:text="${'₴' + totalPaidAmount}">₴0.00</span></li>
-                <li>Current Account Balance: <span th:text="${'₴' + balanceAfter}">₴0.00</span></li>
-                <li th:if="${creditWrittenOff gt 0}">
-                    Credit Written Off: <span th:text="${'₴' + creditWrittenOff}">₴0.00</span>
-                </li>
-            </ul>
-        </div>
+<tr th:replace="~{email-layout :: cardLink(text='See your paid invoices in your cabinet', url=${cabinetUrl})}"></tr>
 
-        <p>Your paid invoices are now marked as paid in our system. No further action is required for these invoices.</p>
-
-        <div class="cabinet-link">
-            <a th:href="${cabinetUrl}">View your subscription cabinet</a>
-        </div>
-
-        <p>Thank you.</p>
-    </div>
-
-    <div class="footer">
-        This is an automated message. Please do not reply to this email.
-    </div>
+</th:block>
 </body>
 </html>
