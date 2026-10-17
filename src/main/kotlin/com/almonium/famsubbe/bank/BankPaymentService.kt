@@ -4,6 +4,7 @@ import com.almonium.famsubbe.invoice.IncomingPaymentResult
 import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.invoice.InvoiceService
+import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.subscriber.PaymentCode
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
@@ -180,6 +181,54 @@ class BankPaymentService(
             settledInvoiceIds = emptyList(),
             balanceAfter = null,
             senderRemembered = remembered
+        )
+    }
+
+    /**
+     * Takes back a payment applied by mistake: reopens the invoices it paid,
+     * which returns what they drew from the balance, then takes the transfer
+     * off the balance, and puts the transfer back in review. Refused when part
+     * of the credit has since paid something else, since that would leave the
+     * balance negative.
+     */
+    @Transactional
+    fun undo(transactionId: UUID): BankPaymentUndoResult {
+        val transaction = findTransaction(transactionId)
+        check(transaction.status == BankTransactionStatus.APPLIED) { "Only applied payments can be undone" }
+        val subscriber = requireNotNull(transaction.subscriber)
+        val amount = requireNotNull(transaction.amount)
+
+        val reopened = invoiceRepository.findByPaidByBankTransactionIdIn(listOf(transactionId))
+            .filter { it.status == InvoiceStatus.PAID }
+            .map { invoice ->
+                val reopenTo = if (invoice.sentAt != null) InvoiceStatus.SENT else InvoiceStatus.DRAFT
+                invoiceService.updateStatus(requireNotNull(invoice.id), reopenTo).invoice.id
+            }
+
+        val balanceAfter = (subscriber.balance ?: BigDecimal.ZERO).subtract(amount)
+        check(balanceAfter.signum() >= 0) {
+            "${subscriber.name}'s balance is ₴${subscriber.balance}, less than this ₴$amount payment: " +
+                "part of it has already paid other invoices. Reopen those first."
+        }
+        subscriber.balance = balanceAfter
+        subscriberRepository.save(subscriber)
+
+        transaction.status = BankTransactionStatus.UNMATCHED
+        transaction.subscriber = null
+        transaction.matchMethod = null
+        transaction.settledInvoiceCount = 0
+        transaction.settledAmount = null
+        transaction.resolvedAt = null
+        transaction.resolvedByAccountId = null
+        transaction.reviewNote = "Was applied to ${subscriber.name}, then undone."
+
+        val saved = transactionRepository.save(transaction)
+        return BankPaymentUndoResult(
+            transaction = saved.toResponse(suggestionsFor(listOf(saved))[saved.id].orEmpty()),
+            subscriberId = requireNotNull(subscriber.id),
+            subscriberName = subscriber.name.orEmpty(),
+            reopenedInvoiceIds = reopened,
+            balanceAfter = balanceAfter
         )
     }
 

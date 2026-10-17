@@ -105,7 +105,9 @@ page. Every email links to the public pay page `/pay/<Subscriber.payToken>`
 code (`NbuQrCode`), which needs the recipient's РНОКПП in
 `PAYMENT_RECIPIENT_TAX_ID`. Payments go only to the Mono account in
 `app.payment`, because that is the only account that is read. Applying goes through `InvoiceService.applyIncomingPayment`: credit the
-balance, then pay invoices from it.
+balance, then pay invoices from it. `BankPaymentService.undo` takes a mistaken one back: it
+reopens the invoices that payment paid, debits the balance, and returns the
+transfer to review. It refuses when the credit has since paid something else.
 
 A subscriber is archived when they have no current or upcoming membership,
 nothing unpaid or waiting to be invoiced, and a zero balance

@@ -3,7 +3,9 @@ package com.almonium.famsubbe.bank
 import com.almonium.famsubbe.invoice.IncomingPaymentResult
 import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceRepository
+import com.almonium.famsubbe.invoice.InvoiceResponse
 import com.almonium.famsubbe.invoice.InvoiceService
+import com.almonium.famsubbe.invoice.InvoiceStatusChange
 import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
@@ -18,8 +20,10 @@ import org.mockito.Mockito.`when`
 import org.springframework.data.domain.PageRequest
 import java.math.BigDecimal
 import java.time.Instant
+import java.util.Optional
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class BankPaymentServiceTest {
     private val transactionRepository = mock(BankTransactionRepository::class.java)
@@ -188,6 +192,68 @@ class BankPaymentServiceTest {
         val suggestions = service.getTransactions(BankTransactionStatus.UNMATCHED, 50).single().suggestions
 
         assertEquals(listOf("Поліна", "Іван"), suggestions.map { it.subscriberName })
+    }
+
+    @Test
+    fun `undoing a payment that only added credit takes it off the balance and returns it to review`() {
+        subscriber.balance = BigDecimal("104.00")
+        val transfer = appliedTransfer(BigDecimal("104.00"))
+
+        val result = service.undo(requireNotNull(transfer.id))
+
+        assertEquals(BigDecimal("0.00"), subscriber.balance)
+        assertEquals(BigDecimal("0.00"), result.balanceAfter)
+        assertEquals(BankTransactionStatus.UNMATCHED, transfer.status)
+        assertEquals(null, transfer.subscriber)
+        assertEquals(emptyList(), result.reopenedInvoiceIds)
+    }
+
+    @Test
+    fun `undoing reopens the invoices the payment paid`() {
+        subscriber.balance = BigDecimal.ZERO
+        val transfer = appliedTransfer(BigDecimal("31.93"))
+        val invoice = Invoice().apply {
+            id = UUID.randomUUID()
+            this.subscriber = this@BankPaymentServiceTest.subscriber
+            totalAmount = BigDecimal("31.93")
+            status = InvoiceStatus.PAID
+            sentAt = Instant.now()
+        }
+        `when`(invoiceRepository.findByPaidByBankTransactionIdIn(listOf(requireNotNull(transfer.id)))).thenReturn(listOf(invoice))
+        // Reopening refunds what the invoice drew from the balance.
+        `when`(invoiceService.updateStatus(requireNotNull(invoice.id), InvoiceStatus.SENT)).thenAnswer {
+            subscriber.balance = BigDecimal("31.93")
+            InvoiceStatusChange(mock(InvoiceResponse::class.java).also {
+                `when`(it.id).thenReturn(invoice.id)
+            }, BigDecimal("31.93"))
+        }
+
+        val result = service.undo(requireNotNull(transfer.id))
+
+        assertEquals(listOf(invoice.id), result.reopenedInvoiceIds)
+        assertEquals(BigDecimal("0.00"), subscriber.balance)
+    }
+
+    @Test
+    fun `undo is refused once the credit has paid for something else`() {
+        subscriber.balance = BigDecimal("10.00")
+        val transfer = appliedTransfer(BigDecimal("104.00"))
+
+        assertFailsWith<IllegalStateException> { service.undo(requireNotNull(transfer.id)) }
+        assertEquals(BankTransactionStatus.APPLIED, transfer.status)
+    }
+
+    private fun appliedTransfer(amount: BigDecimal) = BankTransaction().apply {
+        id = UUID.randomUUID()
+        occurredAt = Instant.now()
+        this.amount = amount
+        senderName = "Роман Кравчук"
+        status = BankTransactionStatus.APPLIED
+        subscriber = this@BankPaymentServiceTest.subscriber
+        matchMethod = BankMatchMethod.ADMIN
+    }.also { transfer ->
+        `when`(transactionRepository.findById(requireNotNull(transfer.id))).thenReturn(Optional.of(transfer))
+        `when`(transactionRepository.save(transfer)).thenReturn(transfer)
     }
 
     private fun withSurnames() {

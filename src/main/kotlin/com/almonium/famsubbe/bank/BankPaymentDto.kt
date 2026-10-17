@@ -62,6 +62,16 @@ data class BankPaymentResolution(
     val senderRemembered: Boolean
 )
 
+/** What undoing an applied payment changed. */
+data class BankPaymentUndoResult(
+    val transaction: BankTransactionResponse,
+    /** Who the payment had been applied to. */
+    val subscriberId: UUID,
+    val subscriberName: String,
+    val reopenedInvoiceIds: List<UUID>,
+    val balanceAfter: BigDecimal
+)
+
 /** A payment as the subscriber sees it in their cabinet. */
 data class SubscriberPaymentResponse(
     val id: UUID,

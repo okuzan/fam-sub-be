@@ -125,6 +125,30 @@ class AdminBankPaymentController(
         return ResponseEntity.ok(resolution)
     }
 
+    @PostMapping("/{id}/undo")
+    fun undo(@PathVariable id: UUID, authentication: Authentication): ResponseEntity<BankPaymentUndoResult> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val result = bankPaymentService.undo(id)
+        val transaction = result.transaction
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.BANK_PAYMENT_UNDONE,
+            targetType = AdminActionTargetType.BANK_TRANSACTION,
+            targetId = id,
+            subscriberId = result.subscriberId,
+            summary = "Undid bank payment of ${transaction.amount} from ${transaction.senderName} " +
+                "to ${result.subscriberName}, reopening ${result.reopenedInvoiceIds.size} invoices",
+            metadata = mapOf(
+                "amount" to transaction.amount,
+                "senderName" to transaction.senderName,
+                "occurredAt" to transaction.occurredAt.toString(),
+                "reopenedInvoiceIds" to result.reopenedInvoiceIds,
+                "balanceAfter" to result.balanceAfter
+            )
+        )
+        return ResponseEntity.ok(result)
+    }
+
     @GetMapping("/senders")
     fun getSenders(): ResponseEntity<List<BankSenderResponse>> =
         ResponseEntity.ok(bankPaymentService.getSenders())
