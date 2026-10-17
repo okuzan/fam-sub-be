@@ -86,7 +86,8 @@ the invoice has committed and in its own short transaction per invoice, and
 only then moves it to SENT. `SubscriberStandingService` is the one place that
 computes what a subscriber owes (unpaid invoices minus balance), for the admin
 view, the cabinet, and every email. `SituationEmailService` sends the
-on-demand and Saturday "where you stand" emails; `ReminderPolicy` decides who
+on-demand and Saturday "where you stand" emails, which list drafts too, so a
+real send moves those drafts to SENT; `ReminderPolicy` decides who
 gets the Saturday one (not within a week of an invoice email, and debts under
 `app.email.reminders.small-debt-threshold` only on the first Saturday of the
 month). `BillingTime` owns the

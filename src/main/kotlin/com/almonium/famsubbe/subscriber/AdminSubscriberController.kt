@@ -125,7 +125,8 @@ class AdminSubscriberController(
         authentication: Authentication
     ): ResponseEntity<Map<String, String>> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
-        val details = situationEmailService.sendOnDemand(id)
+        val sent = situationEmailService.sendOnDemand(id)
+        val details = sent.details
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.SUBSCRIBER_SITUATION_EMAIL_SENT,
@@ -136,7 +137,8 @@ class AdminSubscriberController(
             metadata = mapOf(
                 "email" to details.email,
                 "totalOwed" to details.totalAmountOwed,
-                "unpaidInvoicesCount" to details.unpaidInvoices.size
+                "unpaidInvoicesCount" to details.unpaidInvoices.size,
+                "markedSentInvoiceIds" to sent.markedSentInvoiceIds
             )
         )
         return ResponseEntity.ok(mapOf("message" to "Situation email sent successfully to ${details.email}"))

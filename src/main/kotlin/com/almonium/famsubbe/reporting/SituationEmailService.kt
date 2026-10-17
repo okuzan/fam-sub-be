@@ -3,6 +3,8 @@ package com.almonium.famsubbe.reporting
 import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.invoice.InvoiceEmailService
 import com.almonium.famsubbe.invoice.InvoiceRepository
+import com.almonium.famsubbe.invoice.InvoiceStatus
+import com.almonium.famsubbe.invoice.markSent
 import com.almonium.famsubbe.payment.PaymentDetailsService
 import com.almonium.famsubbe.subscriber.SubscriberDetailResponse
 import com.almonium.famsubbe.subscriber.SubscriberRepository
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -26,6 +29,10 @@ import java.util.*
  * Deliberately not transactional: each subscriber is read in its own
  * transaction, so one failure cannot mark a shared one rollback-only, and no
  * connection is held open across the mail API calls.
+ *
+ * The email lists every unpaid invoice, drafts included, so once it has
+ * really gone out those drafts count as sent: they move to SENT, and "send
+ * drafts" does not email them a second time.
  */
 @Service
 class SituationEmailService(
@@ -35,14 +42,15 @@ class SituationEmailService(
     private val invoiceEmailService: InvoiceEmailService,
     private val subscriberRepository: SubscriberRepository,
     private val paymentDetailsService: PaymentDetailsService,
+    private val transactionTemplate: TransactionTemplate,
     @Value($$"${app.email.dry-run:false}") private val isDryRun: Boolean,
     @Value($$"${app.email.reminders.small-debt-threshold:200}") smallDebtThreshold: BigDecimal
 ) {
     private val reminderPolicy = ReminderPolicy(smallDebtThreshold)
     private val log = LoggerFactory.getLogger(SituationEmailService::class.java)
 
-    /** Returns the details the email was built from, for the audit record. */
-    fun sendOnDemand(subscriberId: UUID): SubscriberDetailResponse {
+    /** Returns the details the email was built from and the drafts it sent, for the audit record. */
+    fun sendOnDemand(subscriberId: UUID): SituationEmailSent {
         val details = standingService.getDetails(subscriberId)
         require(details.email.isNotBlank()) { "Subscriber has no email address" }
 
@@ -58,7 +66,7 @@ class SituationEmailService(
         if (!sent) {
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to send email")
         }
-        return details
+        return SituationEmailSent(details, markDraftsSent(details))
     }
 
     @Scheduled(cron = "0 0 10 * * SAT", zone = BillingTime.ZONE_ID)
@@ -115,6 +123,9 @@ class SituationEmailService(
                     unpaidInvoices = toEmailInvoices(details.unpaidInvoices),
                     payment = paymentFor(details)
                 )
+                if (sent) {
+                    markDraftsSent(details)
+                }
 
                 WeeklySituationEmailItemResult(
                     subscriberId = subscriberId,
@@ -153,6 +164,21 @@ class SituationEmailService(
         )
     }
 
+    /** A dry-run send reports success but must not move anything out of DRAFT. */
+    private fun markDraftsSent(details: SubscriberDetailResponse): List<UUID> {
+        if (isDryRun) {
+            return emptyList()
+        }
+        val draftIds = details.unpaidInvoices.filter { it.status == InvoiceStatus.DRAFT.name }.map { it.id }
+        return requireNotNull(transactionTemplate.execute {
+            invoiceRepository.findAllById(draftIds)
+                .filter { it.status == InvoiceStatus.DRAFT }
+                .onEach { it.markSent() }
+                .let { invoiceRepository.saveAll(it) }
+                .map { requireNotNull(it.id) }
+        })
+    }
+
     private fun paymentFor(details: SubscriberDetailResponse) =
         paymentDetailsService.forSubscriber(
             subscriberRepository.findById(details.id).orElseThrow(),
@@ -182,3 +208,8 @@ class SituationEmailService(
             )
         }
 }
+
+data class SituationEmailSent(
+    val details: SubscriberDetailResponse,
+    val markedSentInvoiceIds: List<UUID>
+)
