@@ -98,6 +98,10 @@ data class BankSyncResult(
     val appliedCount: Int,
     val needsReviewCount: Int,
     val ignoredCount: Int,
+    /** Card payments added to a subscription's charge. */
+    val chargedCount: Int,
+    /** Card payments to a known merchant waiting on the card charges page. */
+    val chargeReviewCount: Int,
     val syncedTo: Instant
 )
 

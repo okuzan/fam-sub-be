@@ -24,6 +24,10 @@ class SubscriptionService {
     @Column(nullable = false)
     var price: BigDecimal? = null
 
+    /** Charge [price] on its own every month, for a bill fixed in UAH that is not matched from the card. */
+    @Column(name = "fixed_monthly_charge", nullable = false)
+    var fixedMonthlyCharge: Boolean = false
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Date? = null

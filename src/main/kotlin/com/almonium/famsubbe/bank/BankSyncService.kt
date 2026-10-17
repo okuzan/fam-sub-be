@@ -9,7 +9,8 @@ import java.time.Instant
 import java.util.concurrent.locks.ReentrantLock
 
 /**
- * Reads new incoming transfers from the Monobank statement. Polling, not the
+ * Reads new incoming transfers, and card payments for subscriptions, from the
+ * Monobank statement. Polling, not the
  * bank's webhook: Mono's webhook cannot carry the X-Requested-With header that
  * every write to this API requires, and a five-minute delay is fine here.
  *
@@ -21,6 +22,7 @@ class BankSyncService(
     private val properties: MonoProperties,
     private val monoClient: MonoClient,
     private val bankPaymentService: BankPaymentService,
+    private val bankChargeService: BankChargeService,
     private val syncStateRepository: BankSyncStateRepository
 ) {
     private val log = LoggerFactory.getLogger(BankSyncService::class.java)
@@ -34,6 +36,13 @@ class BankSyncService(
         if (!properties.syncEnabled || !properties.configured) return
         try {
             val result = sync()
+            if (result.chargedCount > 0 || result.chargeReviewCount > 0) {
+                log.info(
+                    "Bank sync read card payments: charged={}, needsReview={}",
+                    result.chargedCount,
+                    result.chargeReviewCount
+                )
+            }
             if (result.importedCount > 0) {
                 log.info(
                     "Bank sync imported {} payments: applied={}, needsReview={}, ignored={}",
@@ -84,8 +93,9 @@ class BankSyncService(
         }
         state.lastAttemptAt = now
 
-        // Re-read a little before the cursor: an operation can show up in the
-        // statement slightly after its own timestamp. Duplicates are skipped.
+        // Re-read well before the cursor: an operation can show up in the
+        // statement after its own timestamp, and a card payment on hold is only
+        // charged once it settles, which can take days. Duplicates are skipped.
         val from = requireNotNull(state.syncedTo).minus(OVERLAP)
         // A stale cursor catches up one maximal window per run.
         val to = minOf(now, from.plus(MAX_WINDOW))
@@ -98,12 +108,22 @@ class BankSyncService(
             throw e
         }
 
-        val outcomes = items.sortedBy { it.time }.map { item ->
+        val sorted = items.sortedBy { it.time }
+        val outcomes = sorted.filter { it.amount > 0 }.map { item ->
             try {
                 bankPaymentService.importMonoItem(item)
             } catch (e: DataIntegrityViolationException) {
                 // Imported by the other instance between our check and our insert.
                 BankImportOutcome.DUPLICATE
+            }
+        }
+        val debitOutcomes = sorted.filter { it.amount < 0 }.map { item ->
+            try {
+                bankChargeService.importMonoDebit(item, now)
+            } catch (e: DataIntegrityViolationException) {
+                // The other instance got there first; the next sync re-reads it if
+                // what collided was the charge rather than the payment itself.
+                BankDebitOutcome.DUPLICATE
             }
         }
 
@@ -120,6 +140,8 @@ class BankSyncService(
             appliedCount = outcomes.count { it == BankImportOutcome.APPLIED },
             needsReviewCount = outcomes.count { it == BankImportOutcome.NEEDS_REVIEW },
             ignoredCount = outcomes.count { it == BankImportOutcome.IGNORED },
+            chargedCount = debitOutcomes.count { it == BankDebitOutcome.CHARGED },
+            chargeReviewCount = debitOutcomes.count { it == BankDebitOutcome.NEEDS_REVIEW },
             syncedTo = to
         )
     }
@@ -142,7 +164,7 @@ class BankSyncService(
     }
 
     private companion object {
-        val OVERLAP: Duration = Duration.ofHours(1)
+        val OVERLAP: Duration = BankChargeService.HOLD_PATIENCE.plusDays(1)
         val MAX_WINDOW: Duration = Duration.ofDays(31)
         val RATE_LIMIT_PAUSE: Duration = Duration.ofSeconds(61)
     }

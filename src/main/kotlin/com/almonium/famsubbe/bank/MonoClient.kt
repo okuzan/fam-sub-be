@@ -47,7 +47,12 @@ class MonoRateLimitedException : RuntimeException(
     "Monobank allows one statement request a minute. Try again shortly."
 )
 
-/** Amounts are in kopiyky of the account currency. */
+/**
+ * [amount] is in kopiyky of the account currency, negative for money leaving
+ * the account. [operationAmount] is what the merchant charged, in minor units
+ * of [currencyCode] (ISO 4217 numeric). [hold] is true until the payment
+ * settles, and the converted [amount] can still change until then.
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class MonoStatementItem(
     val id: String,
@@ -56,5 +61,13 @@ data class MonoStatementItem(
     val description: String? = null,
     val comment: String? = null,
     val counterName: String? = null,
-    val counterIban: String? = null
-)
+    val counterIban: String? = null,
+    val operationAmount: Long = amount,
+    val currencyCode: Int = UAH_CODE,
+    val mcc: Int? = null,
+    val hold: Boolean = false
+) {
+    companion object {
+        const val UAH_CODE = 980
+    }
+}

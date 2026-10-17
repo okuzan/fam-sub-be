@@ -111,6 +111,22 @@ balance, then pay invoices from it. `BankPaymentService.undo` takes a mistaken o
 reopens the invoices that payment paid, debits the balance, and returns the
 transfer to review. It refuses when the credit has since paid something else.
 
+Outgoing bills are read from the same statement. Every subscription is paid
+from that Mono card, and each card payment carries the merchant's own amount
+and currency (`$100.00`, `€9.99`) next to the UAH that left the card.
+`BankChargeService` keeps a `BankDebit` for every payment whose merchant some
+`BankMerchantRule` mentions (merchant substring + currency + exact original
+amount → service, or → ignore) and adds a matching one to that service's
+`Charge` for its month, creating the charge if needed; a payment on the 25th
+or later (`charge-next-month-from-day`) counts for the next month. It never
+touches on its own a charge that is already split into ledger entries or was
+typed in by hand, and anything unmatched waits on the admin card charges page,
+where charging it can remember the amount as a new rule. Payments on hold are
+charged once they settle, which is why the sync re-reads the last seven days.
+Deleting a charge returns its card payments to review. A service with
+`fixedMonthlyCharge` (YouTube, billed by Google in UAH) is instead charged its
+price daily-idempotently by `FixedChargeService`.
+
 A subscriber is archived when they have no current or upcoming membership,
 nothing unpaid or waiting to be invoiced, and a zero balance
 (`SubscriberService.isArchived`). It is derived on every read, never stored,

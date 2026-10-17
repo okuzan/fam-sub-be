@@ -22,7 +22,12 @@ data class MonoProperties(
      * most this much above what they owe. Anything bigger waits for review: it
      * may be money for something other than FamSub.
      */
-    val autoApplyTolerance: BigDecimal = BigDecimal("20.00")
+    val autoApplyTolerance: BigDecimal = BigDecimal("20.00"),
+    /**
+     * A subscription bill paid on this day of the month or later is charged to
+     * the next month: a renewal on the 30th pays for the month that follows.
+     */
+    val chargeNextMonthFromDay: Int = 25
 ) {
     val configured: Boolean
         get() = token.isNotBlank() && accountId.isNotBlank()

@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.accounting
 
+import com.almonium.famsubbe.bank.BankChargeService
 import com.almonium.famsubbe.subscription.SubscriptionServiceRepository
 import org.springframework.stereotype.Service
 import org.springframework.data.domain.PageRequest
@@ -12,7 +13,8 @@ import java.util.*
 class ChargeService(
     private val chargeRepository: ChargeRepository,
     private val subscriptionServiceRepository: SubscriptionServiceRepository,
-    private val ledgerEntryRepository: LedgerEntryRepository
+    private val ledgerEntryRepository: LedgerEntryRepository,
+    private val bankChargeService: BankChargeService
 ) {
 
     fun createCharge(request: ChargeCreateRequest): ChargeResponse {
@@ -87,6 +89,8 @@ class ChargeService(
         check(!ledgerEntryRepository.existsByChargeId(chargeId)) {
             "Charge is locked because ledger entries already exist"
         }
+        // Card payments in it go back to review rather than vanish with it.
+        bankChargeService.releaseCharge(chargeId)
         chargeRepository.deleteById(chargeId)
     }
 

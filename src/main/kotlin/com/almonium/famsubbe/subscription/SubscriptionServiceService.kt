@@ -28,6 +28,7 @@ class SubscriptionServiceService(
         val service = SubscriptionService().apply {
             name = request.name
             price = request.price
+            fixedMonthlyCharge = request.fixedMonthlyCharge
         }
         val savedService = subscriptionServiceRepository.save(service)
         return savedService.toResponse()
@@ -40,6 +41,7 @@ class SubscriptionServiceService(
         service.apply {
             name = request.name
             price = request.price
+            request.fixedMonthlyCharge?.let { fixedMonthlyCharge = it }
         }
         
         val updatedService = subscriptionServiceRepository.save(service)
@@ -58,6 +60,7 @@ class SubscriptionServiceService(
             id = this.id!!,
             name = this.name!!,
             price = this.price!!,
+            fixedMonthlyCharge = this.fixedMonthlyCharge,
             createdAt = this.createdAt!!,
             updatedAt = this.updatedAt!!
         )

@@ -5,4 +5,6 @@ import org.springframework.stereotype.Repository
 import java.util.*
 
 @Repository
-interface SubscriptionServiceRepository : JpaRepository<SubscriptionService, UUID>
+interface SubscriptionServiceRepository : JpaRepository<SubscriptionService, UUID> {
+    fun findByFixedMonthlyChargeTrue(): List<SubscriptionService>
+}
