@@ -32,20 +32,20 @@ class SubscriberService(
         } else {
             subscriberRepository.findAll()
         }
-        return subscribers.map { it.toResponse() }
+        return toResponses(subscribers)
     }
 
     @Transactional(readOnly = true)
     fun getSubscribersWithDebt(): List<SubscriberResponse> {
         val debtorIds = invoiceRepository.findSubscriberIdsWithUnpaidInvoices()
-        return subscriberRepository.findAllById(debtorIds).map { it.toResponse() }
+        return toResponses(subscriberRepository.findAllById(debtorIds))
     }
 
     @Transactional(readOnly = true)
     fun getSubscriberById(id: UUID): SubscriberResponse {
         val subscriber = subscriberRepository.findByIdOrNull(id)
             ?: throw EntityNotFoundException("Subscriber not found")
-        return subscriber.toResponse()
+        return toResponses(listOf(subscriber)).single()
     }
 
     fun createSubscriber(request: SubscriberCreateRequest): SubscriberResponse {
@@ -57,7 +57,7 @@ class SubscriberService(
             billingExempt = request.billingExempt
         }
         val savedSubscriber = subscriberRepository.save(subscriber)
-        return savedSubscriber.toResponse()
+        return toResponses(listOf(savedSubscriber)).single()
     }
 
     fun updateSubscriber(id: UUID, request: SubscriberUpdateRequest): SubscriberResponse {
@@ -87,7 +87,7 @@ class SubscriberService(
                 invoiceRepository.save(invoice)
             }
         }
-        return updatedSubscriber.toResponse()
+        return toResponses(listOf(updatedSubscriber)).single()
     }
 
     fun deleteSubscriber(id: UUID) {
@@ -97,30 +97,43 @@ class SubscriberService(
         subscriberRepository.deleteById(id)
     }
 
-    private fun Subscriber.toResponse(): SubscriberResponse {
-        val subscriberId = requireNotNull(id)
-        val memberships = membershipRepository.findBySubscriber(this)
-        val balance = balance ?: BigDecimal.ZERO
-        val owesSomething = invoiceRepository.findBySubscriberAndStatusIn(this, SubscriberStandingService.UNPAID_STATUSES).isNotEmpty() ||
-            ledgerEntryRepository.existsBySubscriberIdAndInvoiceIsNull(subscriberId)
-        val endMonths = memberships.map { it.endMonth }
+    /**
+     * Maps subscribers with a fixed handful of queries however many there are:
+     * the archive fields need memberships, debts and payments, and fetching
+     * them per subscriber made the list take seconds over a remote database.
+     */
+    private fun toResponses(subscribers: List<Subscriber>): List<SubscriberResponse> {
+        if (subscribers.isEmpty()) return emptyList()
+        val ids = subscribers.map { requireNotNull(it.id) }
+        val membershipsBySubscriber = membershipRepository.findBySubscriberIdInWithService(ids)
+            .groupBy { requireNotNull(it.subscriber?.id) }
+        val owing = invoiceRepository.findSubscriberIdsWithUnpaidInvoices().toSet() +
+            ledgerEntryRepository.findSubscriberIdsWithUninvoicedEntries()
+        val lastPaidAt = invoiceRepository.findLastPaidAtBySubscriberIds(ids)
+            .associate { row -> row[0] as UUID to row[1] as Instant? }
+        val currentMonth = BillingTime.currentMonth()
 
-        return SubscriberResponse(
-            id = subscriberId,
-            name = this.name!!,
-            surname = this.surname,
-            email = this.email!!,
-            balance = balance,
-            billingExempt = this.billingExempt,
-            createdAt = this.createdAt!!,
-            updatedAt = this.updatedAt!!,
-            archived = isArchived(endMonths, owesSomething, balance, BillingTime.currentMonth()),
-            formerServices = memberships.mapNotNull { it.subscriptionService?.name }.distinct().sorted(),
-            lastMembershipEndMonth = endMonths.takeIf { months -> months.none { it == null } }
-                ?.filterNotNull()?.maxOrNull()?.toString(),
-            lastInvoicePaidAt = invoiceRepository.findBySubscriberAndStatusIn(this, listOf(InvoiceStatus.PAID))
-                .mapNotNull { it.statusChangedAt }.maxOrNull()
-        )
+        return subscribers.map { subscriber ->
+            val subscriberId = requireNotNull(subscriber.id)
+            val memberships = membershipsBySubscriber[subscriberId].orEmpty()
+            val balance = subscriber.balance ?: BigDecimal.ZERO
+            val endMonths = memberships.map { it.endMonth }
+            SubscriberResponse(
+                id = subscriberId,
+                name = subscriber.name!!,
+                surname = subscriber.surname,
+                email = subscriber.email!!,
+                balance = balance,
+                billingExempt = subscriber.billingExempt,
+                createdAt = subscriber.createdAt!!,
+                updatedAt = subscriber.updatedAt!!,
+                archived = isArchived(endMonths, subscriberId in owing, balance, currentMonth),
+                formerServices = memberships.mapNotNull { it.subscriptionService?.name }.distinct().sorted(),
+                lastMembershipEndMonth = endMonths.takeIf { months -> months.none { it == null } }
+                    ?.filterNotNull()?.maxOrNull()?.toString(),
+                lastInvoicePaidAt = lastPaidAt[subscriberId]
+            )
+        }
     }
 
     companion object {

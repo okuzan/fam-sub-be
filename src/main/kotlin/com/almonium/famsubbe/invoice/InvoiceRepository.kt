@@ -29,6 +29,16 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
     
     fun findBySubscriberAndStatusIn(subscriber: Subscriber, statuses: Collection<InvoiceStatus>): List<Invoice>
 
+    /** Rows of (subscriber id, when their latest PAID invoice was marked paid). */
+    @Query("""
+        select i.subscriber.id, max(i.statusChangedAt)
+        from Invoice i
+        where i.status = 'PAID'
+          and i.subscriber.id in :subscriberIds
+        group by i.subscriber.id
+    """)
+    fun findLastPaidAtBySubscriberIds(subscriberIds: Collection<UUID>): List<Array<Any?>>
+
     @Query("""
         select i
         from Invoice i

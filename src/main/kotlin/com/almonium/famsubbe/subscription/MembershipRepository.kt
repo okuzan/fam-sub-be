@@ -35,5 +35,15 @@ interface MembershipRepository : JpaRepository<Membership, UUID> {
 
     fun findBySubscriber(subscriber: Subscriber): List<Membership>
 
+    @Query(
+        """
+        select m
+        from Membership m
+        join fetch m.subscriptionService
+        where m.subscriber.id in :subscriberIds
+        """
+    )
+    fun findBySubscriberIdInWithService(subscriberIds: Collection<UUID>): List<Membership>
+
     fun findBySubscriptionService(subscriptionService: SubscriptionService): List<Membership>
 }
