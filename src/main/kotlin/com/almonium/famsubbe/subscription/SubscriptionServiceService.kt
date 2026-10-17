@@ -30,7 +30,8 @@ class SubscriptionServiceService(
             price = request.price
             fixedMonthlyCharge = request.fixedMonthlyCharge
         }
-        val savedService = subscriptionServiceRepository.save(service)
+        // Flushed so Hibernate fills createdAt/updatedAt before the response reads them.
+        val savedService = subscriptionServiceRepository.saveAndFlush(service)
         return savedService.toResponse()
     }
 
@@ -44,7 +45,7 @@ class SubscriptionServiceService(
             request.fixedMonthlyCharge?.let { fixedMonthlyCharge = it }
         }
         
-        val updatedService = subscriptionServiceRepository.save(service)
+        val updatedService = subscriptionServiceRepository.saveAndFlush(service)
         return updatedService.toResponse()
     }
 
