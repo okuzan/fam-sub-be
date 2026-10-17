@@ -53,7 +53,7 @@
     <div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;">Your subscriptions</div>
     <div style="height:4px; line-height:4px; font-size:0;">&nbsp;</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
-        <th:block th:each="subscription, stat : ${activeSubscriptions}"><tr th:replace="~{email-layout :: line(label=${subscription.serviceName}, sub=${subscription.endMonth != null} ? |Since ${fmt.monthYear(subscription.startMonth)} · until ${fmt.monthYear(subscription.endMonth)}| : |Since ${fmt.monthYear(subscription.startMonth)}|, amount='', first=${stat.first})}"></tr></th:block>
+        <th:block th:each="subscription, stat : ${activeSubscriptions}"><tr th:replace="~{email-layout :: line(label=${subscription.serviceName}, sub=${subscription.endMonth != null} ? |Since ${fmt.monthYear(subscription.startMonth)} · until ${fmt.monthYear(subscription.endMonth)} · per month| : |Since ${fmt.monthYear(subscription.startMonth)} · per month|, amount=${fmt.money(subscription.monthlyShare)}, first=${stat.first})}"></tr></th:block>
     </table>
 </td></tr>
 

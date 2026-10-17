@@ -22,7 +22,9 @@ data class ActiveSubscriptionDto(
     val serviceName: String,
     val servicePrice: BigDecimal,
     val startMonth: String,
-    val endMonth: String?
+    val endMonth: String?,
+    /** This month's share of the service price, split by weight across this month's members as a cost run would. */
+    val monthlyShare: BigDecimal
 )
 
 data class UnpaidInvoiceDto(
