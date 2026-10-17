@@ -309,14 +309,16 @@ class BankPaymentService(
                         add("owes exactly ₴$amount")
                     }
                     if (subscriber.surname != null && senderWords.containsAll(subscriber.fullNameWords())) {
-                        add("name and surname match the sender")
+                        add(FULL_NAME_REASON)
                     } else if (subscriber.name.words().any { it in senderWords }) {
                         add("name matches the sender")
                     }
                 }
                 reasons.takeIf { it.isNotEmpty() }?.let { Triple(subscriber, subscriberId == remembered, it) }
             }
+                // A remembered sender, then a full-name match, outrank amounts: many people owe the same ₴31.93.
                 .sortedWith(compareByDescending<Triple<Subscriber, Boolean, List<String>>> { it.second }
+                    .thenByDescending { FULL_NAME_REASON in it.third }
                     .thenByDescending { it.third.size })
                 .take(MAX_SUGGESTIONS)
                 .map { (subscriber, _, reasons) ->
@@ -371,6 +373,7 @@ class BankPaymentService(
     private companion object {
         const val MAX_LIMIT = 500
         const val MAX_SUGGESTIONS = 5
+        const val FULL_NAME_REASON = "name and surname match the sender"
         val APOSTROPHES = Regex("[’ʼ`´‘]")
     }
 }

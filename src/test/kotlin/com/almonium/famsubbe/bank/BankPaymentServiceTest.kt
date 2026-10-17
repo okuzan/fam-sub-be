@@ -1,8 +1,10 @@
 package com.almonium.famsubbe.bank
 
 import com.almonium.famsubbe.invoice.IncomingPaymentResult
+import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.invoice.InvoiceService
+import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
 import com.almonium.famsubbe.subscriber.SubscriberStandingService
@@ -13,7 +15,9 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
+import org.springframework.data.domain.PageRequest
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.UUID
 import kotlin.test.assertEquals
 
@@ -23,11 +27,12 @@ class BankPaymentServiceTest {
     private val invoiceService = mock(InvoiceService::class.java)
     private val standingService = mock(SubscriberStandingService::class.java)
     private val subscriberRepository = mock(SubscriberRepository::class.java)
+    private val invoiceRepository = mock(InvoiceRepository::class.java)
     private val service = BankPaymentService(
         transactionRepository,
         senderRepository,
         subscriberRepository,
-        mock(InvoiceRepository::class.java),
+        invoiceRepository,
         invoiceService,
         standingService,
         MonoProperties(token = "t", accountId = "acc", autoApplyTolerance = BigDecimal("20.00"))
@@ -161,6 +166,28 @@ class BankPaymentServiceTest {
         val outcome = service.importMonoItem(item(3193, description = "З Білої картки"))
 
         assertEquals(BankImportOutcome.NOT_A_PAYMENT, outcome)
+    }
+
+    @Test
+    fun `a sender's full-name match is suggested before people who merely owe the same amount`() {
+        subscriber.surname = "Чернишова"
+        val ivan = Subscriber().apply { id = UUID.randomUUID(); name = "Іван"; balance = BigDecimal.ZERO }
+        `when`(subscriberRepository.findAllByOrderByName()).thenReturn(listOf(ivan, subscriber))
+        `when`(invoiceRepository.findByStatusInWithSubscriber(SubscriberStandingService.UNPAID_STATUSES)).thenReturn(
+            listOf(Invoice().apply { this.subscriber = ivan; totalAmount = BigDecimal("31.93"); status = InvoiceStatus.SENT })
+        )
+        val transfer = BankTransaction().apply {
+            id = UUID.randomUUID()
+            occurredAt = Instant.now()
+            amount = BigDecimal("31.93")
+            senderName = "Поліна Чернишова"
+        }
+        `when`(transactionRepository.findByStatusOrderByOccurredAtDesc(BankTransactionStatus.UNMATCHED, PageRequest.of(0, 50)))
+            .thenReturn(listOf(transfer))
+
+        val suggestions = service.getTransactions(BankTransactionStatus.UNMATCHED, 50).single().suggestions
+
+        assertEquals(listOf("Поліна", "Іван"), suggestions.map { it.subscriberName })
     }
 
     private fun withSurnames() {
