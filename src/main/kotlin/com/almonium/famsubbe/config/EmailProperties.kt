@@ -14,7 +14,7 @@ data class ZeptoMailProperties(
 data class AppEmailProperties(
     val dryRun: Boolean = false,
     /** The family inbox replies go to. The from-address is not read, so every email sets this as Reply-To. */
-    val replyTo: String = "family@famsub.almonium.com"
+    val replyTo: String = "family@almonium.com"
 )
 
 /** Where subscribers pay: the one Mono account that BankSyncService reads. */

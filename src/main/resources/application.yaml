@@ -60,7 +60,7 @@ app:
   email:
     # Every email sets this as Reply-To and tells people to just reply: the
     # noreply@ sender is not read.
-    reply-to: family@famsub.almonium.com
+    reply-to: family@almonium.com
     reminders:
       # Saturday check-ups for debts under this go out only on the first
       # Saturday of the month (see ReminderPolicy).
