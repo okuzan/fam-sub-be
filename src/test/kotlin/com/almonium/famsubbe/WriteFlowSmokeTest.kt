@@ -12,7 +12,9 @@ import com.almonium.famsubbe.accounting.ChargeService
 import com.almonium.famsubbe.accounting.ChargeUpdateRequest
 import com.almonium.famsubbe.accounting.CostCalculationService
 import com.almonium.famsubbe.accounting.LedgerService
+import com.almonium.famsubbe.accounting.RecoveryService
 import com.almonium.famsubbe.finance.FinanceSummaryService
+import com.almonium.famsubbe.invoice.InvoiceDeliveryService
 import com.almonium.famsubbe.invoice.InvoiceGenerationRequest
 import com.almonium.famsubbe.invoice.InvoiceService
 import com.almonium.famsubbe.invoice.InvoiceStatus
@@ -57,6 +59,8 @@ class WriteFlowSmokeTest {
     @Autowired lateinit var standing: SubscriberStandingService
     @Autowired lateinit var finance: FinanceSummaryService
     @Autowired lateinit var bank: BankPaymentService
+    @Autowired lateinit var delivery: InvoiceDeliveryService
+    @Autowired lateinit var recovery: RecoveryService
 
     @Test
     fun `create, edit, split, invoice and pay end to end`() {
@@ -121,5 +125,23 @@ class WriteFlowSmokeTest {
         val filed = bank.markAlreadyRecorded(applied.id, BankPaymentAlreadyRecordedRequest(alice.id, rememberSender = false), admin)
         assertTrue(filed.transaction.alreadyRecorded)
         bank.getTransactions(null, 500)
+
+        // Credit that covers a new invoice pays it at generation; its receipt goes with the drafts; undo refunds it.
+        val february = month.plusMonths(1)
+        subscribers.updateSubscriber(
+            alice.id,
+            SubscriberUpdateRequest(name = "Аліса", surname = "S$tag", email = "alice-$tag@example.com", balance = BigDecimal("1000.00"))
+        )
+        charges.createCharge(ChargeCreateRequest(service.id, BigDecimal("310.00"), february, "smoke"))
+        costs.calculateAndRecordCosts(february, february, admin)
+        val run = invoices.generateInvoices(InvoiceGenerationRequest(february, february, alice.id), admin)
+        assertEquals(1, run.paidFromBalanceCount)
+        val covered = run.items.single()
+        assertEquals(0, BigDecimal("690.00").compareTo(standing.getDetails(alice.id).balance))
+        assertTrue(delivery.sendDrafts().items.any { it.invoiceId == covered.invoiceId })
+
+        assertTrue(recovery.previewInvoiceRunUndo(run.runId).allowed)
+        recovery.undoInvoiceRun(run.runId, admin, "smoke")
+        assertEquals(0, BigDecimal("1000.00").compareTo(standing.getDetails(alice.id).balance))
     }
 }

@@ -77,7 +77,9 @@ everyone is an even split; the weights used are frozen on each entry) into
 `LedgerEntry` rows (unique per
 charge+subscriber, grouped by a `CostCalculationBatch`) → `InvoiceService`
 groups uninvoiced ledger entries per subscriber into an `Invoice`
-(DRAFT → SENT → PAID, or VOID).
+(DRAFT → SENT → PAID, or VOID). A subscriber whose balance covers the whole new invoice
+gets it already PAID from that credit (note `PAID_FROM_CREDIT_NOTE`); its
+email is a receipt, sent with the drafts.
 
 Around that chain: `InvoiceDeliveryService` sends every invoice email, after
 the invoice has committed and in its own short transaction per invoice, and

@@ -9,6 +9,8 @@ data class InvoiceGenerationResult(
     val invoicesCreated: Int,
     val ledgerEntriesAssigned: Int,
     val totalAmount: BigDecimal,
+    /** Invoices their balance covered in full, so they were created already paid. */
+    val paidFromBalanceCount: Int,
     val items: List<InvoiceGenerationItemResult>
 )
 
@@ -22,5 +24,7 @@ data class InvoiceGenerationItemResult(
     val ledgerEntryCount: Int,
     val emailRequested: Boolean,
     val emailSent: Boolean,
+    /** Created already paid from their balance; its email is a receipt, not a request. */
+    val paidFromBalance: Boolean,
     val message: String
 )

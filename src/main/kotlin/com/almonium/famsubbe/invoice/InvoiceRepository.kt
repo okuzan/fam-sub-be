@@ -48,6 +48,18 @@ interface InvoiceRepository : JpaRepository<Invoice, UUID>, JpaSpecificationExec
     """)
     fun findByStatusInWithSubscriber(statuses: Collection<InvoiceStatus>): List<Invoice>
 
+    /** Invoices paid from credit when created whose receipt has not gone out yet. */
+    @Query("""
+        select i
+        from Invoice i
+        join fetch i.subscriber
+        where i.status = 'PAID'
+          and i.notes = :note
+          and i.emailSent = false
+        order by i.createdAt asc
+    """)
+    fun findUnsentReceipts(note: String): List<Invoice>
+
     fun findByInvoiceGenerationRunId(invoiceGenerationRunId: UUID): List<Invoice>
 
     fun findByStatusOrderByCreatedAtAsc(status: InvoiceStatus): List<Invoice>

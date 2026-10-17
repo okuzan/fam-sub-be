@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
+import java.time.Instant
 import java.util.*
 
 /**
@@ -60,7 +61,11 @@ class InvoiceDeliveryService(
 
     fun sendDrafts(): InvoiceBulkEmailResult {
         val drafts = requireNotNull(transactionTemplate.execute {
-            invoiceRepository.findByStatusInWithSubscriber(listOf(InvoiceStatus.DRAFT)).map { invoice ->
+            // Drafts, plus receipts for invoices their credit paid when they were generated.
+            (
+                invoiceRepository.findByStatusInWithSubscriber(listOf(InvoiceStatus.DRAFT)) +
+                    invoiceRepository.findUnsentReceipts(InvoiceService.PAID_FROM_CREDIT_NOTE)
+            ).map { invoice ->
                 val subscriber = requireNotNull(invoice.subscriber)
                 Triple(requireNotNull(invoice.id), requireNotNull(subscriber.id), requireNotNull(subscriber.name))
             }
@@ -137,6 +142,11 @@ class InvoiceDeliveryService(
         val markedSent = sent && !isDryRun && invoice.status == InvoiceStatus.DRAFT
         if (markedSent) {
             invoice.markSent()
+            invoiceRepository.save(invoice)
+        } else if (sent && !isDryRun && invoice.status == InvoiceStatus.PAID) {
+            // A receipt: record that it went out, so it is not sent again, without leaving PAID.
+            invoice.emailSent = true
+            invoice.sentAt = Instant.now()
             invoiceRepository.save(invoice)
         }
 

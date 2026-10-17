@@ -35,6 +35,13 @@
     <th:block th:if="${toPay > 0}"><tr th:replace="~{email-layout :: payBlock}"></tr></th:block>
     <tr th:replace="~{email-layout :: cardLink(text='See every invoice in this total in your cabinet', url=${cabinetUrl})}"></tr>
 </th:block>
+<th:block th:if="${creditLeft != null}">
+    <tr><td class="fs-soft fs-line" style="padding:14px 36px; border-top:1px solid #e4e2dc; background:#faf9f7;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+            <tr th:replace="~{email-layout :: line(label='Credit left', sub=${creditLeft > 0} ? 'Goes toward your next invoice' : 'Your next invoice will ask you to pay', amount=${fmt.money(creditLeft)}, first=true, green=${creditLeft > 0})}"></tr>
+        </table>
+    </td></tr>
+</th:block>
 <th:block th:if="${isPaid}"><tr th:replace="~{email-layout :: cardLink(text='Your invoices are all in your cabinet', url=${cabinetUrl})}"></tr></th:block>
 
 </th:block>

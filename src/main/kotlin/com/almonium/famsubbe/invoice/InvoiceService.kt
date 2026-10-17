@@ -27,8 +27,12 @@ class InvoiceService(
     private val subscriberRepository: SubscriberRepository,
     private val events: ApplicationEventPublisher = ApplicationEventPublisher {}
 ) {
-    private companion object {
+    companion object {
         const val BILLING_EXEMPT_NOTE = "Settled automatically: subscriber is billing-exempt"
+        const val PAID_FROM_CREDIT_NOTE = "Paid from credit when created"
+
+        /** Notes of invoices created already PAID; an invoice run holding only these and drafts can still be undone. */
+        val SETTLED_AT_CREATION_NOTES = setOf(BILLING_EXEMPT_NOTE, PAID_FROM_CREDIT_NOTE)
     }
 
     fun generateInvoices(
@@ -97,8 +101,18 @@ class InvoiceService(
             subscriberEntries.forEach { it.invoice = invoice }
             ledgerEntryRepository.saveAll(subscriberEntries)
 
+            // Credit that covers the whole invoice pays it now, so nobody is asked
+            // for money they have already paid in; partial credit waits for their
+            // next transfer, as incoming payments settle whole invoices only.
+            val paidFromBalance = !exempt && (subscriber.balance ?: BigDecimal.ZERO) >= invoiceTotal
+            if (paidFromBalance) {
+                invoice.notes = PAID_FROM_CREDIT_NOTE
+                payInvoiceFromBalance(invoice)
+            }
+
             // Emails go out after this transaction commits, from InvoiceDeliveryService,
-            // which moves the invoice to SENT only once the mail really went out.
+            // which moves the invoice to SENT only once the mail really went out. For an
+            // invoice paid from credit the email is the receipt.
             val emailRequested = request.sendEmail && !exempt
 
             createdInvoices += invoice
@@ -115,8 +129,11 @@ class InvoiceService(
                 ledgerEntryCount = subscriberEntries.size,
                 emailRequested = emailRequested,
                 emailSent = false,
+                paidFromBalance = paidFromBalance,
                 message = if (exempt) {
                     "Created settled invoice for billing-exempt subscriber with ${subscriberEntries.size} ledger entries"
+                } else if (paidFromBalance) {
+                    "Created invoice with ${subscriberEntries.size} ledger entries and paid it from balance"
                 } else {
                     "Created invoice with ${subscriberEntries.size} ledger entries"
                 }
@@ -128,6 +145,7 @@ class InvoiceService(
             invoicesCreated = createdInvoices.size,
             ledgerEntriesAssigned = totalAssigned,
             totalAmount = totalAmount,
+            paidFromBalanceCount = items.count { it.paidFromBalance },
             items = items
         )
     }

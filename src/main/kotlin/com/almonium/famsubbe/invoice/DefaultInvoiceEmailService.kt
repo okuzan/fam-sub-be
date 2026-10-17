@@ -79,6 +79,8 @@ class DefaultInvoiceEmailService(
                 }
             )
             context.setVariable("totalAmountOwed", totalAmountOwed)
+            // A receipt for an invoice their credit paid shows what is left of it.
+            context.setVariable("creditLeft", credit.takeIf { isPaid && !exempt })
             context.setVariable("totalNote", totalNote(totalAmountOwed + credit - total, credit))
             context.setVariable("toPay", totalAmountOwed.max(BigDecimal.ZERO))
             context.setVariable("payment", paymentDetailsService.forSubscriber(subscriber, totalAmountOwed))

@@ -3,12 +3,16 @@ package com.almonium.famsubbe.accounting
 import com.almonium.famsubbe.admin.AdminActionTargetType
 import com.almonium.famsubbe.admin.AdminActionType
 import com.almonium.famsubbe.admin.AdminAuditLogService
+import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceOrigin
+import com.almonium.famsubbe.invoice.InvoiceService
 import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.invoice.InvoiceGenerationRunRepository
 import com.almonium.famsubbe.invoice.InvoiceRepository
+import com.almonium.famsubbe.subscriber.SubscriberRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.*
 
@@ -19,6 +23,7 @@ class RecoveryService(
     private val invoiceGenerationRunRepository: InvoiceGenerationRunRepository,
     private val invoiceRepository: InvoiceRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
+    private val subscriberRepository: SubscriberRepository,
     private val adminAuditLogService: AdminAuditLogService
 ) {
     @Transactional(readOnly = true)
@@ -100,9 +105,7 @@ class RecoveryService(
             blockers += "Run is already undone"
         }
 
-        val invalidInvoices = invoices.filter {
-            it.origin != InvoiceOrigin.SUBSCRIPTION_LEDGER || it.status != InvoiceStatus.DRAFT
-        }
+        val invalidInvoices = invoices.filterNot { it.isUndoable() }
         invalidInvoices.forEach { invoice ->
             blockers += "Invoice ${invoice.id} has status ${invoice.status} and origin ${invoice.origin}"
         }
@@ -132,6 +135,13 @@ class RecoveryService(
         val invoices = invoiceRepository.findByInvoiceGenerationRunId(runId)
         val ledgerEntries = invoices.flatMap { ledgerEntryRepository.findByInvoice(it) }
 
+        // Invoices their credit paid at creation give that money back first.
+        invoices.forEach { invoice ->
+            val refund = invoice.balancePaidAmount?.takeIf { invoice.status == InvoiceStatus.PAID } ?: return@forEach
+            val subscriber = requireNotNull(invoice.subscriber)
+            subscriber.balance = (subscriber.balance ?: BigDecimal.ZERO).add(refund)
+            subscriberRepository.save(subscriber)
+        }
         ledgerEntries.forEach { it.invoice = null }
         if (ledgerEntries.isNotEmpty()) {
             ledgerEntryRepository.saveAll(ledgerEntries)
@@ -173,4 +183,14 @@ class RecoveryService(
             )
         )
     }
+
+    /**
+     * A draft, or an invoice created already paid (billing-exempt, or from
+     * credit) whose email has not gone out: nobody has been told about it yet.
+     */
+    private fun Invoice.isUndoable(): Boolean =
+        origin == InvoiceOrigin.SUBSCRIPTION_LEDGER && (
+            status == InvoiceStatus.DRAFT ||
+                (status == InvoiceStatus.PAID && notes in InvoiceService.SETTLED_AT_CREATION_NOTES && !emailSent)
+            )
 }
