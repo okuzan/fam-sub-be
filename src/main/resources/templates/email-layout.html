@@ -43,14 +43,15 @@
 
 <!-- ───────────── Building blocks ───────────── -->
 
-<!-- A small uppercase label, optionally with a status badge on the right: eyebrow(text=…, badge=…). -->
-<table th:fragment="eyebrow" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;"><tr><td style="vertical-align:middle;"><div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;" th:text="${text}">Label</div></td><td th:if="${badge}" align="right" style="vertical-align:middle;"><span style="display:inline-block; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:14px; font-weight:600; letter-spacing:1px; padding:4px 8px; border-radius:5px; background:#e7f1eb; color:#14513a;" th:text="${badge}">PAID</span></td></tr></table>
+<!-- A small uppercase label, optionally with a status badge on the right: eyebrow(text=…, badge=…, muted=…). A muted badge is grey instead of green. -->
+<table th:fragment="eyebrow" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;"><tr><td style="vertical-align:middle;"><div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;" th:text="${text}">Label</div></td><td th:if="${badge}" align="right" style="vertical-align:middle;"><span style="display:inline-block; font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:14px; font-weight:600; letter-spacing:1px; padding:4px 8px; border-radius:5px; background:#e7f1eb; color:#14513a;" th:styleappend="${muted} ? 'background:#eceae5; color:#4f5259;' : ''" th:text="${badge}">PAID</span></td></tr></table>
 
 <p th:fragment="lead" class="fs-ink" style="margin:0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:16px; line-height:25px; color:#26282d;" th:text="${text}">Hi.</p>
 
 <div th:fragment="headline" class="fs-ink" style="font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:26px; line-height:32px; font-weight:700; letter-spacing:-0.4px; color:#26282d;" th:text="${text}">Headline</div>
 
-<div th:fragment="bigAmount" class="fs-ink" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:40px; line-height:46px; font-weight:500; letter-spacing:-1.5px; color:#26282d; white-space:nowrap;" th:text="${fmt.money(amount)}">0,00 ₴</div>
+<!-- bigAmount(amount=…, struck=…): struck through and greyed for a cancelled invoice. -->
+<div th:fragment="bigAmount" class="fs-ink" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:40px; line-height:46px; font-weight:500; letter-spacing:-1.5px; color:#26282d; white-space:nowrap;" th:styleappend="${struck} ? 'color:#6a6d73; text-decoration:line-through;' : ''" th:text="${fmt.money(amount)}">0,00 ₴</div>
 
 <p th:fragment="small" class="fs-muted" style="margin:0; font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; font-size:13.5px; line-height:20px; color:#4f5259;" th:text="${text}">Detail.</p>
 

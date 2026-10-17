@@ -40,4 +40,8 @@ internal class FakeInvoiceEmailService : InvoiceEmailService {
         balanceAfter: BigDecimal,
         creditWrittenOff: BigDecimal
     ) = succeeds
+
+    override fun sendPaymentReceivedEmail(email: PaymentReceivedEmail) = succeeds
+
+    override fun sendInvoiceCancelledEmail(invoice: Invoice, totalAmountOwed: BigDecimal) = succeeds
 }

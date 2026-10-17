@@ -7,6 +7,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -51,6 +52,10 @@ object EmailFormat {
 
     /** 2 Sep */
     fun dayMonth(date: LocalDate?): String = requireNotNull(date).format(pattern("d MMM"))
+
+    /** 6 Nov 2026, 14:32, in Kyiv time */
+    fun dateTime(instant: Instant?): String =
+        requireNotNull(instant).atZone(BillingTime.ZONE).format(pattern("d MMM yyyy, HH:mm"))
 
     fun daysOpen(since: LocalDate): Long = ChronoUnit.DAYS.between(since, BillingTime.today())
 

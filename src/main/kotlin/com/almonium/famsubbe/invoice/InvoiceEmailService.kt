@@ -36,4 +36,9 @@ interface InvoiceEmailService {
         balanceAfter: BigDecimal,
         creditWrittenOff: BigDecimal
     ): Boolean
+
+    fun sendPaymentReceivedEmail(email: PaymentReceivedEmail): Boolean
+
+    /** [totalAmountOwed] is what the subscriber owes now that [invoice] is void. */
+    fun sendInvoiceCancelledEmail(invoice: Invoice, totalAmountOwed: BigDecimal): Boolean
 }

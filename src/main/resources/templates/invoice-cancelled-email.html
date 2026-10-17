@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- Sent when an invoice the subscriber was already emailed is voided. -->
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: layout(~{::sections})}">
+<body>
+<th:block th:fragment="sections">
+
+<tr><td class="fs-line" style="padding:32px 36px 28px;">
+    <table th:replace="~{email-layout :: eyebrow(text='Invoice cancelled', badge='CANCELLED', muted=true)}"></table>
+    <div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+    <p th:replace="~{email-layout :: lead(text=${lead})}"></p>
+    <div style="height:18px; line-height:18px; font-size:0;">&nbsp;</div>
+    <div th:replace="~{email-layout :: bigAmount(amount=${invoice.totalAmount}, struck=true)}"></div>
+    <div style="height:6px; line-height:6px; font-size:0;">&nbsp;</div>
+    <p th:replace="~{email-layout :: small(text='Already paid it? Just reply to this email and we’ll sort it out.')}"></p>
+    <th:block th:if="${reason}">
+        <div style="height:20px; line-height:20px; font-size:0;">&nbsp;</div>
+        <table th:replace="~{email-layout :: note(label='Reason', text=${reason})}"></table>
+    </th:block>
+</td></tr>
+
+<tr><td class="fs-soft fs-line" style="padding:14px 36px; border-top:1px solid #e4e2dc; background:#faf9f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <tr th:replace="~{email-layout :: line(label='Your total right now', sub=${totalNote}, amount=${fmt.money(toPay)}, first=true, strong=true)}"></tr>
+    </table>
+</td></tr>
+
+<th:block th:if="${toPay > 0}"><tr th:replace="~{email-layout :: payBlock}"></tr></th:block>
+<tr th:replace="~{email-layout :: cardLink(text='Open your cabinet', url=${cabinetUrl})}"></tr>
+
+</th:block>
+</body>
+</html>

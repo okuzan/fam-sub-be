@@ -8,6 +8,7 @@ import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
 import jakarta.persistence.criteria.Predicate
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -23,7 +24,8 @@ class InvoiceService(
     private val invoiceGenerationRunRepository: InvoiceGenerationRunRepository,
     private val invoiceRepository: InvoiceRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
-    private val subscriberRepository: SubscriberRepository
+    private val subscriberRepository: SubscriberRepository,
+    private val events: ApplicationEventPublisher = ApplicationEventPublisher {}
 ) {
     private companion object {
         const val BILLING_EXEMPT_NOTE = "Settled automatically: subscriber is billing-exempt"
@@ -544,6 +546,7 @@ class InvoiceService(
 
         check(invoice.status != InvoiceStatus.VOID) { "Invoice is already voided" }
         check(invoice.status != InvoiceStatus.PAID) { "PAID invoices cannot be voided" }
+        val wasSent = invoice.status == InvoiceStatus.SENT
 
         val normalizedReason = reason?.trim()?.takeIf { it.isNotEmpty() }
         if (normalizedReason != null) {
@@ -561,6 +564,7 @@ class InvoiceService(
             ledgerEntryRepository.saveAll(releasedEntries)
         }
 
+        if (wasSent) events.publishEvent(SentInvoiceVoidedEvent(invoiceId))
         return invoiceRepository.save(invoice).toResponse()
     }
 

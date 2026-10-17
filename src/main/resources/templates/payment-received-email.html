@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!-- Sent when a bank transfer is applied to a subscriber: paid up, paid some, or held as credit. -->
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{email-layout :: layout(~{::sections})}">
+<body>
+<th:block th:fragment="sections">
+
+<tr><td class="fs-line" style="padding:32px 36px 28px;">
+    <table th:replace="~{email-layout :: eyebrow(text=|Payment received · ${fmt.date(arrivedOn)}|, badge=${badge})}"></table>
+    <div style="height:12px; line-height:12px; font-size:0;">&nbsp;</div>
+    <div th:replace="~{email-layout :: headline(text=|Got your ${fmt.money(email.amount)}, ${email.name}|)}"></div>
+    <div style="height:8px; line-height:8px; font-size:0;">&nbsp;</div>
+    <p th:replace="~{email-layout :: small(text=${lead})}"></p>
+</td></tr>
+
+<tr><td class="fs-soft fs-line" style="padding:14px 36px; border-top:1px solid #e4e2dc; background:#faf9f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <th:block th:if="${email.senderName}"><tr th:replace="~{email-layout :: line(label='From', sub='As your bank shows it', amount=${email.senderName}, first=true)}"></tr></th:block>
+        <tr th:replace="~{email-layout :: line(label='Arrived', amount=${fmt.dateTime(email.arrivedAt)}, first=${email.senderName == null})}"></tr>
+        <tr th:replace="~{email-layout :: line(label='Received', amount=${fmt.money(email.amount)}, strong=true)}"></tr>
+    </table>
+</td></tr>
+
+<tr><td class="fs-line" style="padding:26px 36px; border-top:1px solid #e4e2dc;">
+    <div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;" th:text="${#lists.isEmpty(email.settled)} ? 'Where it went' : 'What it paid'">What it paid</div>
+    <div style="height:4px; line-height:4px; font-size:0;">&nbsp;</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <th:block th:each="paid, stat : ${email.settled}"><tr th:replace="~{email-layout :: line(label=${paid.title}, sub=${paid.detail}, amount=${fmt.money(paid.amount)}, first=${stat.first})}"></tr></th:block>
+        <th:block th:if="${#lists.isEmpty(email.settled)}"><tr th:replace="~{email-layout :: line(label='Held as credit', sub=${heldFor}, amount=${fmt.money(email.amount)}, first=true, green=true)}"></tr></th:block>
+    </table>
+</td></tr>
+
+<tr th:unless="${#lists.isEmpty(email.stillOpen)}"><td class="fs-line" style="padding:26px 36px; border-top:1px solid #e4e2dc;">
+    <div class="fs-muted" style="font-family:'Roboto Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; line-height:16px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#4f5259;">Still open</div>
+    <div style="height:4px; line-height:4px; font-size:0;">&nbsp;</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <th:block th:each="open, stat : ${email.stillOpen}"><tr th:replace="~{email-layout :: line(label=${open.title}, sub=${open.detail}, amount=${fmt.money(open.amount)}, first=${stat.first})}"></tr></th:block>
+    </table>
+</td></tr>
+
+<tr><td class="fs-soft fs-line" style="padding:14px 36px; border-top:1px solid #e4e2dc; background:#faf9f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; border-spacing:0;">
+        <th:block th:if="${email.creditUsed > 0}"><tr th:replace="~{email-layout :: line(label=|Your ${fmt.money(email.creditUsed)} credit covered the rest|, amount=${fmt.minus(email.creditUsed)}, first=true, green=true)}"></tr></th:block>
+        <th:block th:if="${email.balanceAfter > 0 and not #lists.isEmpty(email.stillOpen)}"><tr th:replace="~{email-layout :: line(label='Your credit', amount=${fmt.minus(email.balanceAfter)}, first=${email.creditUsed == 0}, green=true)}"></tr></th:block>
+        <th:block th:if="${email.balanceAfter > 0 and #lists.isEmpty(email.stillOpen)}"><tr th:replace="~{email-layout :: line(label='Credit left', sub='Goes toward your next invoice', amount=${fmt.money(email.balanceAfter)}, first=${email.creditUsed == 0}, green=true)}"></tr></th:block>
+        <tr th:replace="~{email-layout :: line(label='Still to pay', amount=${fmt.money(toPay)}, first=${email.creditUsed == 0 and email.balanceAfter == 0}, strong=true)}"></tr>
+    </table>
+</td></tr>
+
+<th:block th:if="${toPay > 0}"><tr th:replace="~{email-layout :: payBlock}"></tr></th:block>
+<tr th:replace="~{email-layout :: cardLink(text=${badge == 'ALL PAID'} ? 'See your paid invoices in your cabinet' : 'Open your cabinet', url=${cabinetUrl})}"></tr>
+
+</th:block>
+</body>
+</html>

@@ -7,6 +7,7 @@ import com.almonium.famsubbe.reporting.WeeklySituationInvoiceDto
 import com.almonium.famsubbe.accounting.LedgerEntry
 import com.almonium.famsubbe.payment.PaymentDetails
 import com.almonium.famsubbe.payment.PaymentDetailsService
+import com.almonium.famsubbe.util.BillingTime
 import com.almonium.famsubbe.util.HtmlFileWriter
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -210,6 +211,110 @@ class DefaultInvoiceEmailService(
             sendEmail(toEmail, subscriberName, subject, htmlContent)
         } catch (e: Exception) {
             log.error("Failed to send debt paid email to {}", toEmail, e)
+            false
+        }
+    }
+
+    override fun sendPaymentReceivedEmail(email: PaymentReceivedEmail): Boolean {
+        return try {
+            val received = EmailFormat.money(email.amount)
+            val settledTitles = EmailFormat.joinNatural(email.settled.map { it.title })
+            val settledCount = email.settled.size
+            val openCount = email.stillOpen.size
+            val oldest = email.stillOpen.firstOrNull()
+            val gap = oldest?.let { EmailFormat.money(it.amount - email.balanceAfter) }
+
+            // Paid up, paid some, or held as credit: with nothing open it is credit for the next invoice.
+            val (subject, preheader, lead) = when {
+                settledCount > 0 && openCount == 0 -> Triple(
+                    "Got your $received: all paid up",
+                    "It settled $settledTitles. Nothing left to pay.",
+                    "Thank you. It settled " + when (settledCount) {
+                        1 -> "your $settledTitles invoice"
+                        2 -> "both of your open invoices"
+                        else -> "all $settledCount of your open invoices"
+                    } + ", so there’s nothing left to pay."
+                )
+                settledCount > 0 -> Triple(
+                    "Got your $received: " + if (settledCount == 1) "$settledTitles is paid" else "$settledCount invoices are paid",
+                    "It settled $settledTitles. " + if (openCount == 1) {
+                        "${oldest!!.title} is still open: ${EmailFormat.money(oldest.amount)}."
+                    } else {
+                        "${EmailFormat.money(email.toPay)} is still open."
+                    },
+                    "Thank you. It settled " + (if (settledCount == 1) "your $settledTitles invoice" else "$settledCount of your invoices") +
+                        ". " + if (openCount == 1) "${oldest!!.title} is still open." else "$openCount invoices are still open."
+                )
+                oldest != null -> Triple(
+                    "Got your $received: held as credit for now",
+                    "It’s held as credit and will settle your ${oldest.title} invoice once the other $gap arrives.",
+                    "We’ve got it. It’s a bit less than your oldest invoice, so it’s held as credit for now. " +
+                        "It will settle your ${oldest.title} invoice once the other $gap arrives."
+                )
+                else -> Triple(
+                    "Got your $received: held as credit",
+                    "You had nothing open, so it’s held as credit for your next invoice.",
+                    "Thank you. You had nothing open, so it’s held as credit for your next invoice."
+                )
+            }
+
+            val context = emailContext(subject, preheader, webDomain)
+            context.setVariable("email", email)
+            context.setVariable("arrivedOn", BillingTime.dateOf(email.arrivedAt))
+            context.setVariable("lead", lead)
+            context.setVariable(
+                "badge", when {
+                    settledCount > 0 && openCount == 0 -> "ALL PAID"
+                    settledCount == 0 -> "HELD AS CREDIT"
+                    else -> null
+                }
+            )
+            context.setVariable("heldFor", oldest?.let { "Goes toward ${it.title} first" } ?: "Goes toward your next invoice")
+            context.setVariable("toPay", email.toPay)
+            context.setVariable("payment", email.payment)
+            context.setVariable("cabinetUrl", cabinetUrl)
+
+            val htmlContent = templateEngine.process("payment-received-email", context)
+            sendEmail(email.toEmail, email.name, subject, htmlContent)
+        } catch (e: Exception) {
+            log.error("Failed to send payment received email to {}", email.toEmail, e)
+            false
+        }
+    }
+
+    override fun sendInvoiceCancelledEmail(invoice: Invoice, totalAmountOwed: BigDecimal): Boolean {
+        val subscriber = invoice.subscriber ?: return false
+        val toEmail = subscriber.email ?: return false
+
+        return try {
+            val title = emailInvoiceTitle(invoice)
+            val credit = (subscriber.balance ?: BigDecimal.ZERO).max(BigDecimal.ZERO)
+            val toPay = totalAmountOwed.max(BigDecimal.ZERO)
+            val subject = "Cancelled: your $title invoice, please don’t pay it"
+            val preheader = if (toPay > BigDecimal.ZERO) {
+                "Please don’t pay it. Your total is now ${EmailFormat.money(toPay)}."
+            } else {
+                "Please don’t pay it. There’s nothing else to pay."
+            }
+
+            val context = emailContext(subject, preheader, webDomain)
+            context.setVariable("lead", "Hi ${subscriber.name.orEmpty()}, your $title invoice is cancelled. Please don’t pay it.")
+            context.setVariable("invoice", invoice)
+            context.setVariable("reason", voidReason(invoice))
+            // The total is all other invoices now, so only credit needs explaining.
+            val stillOpen = totalAmountOwed + credit
+            context.setVariable(
+                "totalNote",
+                if (stillOpen > BigDecimal.ZERO && credit > BigDecimal.ZERO) "Your other open invoices, less ${EmailFormat.money(credit)} credit" else null
+            )
+            context.setVariable("toPay", toPay)
+            context.setVariable("payment", paymentDetailsService.forSubscriber(subscriber, toPay))
+            context.setVariable("cabinetUrl", cabinetUrl)
+
+            val htmlContent = templateEngine.process("invoice-cancelled-email", context)
+            sendEmail(toEmail, subscriber.name, subject, htmlContent)
+        } catch (e: Exception) {
+            log.error("Failed to send invoice cancelled email to {}", toEmail, e)
             false
         }
     }

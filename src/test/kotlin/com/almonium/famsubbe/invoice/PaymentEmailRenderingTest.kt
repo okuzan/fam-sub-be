@@ -117,6 +117,41 @@ class PaymentEmailRenderingTest {
         assertTrue(rendered.none { "cid:" in it }, "a dry run embeds the logo instead of referencing an attachment")
     }
 
+    @Test
+    fun `payment received reads right whether it paid everything, some, or nothing yet`() {
+        val payment = paymentDetailsService.forSubscriber(subscriber, BigDecimal("372.00"))
+        val aug = EmailInvoiceLine("Aug 2026", "Netflix Premium, Spotify Family", BigDecimal("186.00"))
+        val sepOct = EmailInvoiceLine("Sep–Oct 2026", "Netflix Premium, Spotify Family · sent 1 Nov", BigDecimal("372.00"))
+        fun received(amount: String, settled: List<EmailInvoiceLine>, open: List<EmailInvoiceLine>, balance: String, toPay: String) =
+            PaymentReceivedEmail(
+                "polina@example.com", "Поліна", BigDecimal(amount), Instant.parse("2026-11-06T12:32:00Z"), "CHERNYSHOVA POLINA",
+                settled, open, BigDecimal.ZERO, BigDecimal(balance), BigDecimal(toPay), payment
+            )
+
+        emailService.sendPaymentReceivedEmail(received("558.00", listOf(aug, sepOct), emptyList(), "0", "0"))
+        emailService.sendPaymentReceivedEmail(received("186.00", listOf(aug), listOf(sepOct), "0", "372.00"))
+        emailService.sendPaymentReceivedEmail(received("100.00", emptyList(), listOf(aug, sepOct), "100.00", "458.00"))
+
+        assertContains(rendered[0], "both of your open invoices, so there’s nothing left to pay")
+        assertFalse("/pay/" in rendered[0])
+        assertContains(rendered[1], "Sep–Oct 2026 is still open.")
+        assertContains(rendered[1], "https://famsub.example/pay/token123")
+        assertContains(rendered[2], "It will settle your Aug 2026 invoice once the other 86,00\u00a0₴ arrives.")
+        assertContains(rendered[2], "Held as credit")
+    }
+
+    @Test
+    fun `a cancelled invoice email shows the reason and the new total`() {
+        val voided = invoice(InvoiceStatus.VOID).apply { notes = "Voided: The Netflix price was wrong" }
+
+        emailService.sendInvoiceCancelledEmail(voided, BigDecimal("146.00"))
+
+        val html = rendered.single()
+        assertContains(html, "your Sep 2026 invoice is cancelled. Please don’t pay it.")
+        assertContains(html, "The Netflix price was wrong")
+        assertContains(html, "https://famsub.example/pay/token123")
+    }
+
     private fun invoice(status: InvoiceStatus) = Invoice().apply {
         id = UUID.randomUUID()
         subscriber = this@PaymentEmailRenderingTest.subscriber

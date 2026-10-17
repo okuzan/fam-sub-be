@@ -22,12 +22,13 @@ class InvoiceServiceStatusTest {
     private val invoiceRepository = mock(InvoiceRepository::class.java)
     private val ledgerEntryRepository = mock(LedgerEntryRepository::class.java)
     private val subscriberRepository = mock(SubscriberRepository::class.java)
+    private val events = mutableListOf<Any>()
     private val service = InvoiceService(
         mock(InvoiceGenerationRunRepository::class.java),
         invoiceRepository,
         ledgerEntryRepository,
         subscriberRepository
-    )
+    ) { events += it }
 
     private val subscriber = Subscriber().apply {
         id = UUID.randomUUID()
@@ -53,6 +54,19 @@ class InvoiceServiceStatusTest {
 
         assertEquals(InvoiceStatus.VOID.name, result.status)
         assertNull(entry.invoice)
+    }
+
+    @Test
+    fun `voiding an emailed invoice announces it, voiding a draft does not`() {
+        val sent = invoice(InvoiceStatus.SENT)
+        val draft = invoice(InvoiceStatus.DRAFT)
+        listOf(sent, draft).forEach { `when`(invoiceRepository.findById(it.id!!)).thenReturn(Optional.of(it)) }
+
+        service.voidInvoice(sent.id!!, "Wrong price")
+        service.voidInvoice(draft.id!!, null)
+
+        assertEquals(listOf<Any>(SentInvoiceVoidedEvent(sent.id!!)), events)
+        assertEquals("Wrong price", voidReason(sent))
     }
 
     @Test

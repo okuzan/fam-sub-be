@@ -10,6 +10,7 @@ import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
 import com.almonium.famsubbe.subscriber.SubscriberStandingService
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -33,7 +34,8 @@ class BankPaymentService(
     private val invoiceRepository: InvoiceRepository,
     private val invoiceService: InvoiceService,
     private val standingService: SubscriberStandingService,
-    private val monoProperties: MonoProperties
+    private val monoProperties: MonoProperties,
+    private val events: ApplicationEventPublisher = ApplicationEventPublisher {}
 ) {
     private val log = LoggerFactory.getLogger(BankPaymentService::class.java)
 
@@ -330,6 +332,7 @@ class BankPaymentService(
         transaction.settledAmount = result.settledAmount
         transaction.resolvedAt = Instant.now()
         transaction.resolvedByAccountId = accountId
+        transaction.id?.let { events.publishEvent(BankPaymentAppliedEvent(it)) }
 
         log.info(
             "Applied bank payment {} of {} to subscriber {} ({}): settled invoices {}, balance now {}",
