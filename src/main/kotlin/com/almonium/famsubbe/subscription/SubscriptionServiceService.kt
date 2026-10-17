@@ -28,8 +28,10 @@ class SubscriptionServiceService(
         val service = SubscriptionService().apply {
             name = request.name
             price = request.price
+            currency = request.currency
             fixedMonthlyCharge = request.fixedMonthlyCharge
         }
+        service.requireFixedInUah()
         // Flushed so Hibernate fills createdAt/updatedAt before the response reads them.
         val savedService = subscriptionServiceRepository.saveAndFlush(service)
         return savedService.toResponse()
@@ -42,8 +44,10 @@ class SubscriptionServiceService(
         service.apply {
             name = request.name
             price = request.price
+            request.currency?.let { currency = it }
             request.fixedMonthlyCharge?.let { fixedMonthlyCharge = it }
         }
+        service.requireFixedInUah()
         
         val updatedService = subscriptionServiceRepository.saveAndFlush(service)
         return updatedService.toResponse()
@@ -56,11 +60,19 @@ class SubscriptionServiceService(
         subscriptionServiceRepository.deleteById(id)
     }
 
+    /** A fixed monthly charge is the price itself, so it has to be in hryvnias already. */
+    private fun SubscriptionService.requireFixedInUah() {
+        require(!fixedMonthlyCharge || currency == SubscriptionService.UAH) {
+            "Only a price in UAH can be charged automatically every month"
+        }
+    }
+
     private fun SubscriptionService.toResponse(): SubscriptionServiceResponse {
         return SubscriptionServiceResponse(
             id = this.id!!,
             name = this.name!!,
             price = this.price!!,
+            currency = this.currency,
             fixedMonthlyCharge = this.fixedMonthlyCharge,
             createdAt = this.createdAt!!,
             updatedAt = this.updatedAt!!

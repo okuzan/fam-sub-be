@@ -20,6 +20,7 @@ data class SubscriberDetailResponse(
 data class ActiveSubscriptionDto(
     val id: UUID,
     val serviceName: String,
+    /** What the service costs a month in UAH: its latest bill. */
     val servicePrice: BigDecimal,
     val startMonth: String,
     val endMonth: String?,

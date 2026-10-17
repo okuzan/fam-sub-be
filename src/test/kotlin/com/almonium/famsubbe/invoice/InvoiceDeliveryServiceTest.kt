@@ -4,6 +4,7 @@ import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
 import com.almonium.famsubbe.subscriber.SubscriberStandingService
+import com.almonium.famsubbe.accounting.ChargeRepository
 import com.almonium.famsubbe.subscription.MembershipRepository
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
@@ -38,7 +39,12 @@ class InvoiceDeliveryServiceTest {
         invoiceService,
         invoiceRepository,
         ledgerEntryRepository,
-        SubscriberStandingService(subscriberRepository, invoiceRepository, mock(MembershipRepository::class.java)),
+        SubscriberStandingService(
+            subscriberRepository,
+            invoiceRepository,
+            mock(MembershipRepository::class.java),
+            mock(ChargeRepository::class.java)
+        ),
         emailService,
         TransactionTemplate(mock(PlatformTransactionManager::class.java).also {
             `when`(it.getTransaction(any())).thenReturn(SimpleTransactionStatus())

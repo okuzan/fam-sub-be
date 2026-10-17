@@ -18,6 +18,8 @@ interface ChargeRepository : JpaRepository<Charge, UUID> {
         chargeMonth: YearMonth
     ): Charge?
     
+    fun findFirstBySubscriptionServiceIdOrderByChargeMonthDescCreatedAtDesc(subscriptionServiceId: UUID): Charge?
+
     fun findBySubscriptionServiceOrderByChargeMonthDescCreatedAtDescIdDesc(
         subscriptionService: SubscriptionService,
         pageable: Pageable

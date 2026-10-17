@@ -1,10 +1,12 @@
 package com.almonium.famsubbe.subscriber
 
+import com.almonium.famsubbe.accounting.ChargeRepository
 import com.almonium.famsubbe.accounting.CostCalculationService
 import com.almonium.famsubbe.invoice.Invoice
 import com.almonium.famsubbe.invoice.InvoiceRepository
 import com.almonium.famsubbe.invoice.InvoiceStatus
 import com.almonium.famsubbe.subscription.MembershipRepository
+import com.almonium.famsubbe.subscription.SubscriptionService
 import com.almonium.famsubbe.util.BillingTime
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -23,7 +25,8 @@ import java.util.*
 class SubscriberStandingService(
     private val subscriberRepository: SubscriberRepository,
     private val invoiceRepository: InvoiceRepository,
-    private val membershipRepository: MembershipRepository
+    private val membershipRepository: MembershipRepository,
+    private val chargeRepository: ChargeRepository
 ) {
     fun getDetails(subscriberId: UUID): SubscriberDetailResponse {
         val subscriber = subscriberRepository.findById(subscriberId)
@@ -51,18 +54,29 @@ class SubscriberStandingService(
         val month = BillingTime.currentMonth()
         return membershipRepository.findActiveBySubscriberAndMonth(subscriberId, month)
             .map { membership ->
-                val service = membership.subscriptionService
-                val price = service?.price ?: BigDecimal.ZERO
+                val service = requireNotNull(membership.subscriptionService)
+                val price = monthlyCostInUah(service)
                 ActiveSubscriptionDto(
                     id = requireNotNull(membership.id),
-                    serviceName = service?.name.orEmpty(),
+                    serviceName = service.name.orEmpty(),
                     servicePrice = price,
                     startMonth = membership.startMonth?.toString().orEmpty(),
                     endMonth = membership.endMonth?.toString(),
-                    monthlyShare = monthlyShare(subscriberId, requireNotNull(service?.id), price, month)
+                    monthlyShare = monthlyShare(subscriberId, requireNotNull(service.id), price, month)
                 )
             }
     }
+
+    /**
+     * What the service costs a month in hryvnias: its latest bill, since most
+     * prices are in dollars or euros and the card converts them. A service never
+     * charged yet falls back to its price when that is in UAH.
+     */
+    private fun monthlyCostInUah(service: SubscriptionService): BigDecimal =
+        chargeRepository.findFirstBySubscriptionServiceIdOrderByChargeMonthDescCreatedAtDesc(requireNotNull(service.id))
+            ?.amount
+            ?: service.price.takeIf { service.currency == SubscriptionService.UAH }
+            ?: BigDecimal.ZERO
 
     /** Ordered and split exactly as [CostCalculationService] splits a charge, so the estimate matches the bill. */
     private fun monthlyShare(subscriberId: UUID, serviceId: UUID, price: BigDecimal, month: YearMonth): BigDecimal {

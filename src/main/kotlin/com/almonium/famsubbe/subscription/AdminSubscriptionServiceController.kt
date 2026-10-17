@@ -46,7 +46,11 @@ class AdminSubscriptionServiceController(
             targetType = AdminActionTargetType.SUBSCRIPTION_SERVICE,
             targetId = service.id,
             summary = "Created subscription service ${service.name}",
-            metadata = mapOf("price" to service.price, "fixedMonthlyCharge" to service.fixedMonthlyCharge)
+            metadata = mapOf(
+                "price" to service.price,
+                "currency" to service.currency,
+                "fixedMonthlyCharge" to service.fixedMonthlyCharge
+            )
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(service)
     }
@@ -65,7 +69,11 @@ class AdminSubscriptionServiceController(
             targetType = AdminActionTargetType.SUBSCRIPTION_SERVICE,
             targetId = id,
             summary = "Updated subscription service ${service.name}",
-            metadata = mapOf("price" to service.price, "fixedMonthlyCharge" to service.fixedMonthlyCharge)
+            metadata = mapOf(
+                "price" to service.price,
+                "currency" to service.currency,
+                "fixedMonthlyCharge" to service.fixedMonthlyCharge
+            )
         )
         return ResponseEntity.ok(service)
     }
@@ -84,7 +92,11 @@ class AdminSubscriptionServiceController(
             targetType = AdminActionTargetType.SUBSCRIPTION_SERVICE,
             targetId = id,
             summary = "Deleted subscription service ${service.name}",
-            metadata = mapOf("price" to service.price, "fixedMonthlyCharge" to service.fixedMonthlyCharge)
+            metadata = mapOf(
+                "price" to service.price,
+                "currency" to service.currency,
+                "fixedMonthlyCharge" to service.fixedMonthlyCharge
+            )
         )
         return ResponseEntity.noContent().build()
     }

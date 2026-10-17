@@ -21,8 +21,13 @@ class SubscriptionService {
     @Column(nullable = false)
     var name: String? = null
 
+    /** The plan price in [currency], as the merchant states it. */
     @Column(nullable = false)
     var price: BigDecimal? = null
+
+    /** ISO 4217 letter code, e.g. "USD". */
+    @Column(nullable = false, length = 3)
+    var currency: String = UAH
 
     /** Charge [price] on its own every month, for a bill fixed in UAH that is not matched from the card. */
     @Column(name = "fixed_monthly_charge", nullable = false)
@@ -35,4 +40,8 @@ class SubscriptionService {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Date? = null
+
+    companion object {
+        const val UAH = "UAH"
+    }
 }

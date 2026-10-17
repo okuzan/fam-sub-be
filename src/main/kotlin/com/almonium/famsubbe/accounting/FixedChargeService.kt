@@ -1,5 +1,6 @@
 package com.almonium.famsubbe.accounting
 
+import com.almonium.famsubbe.subscription.SubscriptionService
 import com.almonium.famsubbe.subscription.SubscriptionServiceRepository
 import com.almonium.famsubbe.util.BillingTime
 import org.slf4j.LoggerFactory
@@ -33,6 +34,7 @@ class FixedChargeService(
     /** The charges created; each in its own transaction, so one failure leaves the others. */
     fun createCharges(month: YearMonth): List<Charge> =
         subscriptionServiceRepository.findByFixedMonthlyChargeTrue().mapNotNull { service ->
+            if (service.currency != SubscriptionService.UAH) return@mapNotNull null
             if (chargeRepository.findBySubscriptionServiceAndChargeMonth(service, month) != null) {
                 return@mapNotNull null
             }
