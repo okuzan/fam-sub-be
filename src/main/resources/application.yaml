@@ -21,6 +21,9 @@ spring:
     # this can go back to the default.
     out-of-order: true
   jpa:
+    # Services map entities to DTOs inside their own transactions, so nothing
+    # needs the session kept open for the whole web request.
+    open-in-view: false
     hibernate:
       # Migrations are the only thing allowed to change the schema. Hibernate
       # verifies the entities match at startup and refuses to boot otherwise.
