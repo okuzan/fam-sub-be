@@ -56,7 +56,9 @@ class SubscriberService(
             balance = request.balance
             billingExempt = request.billingExempt
         }
-        val savedSubscriber = subscriberRepository.save(subscriber)
+        // Flushed so Hibernate fills createdAt/updatedAt: the bulk reads in
+        // toResponses touch other tables and would not flush it on their own.
+        val savedSubscriber = subscriberRepository.saveAndFlush(subscriber)
         return toResponses(listOf(savedSubscriber)).single()
     }
 
@@ -74,7 +76,7 @@ class SubscriberService(
             billingExempt = updatedBillingExempt
         }
 
-        val updatedSubscriber = subscriberRepository.save(subscriber)
+        val updatedSubscriber = subscriberRepository.saveAndFlush(subscriber)
         if (billingExemptWasEnabled) {
             invoiceRepository.findBySubscriberAndStatusIn(
                 updatedSubscriber,
