@@ -29,6 +29,7 @@ class SubscriptionServiceService(
             name = request.name
             price = request.price
             currency = request.currency
+            seats = request.seats
             fixedMonthlyCharge = request.fixedMonthlyCharge
         }
         service.requireFixedInUah()
@@ -45,6 +46,7 @@ class SubscriptionServiceService(
             name = request.name
             price = request.price
             request.currency?.let { currency = it }
+            seats = request.seats
             request.fixedMonthlyCharge?.let { fixedMonthlyCharge = it }
         }
         service.requireFixedInUah()
@@ -73,6 +75,7 @@ class SubscriptionServiceService(
             name = this.name!!,
             price = this.price!!,
             currency = this.currency,
+            seats = this.seats,
             fixedMonthlyCharge = this.fixedMonthlyCharge,
             createdAt = this.createdAt!!,
             updatedAt = this.updatedAt!!

@@ -49,6 +49,7 @@ class AdminSubscriptionServiceController(
             metadata = mapOf(
                 "price" to service.price,
                 "currency" to service.currency,
+                "seats" to service.seats,
                 "fixedMonthlyCharge" to service.fixedMonthlyCharge
             )
         )
@@ -72,6 +73,7 @@ class AdminSubscriptionServiceController(
             metadata = mapOf(
                 "price" to service.price,
                 "currency" to service.currency,
+                "seats" to service.seats,
                 "fixedMonthlyCharge" to service.fixedMonthlyCharge
             )
         )
@@ -95,6 +97,7 @@ class AdminSubscriptionServiceController(
             metadata = mapOf(
                 "price" to service.price,
                 "currency" to service.currency,
+                "seats" to service.seats,
                 "fixedMonthlyCharge" to service.fixedMonthlyCharge
             )
         )

@@ -1,6 +1,8 @@
 package com.almonium.famsubbe.subscription
 
 import jakarta.validation.constraints.DecimalMin
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.Digits
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
@@ -13,6 +15,8 @@ data class SubscriptionServiceResponse(
     /** In [currency], as the merchant states it. */
     val price: BigDecimal,
     val currency: String,
+    /** Seats in a family plan, or null for a shared account. Members still split the whole bill. */
+    val seats: Int?,
     /** [price] is charged on its own at the start of every month; only for UAH. */
     val fixedMonthlyCharge: Boolean,
     val createdAt: Date,
@@ -27,6 +31,8 @@ data class SubscriptionServiceCreateRequest(
     val price: BigDecimal,
     @field:Pattern(regexp = "[A-Z]{3}", message = "currency must be a three-letter code such as USD")
     val currency: String = SubscriptionService.UAH,
+    @field:Min(1) @field:Max(MAX_SEATS)
+    val seats: Int? = null,
     val fixedMonthlyCharge: Boolean = false
 )
 
@@ -39,6 +45,11 @@ data class SubscriptionServiceUpdateRequest(
     /** Null keeps the current currency. */
     @field:Pattern(regexp = "[A-Z]{3}", message = "currency must be a three-letter code such as USD")
     val currency: String? = null,
+    /** Replaces the seat count; null makes it a shared account rather than a family plan. */
+    @field:Min(1) @field:Max(MAX_SEATS)
+    val seats: Int? = null,
     /** Null keeps the current setting. */
     val fixedMonthlyCharge: Boolean? = null
 )
+
+const val MAX_SEATS = 100L

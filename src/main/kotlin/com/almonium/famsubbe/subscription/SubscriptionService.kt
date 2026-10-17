@@ -30,6 +30,10 @@ class SubscriptionService {
     var currency: String = UAH
 
     /** Charge [price] on its own every month, for a bill fixed in UAH that is not matched from the card. */
+    /** Seats in a family plan; null for an account that is simply shared. Display only. */
+    @Column
+    var seats: Int? = null
+
     @Column(name = "fixed_monthly_charge", nullable = false)
     var fixedMonthlyCharge: Boolean = false
 
