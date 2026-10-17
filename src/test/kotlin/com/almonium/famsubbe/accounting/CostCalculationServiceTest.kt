@@ -106,6 +106,56 @@ class CostCalculationServiceTest {
         verifyNoInteractions(membershipRepository, ledgerEntryRepository, batchRepository)
     }
 
+    @Test
+    fun `splits a charge by membership weight and records the weights`() {
+        val month = YearMonth.of(2026, 11)
+        val charge = charge(month, "Claude", "9000.00")
+        val subscribers = listOf("Oleh", "Zhenia", "Andrii", "Max").map(::subscriber)
+        val weights = listOf(2, 2, 1, 1)
+        val memberships = subscribers.zip(weights).map { (subscriber, weight) ->
+            membership(charge, subscriber, month).apply { shareWeight = weight }
+        }
+
+        `when`(chargeRepository.findByChargeMonthForUpdate(month)).thenReturn(listOf(charge))
+        `when`(ledgerEntryRepository.findRecordedChargeIds(listOf(requireNotNull(charge.id))))
+            .thenReturn(emptySet())
+        `when`(
+            membershipRepository.findActiveByServiceAndMonth(requireNotNull(charge.subscriptionService?.id), month)
+        ).thenReturn(memberships)
+        `when`(batchRepository.save(any(CostCalculationBatch::class.java))).thenAnswer {
+            it.getArgument<CostCalculationBatch>(0).apply { id = UUID.randomUUID() }
+        }
+        val saved = mutableListOf<LedgerEntry>()
+        `when`(ledgerEntryRepository.saveAll(any<Iterable<LedgerEntry>>())).thenAnswer {
+            it.getArgument<Iterable<LedgerEntry>>(0).toList().also(saved::addAll)
+        }
+
+        service.calculateAndRecordCosts(month, month, UUID.randomUUID())
+
+        val bySubscriber = saved.associateBy { requireNotNull(it.subscriber?.name) }
+        assertEquals(BigDecimal("3000.00"), bySubscriber.getValue("Oleh").amount)
+        assertEquals(BigDecimal("3000.00"), bySubscriber.getValue("Zhenia").amount)
+        assertEquals(BigDecimal("1500.00"), bySubscriber.getValue("Andrii").amount)
+        assertEquals(BigDecimal("1500.00"), bySubscriber.getValue("Max").amount)
+        assertEquals(2, bySubscriber.getValue("Zhenia").shareWeight)
+        assertEquals(setOf(6), saved.map { it.totalWeight }.toSet())
+    }
+
+    @Test
+    fun `a weighted split hands out the leftover cents and always sums to the total`() {
+        val parts = CostCalculationService.splitByWeight(BigDecimal("100.01"), listOf(2, 2, 1, 1))
+
+        assertEquals(BigDecimal("100.01"), parts.reduce(BigDecimal::add))
+        assertEquals(listOf("33.34", "33.34", "16.67", "16.66"), parts.map { it.toPlainString() })
+    }
+
+    @Test
+    fun `equal weights split evenly with the remainder to the first participants`() {
+        val parts = CostCalculationService.splitByWeight(BigDecimal("10.00"), listOf(1, 1, 1))
+
+        assertEquals(listOf("3.34", "3.33", "3.33"), parts.map { it.toPlainString() })
+    }
+
     private fun charge(month: YearMonth, serviceName: String, amount: String): Charge {
         val subscriptionService = SubscriptionService().apply {
             id = UUID.randomUUID()

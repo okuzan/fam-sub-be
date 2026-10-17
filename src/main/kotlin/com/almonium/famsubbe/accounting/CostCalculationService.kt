@@ -103,12 +103,14 @@ class CostCalculationService(
 
                 val activeMemberships = membershipsCache.getValue(serviceId to month)
 
-                val subscribers = activeMemberships
-                    .map { requireNotNull(it.subscriber) }
-                    .distinctBy { it.id }
-                    .sortedBy { it.id.toString() }
+                val members = activeMemberships
+                    .distinctBy { requireNotNull(it.subscriber).id }
+                    .sortedBy { requireNotNull(it.subscriber).id.toString() }
+                val subscribers = members.map { requireNotNull(it.subscriber) }
+                val weights = members.map { it.shareWeight }
+                val totalWeight = weights.sum()
 
-                val splitAmounts = splitEvenly(amount, subscribers.size)
+                val splitAmounts = splitByWeight(amount, weights)
 
                 subscribers.forEachIndexed { index, subscriber ->
                     ledgerEntriesToSave += LedgerEntry().apply {
@@ -118,6 +120,8 @@ class CostCalculationService(
                         this.recordedMonth = month
                         this.amount = splitAmounts[index]
                         this.participantCount = subscribers.size
+                        this.shareWeight = weights[index]
+                        this.totalWeight = totalWeight
                         this.calculatedAt = calculatedAt
                         this.calculationBatch = savedBatch
                     }
@@ -166,24 +170,32 @@ class CostCalculationService(
         return result
     }
 
-    private fun splitEvenly(total: BigDecimal, participants: Int): List<BigDecimal> {
-        require(participants > 0) { "participants must be > 0" }
+    companion object {
+        /**
+         * Splits [total] in proportion to [weights], in whole cents: each part is
+         * rounded down and the cents left over go one each to the first
+         * participants, so the parts always add up to the total. Equal weights
+         * give an even split.
+         */
+        fun splitByWeight(total: BigDecimal, weights: List<Int>): List<BigDecimal> {
+            require(weights.isNotEmpty()) { "participants must be > 0" }
+            require(weights.all { it > 0 }) { "weights must be positive" }
 
-        val totalCents = total
-            .movePointRight(2)
-            .setScale(0, RoundingMode.HALF_UP)
-            .toLong()
+            val totalCents = total
+                .movePointRight(2)
+                .setScale(0, RoundingMode.HALF_UP)
+                .toLong()
+            val totalWeight = weights.sum().toLong()
 
-        val baseCents = totalCents / participants
-        val remainderCents = (totalCents % participants).toInt()
+            val result = weights.map { totalCents * it / totalWeight }.toMutableList()
+            val remainderCents = (totalCents - result.sum()).toInt()
 
-        val result = MutableList(participants) { baseCents }
+            for (i in 0 until remainderCents) {
+                result[i] = result[i] + 1
+            }
 
-        for (i in 0 until remainderCents) {
-            result[i] = result[i] + 1
+            return result.map { BigDecimal.valueOf(it, 2) }
         }
-
-        return result.map { BigDecimal.valueOf(it, 2) }
     }
 
     fun getSuggestedCalculationPeriod(): CostCalculationSuggestion {

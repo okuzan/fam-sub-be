@@ -62,6 +62,13 @@ class LedgerEntry {
     @Column(name = "participant_count", nullable = false, updatable = false)
     var participantCount: Int = 0
 
+    /** The member's weight and the sum of all weights the charge was split by: 2 of 6 is a third. */
+    @Column(name = "share_weight", nullable = false, updatable = false)
+    var shareWeight: Int = 1
+
+    @Column(name = "total_weight", nullable = false, updatable = false)
+    var totalWeight: Int = 0
+
     @Column(name = "calculated_at", nullable = false, updatable = false)
     var calculatedAt: Instant? = null
 

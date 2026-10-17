@@ -60,6 +60,8 @@ class LedgerService(
         recordedMonth = recordedMonth!!,
         amount = amount!!,
         participantCount = participantCount,
+        shareWeight = shareWeight,
+        totalWeight = totalWeight,
         calculatedAt = calculatedAt!!,
         calculationBatchId = calculationBatch!!.id!!,
         calculationBatchFromMonth = calculationBatch!!.fromMonth!!,

@@ -37,6 +37,7 @@ class MembershipService(
             this.subscriber = subscriber
             this.startMonth = request.startMonth
             this.endMonth = request.endMonth
+            this.shareWeight = request.shareWeight
         }
 
         val savedMembership = membershipRepository.saveAndFlush(membership)
@@ -59,6 +60,7 @@ class MembershipService(
 
         membership.startMonth = request.startMonth
         membership.endMonth = request.endMonth
+        request.shareWeight?.let { membership.shareWeight = it }
 
         val updatedMembership = membershipRepository.save(membership)
         return mapToResponse(updatedMembership)
@@ -116,6 +118,7 @@ class MembershipService(
             subscriberName = membership.subscriber!!.name ?: "",
             startMonth = membership.startMonth!!,
             endMonth = membership.endMonth,
+            shareWeight = membership.shareWeight,
             activeNow = isActiveInMonth(membership, BillingTime.currentMonth()),
             createdAt = membership.createdAt!!
         )

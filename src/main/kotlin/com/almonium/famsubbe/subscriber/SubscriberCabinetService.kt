@@ -95,6 +95,8 @@ class SubscriberCabinetService(
             recordedMonth = requireNotNull(recordedMonth),
             amount = requireNotNull(amount),
             participantCount = participantCount,
+            shareWeight = shareWeight,
+            totalWeight = totalWeight,
             calculatedAt = requireNotNull(calculatedAt)
         )
 }

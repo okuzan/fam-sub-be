@@ -46,7 +46,8 @@ class AdminMembershipController(
             summary = "Created ${membership.subscriptionServiceName} membership for ${membership.subscriberName}",
             metadata = mapOf(
                 "subscriptionServiceId" to membership.subscriptionServiceId,
-                "subscriptionServiceName" to membership.subscriptionServiceName
+                "subscriptionServiceName" to membership.subscriptionServiceName,
+                "shareWeight" to membership.shareWeight
             )
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(membership)
@@ -69,7 +70,10 @@ class AdminMembershipController(
             fromMonth = membership.startMonth,
             toMonth = membership.endMonth,
             summary = "Updated ${membership.subscriptionServiceName} membership for ${membership.subscriberName}",
-            metadata = mapOf("subscriptionServiceId" to membership.subscriptionServiceId)
+            metadata = mapOf(
+                "subscriptionServiceId" to membership.subscriptionServiceId,
+                "shareWeight" to membership.shareWeight
+            )
         )
         return ResponseEntity.ok(membership)
     }

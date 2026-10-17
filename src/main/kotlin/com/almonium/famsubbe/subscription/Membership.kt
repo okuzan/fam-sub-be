@@ -45,6 +45,10 @@ class Membership {
     @Column(name = "end_month")
     var endMonth: YearMonth? = null
 
+    /** This member's share relative to the others that month; 1 for everyone is an even split. */
+    @Column(name = "share_weight", nullable = false)
+    var shareWeight: Int = 1
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant? = null

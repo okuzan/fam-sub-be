@@ -71,8 +71,10 @@ and each link is append-only in spirit:
 `SubscriptionService` (a service and its price) → `Membership` (who is on it,
 `[startMonth, endMonth]`, half-open at the end when `endMonth` is null) →
 `Charge` (one real bill for one service in one month, unique per
-service+month) → `CostCalculationService` splits each charge evenly across
-that month's active members into `LedgerEntry` rows (unique per
+service+month) → `CostCalculationService` splits each charge across that
+month's active members in proportion to `Membership.shareWeight` (1 for
+everyone is an even split; the weights used are frozen on each entry) into
+`LedgerEntry` rows (unique per
 charge+subscriber, grouped by a `CostCalculationBatch`) → `InvoiceService`
 groups uninvoiced ledger entries per subscriber into an `Invoice`
 (DRAFT → SENT → PAID, or VOID).
@@ -138,7 +140,7 @@ Conventions worth preserving:
   resolved by `AuthenticationUtil.resolveAccountId`. Follow this for any new
   mutating admin endpoint.
 - Money is `BigDecimal` with scale 2 and the currency is hardcoded UAH (`₴`).
-  Even splits go through `CostCalculationService.splitEvenly`, which works in
+  Splits go through `CostCalculationService.splitByWeight`, which works in
   integer cents and distributes the remainder to the first participants, so
   the parts always sum to the total. Do not reintroduce floating point or
   naive division.
