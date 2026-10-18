@@ -184,14 +184,13 @@ for Google-created accounts and nothing authenticates against it.
 
 ## Building and testing
 
-`./gradlew build`. Note that `FamSubBeApplicationTests` is a `@SpringBootTest`
-that needs a live Postgres reachable via `.env`, so a local build requires the
-dev database to be up. To run that test without the dev
-database, point it at a throwaway container, e.g. `docker run --rm -p
-127.0.0.1:55432:5432 -e POSTGRES_USER=t -e POSTGRES_PASSWORD=t -e
-POSTGRES_DB=fam_sub postgres:16` with `DB_HOST=127.0.0.1 DB_PORT=55432
-DB_USERNAME=t DB_PASSWORD=t`. Environment variables override `.env`, and Flyway
-builds the schema from V0. CI deliberately runs `bootJar -x test` and therefore
+`./gradlew build`. The Spring tests (`FamSubBeApplicationTests`,
+`WriteFlowSmokeTest`) are marked `@ThrowawayDatabaseTest`: Testcontainers
+starts a `postgres:16` for them, so Docker must be running, and Flyway builds
+the schema from V0. Never give a Spring test the datasource from `.env`: it may
+be an SSH tunnel to prod, and the smoke test writes services, subscribers,
+charges and invoices (it did once, leaving January 2031 invoices in prod). CI
+deliberately runs `bootJar -x test` and therefore
 never executes tests — if you add a test, it only ever runs locally, so prefer
 plain JUnit + Mockito unit tests (as in `invoice/`, `accounting/`, `finance/`)
 over Spring-context tests.

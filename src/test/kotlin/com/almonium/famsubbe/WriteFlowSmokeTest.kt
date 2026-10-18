@@ -31,7 +31,7 @@ import com.almonium.famsubbe.subscription.SubscriptionServiceService
 import com.almonium.famsubbe.subscription.SubscriptionServiceUpdateRequest
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
+
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.YearMonth
@@ -46,7 +46,7 @@ import kotlin.test.assertTrue
  * filled generated columns, a query that needs a flush, a lazy association
  * read after its session has closed. Needs Postgres; see AGENTS.md.
  */
-@SpringBootTest
+@ThrowawayDatabaseTest
 class WriteFlowSmokeTest {
     @Autowired lateinit var accounts: AccountRepository
     @Autowired lateinit var services: SubscriptionServiceService
