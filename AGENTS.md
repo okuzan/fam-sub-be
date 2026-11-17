@@ -268,5 +268,9 @@ the user explicitly asks for that, or when the work is blocked or waiting on a
 material decision from them — and in those cases say plainly that the changes
 are uncommitted and why.
 
-Committing is not deploying. This repository deploys on push to `main`, so
-pushing is a separate, explicit step the user asks for.
+Then push. The owner's standing instruction for this project is to commit
+**and push** every finished task, without asking. Pushing to `main` deploys to
+prod, so push only after the build and tests pass, and when a task spans both
+repositories push this one before `fam-sub-fe` unless the change needs the
+frontend first (see Authentication). Do not push work that is blocked or
+waiting on the owner's decision.
