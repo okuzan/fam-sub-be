@@ -83,8 +83,9 @@ class WriteFlowSmokeTest {
         val bob = subscribers.createSubscriber(SubscriberCreateRequest(name = "Боб", email = "bob-$tag@example.com"))
         subscribers.updateSubscriber(
             bob.id,
-            SubscriberUpdateRequest(name = "Боб", surname = "Smoke", email = "bob-$tag@example.com", balance = BigDecimal("50.00"))
+            SubscriberUpdateRequest(name = "Боб", surname = "Smoke", email = "bob-$tag@example.com")
         )
+        creditNotes.create(CreditNoteCreateRequest(bob.id, BigDecimal("50.00"), LocalDate.of(2026, 1, 3), "Smoke prepayment"), admin)
         assertTrue(subscribers.getAllSubscribers().any { it.id == alice.id })
 
         val membership = memberships.createMembership(MembershipCreateRequest(service.id, alice.id, month, null))
@@ -131,21 +132,19 @@ class WriteFlowSmokeTest {
 
         // Credit that covers a new invoice pays it at generation; its receipt goes with the drafts; undo refunds it.
         val february = month.plusMonths(1)
-        subscribers.updateSubscriber(
-            alice.id,
-            SubscriberUpdateRequest(name = "Аліса", surname = "S$tag", email = "alice-$tag@example.com", balance = BigDecimal("1000.00"))
-        )
+        creditNotes.create(CreditNoteCreateRequest(alice.id, BigDecimal("1000.00"), LocalDate.of(2026, 1, 4), "Smoke prepayment"), admin)
+        val aliceCredit = standing.getDetails(alice.id).balance
         charges.createCharge(ChargeCreateRequest(service.id, BigDecimal("310.00"), february, "smoke"))
         costs.calculateAndRecordCosts(february, february, admin)
         val run = invoices.generateInvoices(InvoiceGenerationRequest(february, february, alice.id), admin)
         assertEquals(1, run.paidFromBalanceCount)
         val covered = run.items.single()
-        assertEquals(0, BigDecimal("690.00").compareTo(standing.getDetails(alice.id).balance))
+        assertEquals(0, aliceCredit.subtract(BigDecimal("310.00")).compareTo(standing.getDetails(alice.id).balance))
         assertTrue(delivery.sendDrafts().items.any { it.invoiceId == covered.invoiceId })
 
         assertTrue(recovery.previewInvoiceRunUndo(run.runId).allowed)
         recovery.undoInvoiceRun(run.runId, admin, "smoke")
-        assertEquals(0, BigDecimal("1000.00").compareTo(standing.getDetails(alice.id).balance))
+        assertEquals(0, aliceCredit.compareTo(standing.getDetails(alice.id).balance))
 
         // A credit note for something Bob paid on the group's behalf: recorded, listed, undone.
         val note = creditNotes.create(
@@ -153,7 +152,7 @@ class WriteFlowSmokeTest {
             admin
         ).creditNote
         val bobBefore = standing.getDetails(bob.id).balance
-        assertEquals(note.id, creditNotes.getCreditNotes(bob.id).single().id)
+        assertTrue(creditNotes.getCreditNotes(bob.id).any { it.id == note.id })
         creditNotes.undo(note.id, admin)
         assertEquals(0, bobBefore.subtract(BigDecimal("75.50")).compareTo(standing.getDetails(bob.id).balance))
         assertTrue(creditNotes.getCreditNotes(null).single { it.id == note.id }.undoneAt != null)

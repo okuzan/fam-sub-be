@@ -53,7 +53,7 @@ class SubscriberService(
             name = request.name
             surname = request.surname.cleanSurname()
             email = request.email.lowercase().trim()
-            balance = request.balance
+            balance = BigDecimal.ZERO
             billingExempt = request.billingExempt
         }
         // Flushed so Hibernate fills createdAt/updatedAt: the bulk reads in
@@ -72,7 +72,6 @@ class SubscriberService(
             name = request.name
             surname = request.surname.cleanSurname()
             email = request.email.lowercase().trim()
-            balance = request.balance
             billingExempt = updatedBillingExempt
         }
 

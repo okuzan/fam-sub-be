@@ -122,8 +122,8 @@ amount, the day they paid and a required reason. It goes through
 `applyIncomingPayment` like a transfer, links the invoices it paid by
 `Invoice.paidByCreditNoteId`, and emails the subscriber after commit
 (`credit-note-email`). Undo mirrors `BankPaymentService.undo` and stamps
-`undoneAt` rather than deleting. Prefer it to editing `Subscriber.balance`,
-which records no reason. Billing-exempt subscribers are refused: they have no
+`undoneAt` rather than deleting. It is the only way to give someone credit
+by hand: the subscriber form no longer sets a balance. Billing-exempt subscribers are refused: they have no
 balance.
 
 Outgoing bills are read from the same statement. Every subscription is paid
@@ -224,9 +224,10 @@ deliberate, or they need their own commit and a decision from the owner.
   already ran `V1`–`V10`, and it applies out of order there
   (`spring.flyway.out-of-order: true`). Once every environment has V0 recorded,
   that flag can go.
-- `Subscriber.balance` is mutated by whole-object `PUT /admin/subscribers/{id}`
-  and there is no balance transaction table; the only history is
-  `admin_action.metadata_json`. Treat a balance edit as lossy.
+- `Subscriber.balance` cannot be set through the subscriber create/update
+  requests; credit moves only through credit notes, bank payments and
+  invoices, each of which records why. There is still no balance transaction
+  table: the history is spread over those rows and `admin_action`.
 - `Subscriber.billingExempt` covers family and dependants: they take part in
   cost splits, so everyone else's share stays correct, but their invoices are
   created already PAID and their balance is never touched. Enabling it also
