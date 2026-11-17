@@ -19,5 +19,7 @@ data class InvoiceWriteOffResult(
     val reissuedInvoice: InvoiceResponse?,
     val writtenOffAmount: BigDecimal,
     /** e.g. "Claude November 2026". */
-    val writtenOffLines: List<String>
+    val writtenOffLines: List<String>,
+    /** Credited back because the voided invoice had been paid; null otherwise. */
+    val balanceCredited: BigDecimal? = null
 )

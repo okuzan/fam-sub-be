@@ -216,6 +216,7 @@ class AdminInvoiceController(
                 "statusAfter" to voided.status,
                 "ledgerEntryIds" to request.ledgerEntryIds,
                 "writtenOffAmount" to result.writtenOffAmount,
+                "balanceCredited" to result.balanceCredited,
                 "reason" to request.reason,
                 "reissuedInvoiceId" to reissued?.id,
                 "reissuedTotalAmount" to reissued?.totalAmount,

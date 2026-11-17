@@ -621,11 +621,13 @@ class InvoiceService(
     }
 
     /**
-     * Takes some lines off an unpaid ledger invoice for good. The invoice is
-     * voided (kept in history, with the written-off lines still on it), and
-     * the remaining lines go onto a new invoice for the same period, dated
-     * today. The new one is a DRAFT, or PAID at once when credit covers it,
-     * like a generated invoice. Emailing it is up to the caller.
+     * Takes some lines off a ledger invoice for good. The invoice is voided
+     * (kept in history, with the written-off lines still on it), and the
+     * remaining lines go onto a new invoice for the same period, dated today.
+     * The new one is a DRAFT, or PAID at once when credit covers it, like a
+     * generated invoice. Voiding a PAID invoice credits what it took first
+     * (see [voidInvoice]), so that credit usually pays the reissue.
+     * Emailing it is up to the caller.
      */
     fun writeOffLines(
         invoiceId: UUID,
@@ -636,9 +638,7 @@ class InvoiceService(
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
         check(invoice.origin == InvoiceOrigin.SUBSCRIPTION_LEDGER) { "Only ledger invoices have lines to write off" }
-        check(invoice.status == InvoiceStatus.DRAFT || invoice.status == InvoiceStatus.SENT) {
-            "Only unpaid invoices can have lines written off; void a paid one instead"
-        }
+        check(invoice.status != InvoiceStatus.VOID) { "A voided invoice has no lines left to write off" }
         val normalizedReason = reason.trim()
         require(normalizedReason.isNotEmpty()) { "A reason is required to write off a line" }
         require(ledgerEntryIds.isNotEmpty()) { "Choose at least one line to write off" }
@@ -657,7 +657,8 @@ class InvoiceService(
 
         val removed = writtenOff.joinToString(", ") { it.lineLabel() }
         // Releases the remaining lines; the written-off ones stay on it.
-        val voided = voidInvoice(invoiceId, "$removed removed: $normalizedReason").invoice
+        val void = voidInvoice(invoiceId, "$removed removed: $normalizedReason")
+        val voided = void.invoice
 
         val subscriber = requireNotNull(invoice.subscriber)
         val reissued = remaining.takeIf { it.isNotEmpty() }?.let { lines ->
@@ -691,7 +692,8 @@ class InvoiceService(
             voidedInvoice = voided,
             reissuedInvoice = reissued,
             writtenOffAmount = writtenOff.map { requireNotNull(it.amount) }.fold(BigDecimal.ZERO, BigDecimal::add),
-            writtenOffLines = writtenOff.map { it.lineLabel() }
+            writtenOffLines = writtenOff.map { it.lineLabel() },
+            balanceCredited = void.balanceCredited
         )
     }
 

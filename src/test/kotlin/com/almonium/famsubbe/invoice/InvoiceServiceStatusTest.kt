@@ -216,15 +216,30 @@ class InvoiceServiceStatusTest {
     }
 
     @Test
-    fun `lines of a paid invoice or of another invoice cannot be written off`() {
+    fun `writing off every line of a paid invoice credits it back and bills nothing again`() {
         val paid = invoice(InvoiceStatus.PAID).apply { origin = InvoiceOrigin.SUBSCRIPTION_LEDGER }
+        val only = line(paid, "Claude", "100.00")
+        `when`(invoiceRepository.findById(paid.id!!)).thenReturn(Optional.of(paid))
+        `when`(ledgerEntryRepository.findByInvoice(paid)).thenReturn(listOf(only))
+
+        val result = service.writeOffLines(paid.id!!, setOf(only.id!!), "Split reconsidered", UUID.randomUUID())
+
+        assertEquals(BigDecimal("100.00"), result.balanceCredited)
+        assertEquals(BigDecimal("100.00"), subscriber.balance)
+        assertNull(result.reissuedInvoice)
+        assertEquals(paid, only.invoice)
+    }
+
+    @Test
+    fun `lines of a voided invoice or of another invoice cannot be written off`() {
+        val voided = invoice(InvoiceStatus.VOID).apply { origin = InvoiceOrigin.SUBSCRIPTION_LEDGER }
         val sent = invoice(InvoiceStatus.SENT).apply { origin = InvoiceOrigin.SUBSCRIPTION_LEDGER }
         val line = line(sent, "Claude", "100.00")
-        listOf(paid, sent).forEach { `when`(invoiceRepository.findById(it.id!!)).thenReturn(Optional.of(it)) }
+        listOf(voided, sent).forEach { `when`(invoiceRepository.findById(it.id!!)).thenReturn(Optional.of(it)) }
         `when`(ledgerEntryRepository.findByInvoice(sent)).thenReturn(listOf(line))
 
         assertFailsWith<IllegalStateException> {
-            service.writeOffLines(paid.id!!, setOf(line.id!!), "x", UUID.randomUUID())
+            service.writeOffLines(voided.id!!, setOf(line.id!!), "x", UUID.randomUUID())
         }
         assertFailsWith<IllegalArgumentException> {
             service.writeOffLines(sent.id!!, setOf(UUID.randomUUID()), "x", UUID.randomUUID())

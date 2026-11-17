@@ -241,10 +241,12 @@ deliberate, or they need their own commit and a decision from the owner.
   billing-exempt waiver) and keeps `paidByBankTransactionId`, so undoing
   that bank payment still debits it; only a SENT one gets the "don't pay
   it" cancellation email.
-- To drop one line from an unpaid invoice, `InvoiceService.writeOffLines`
+- To drop lines from an invoice for good, `InvoiceService.writeOffLines`
   marks that `LedgerEntry` written off (`writtenOffAt`, `writtenOffReason`),
   voids the invoice, and reissues the other lines as a new invoice dated
-  today. A written-off entry stays linked to the voided invoice, which is
+  today (a PAID one is credited back first, as in a void). Voiding a
+  ledger invoice in the admin asks whether its lines are billed again
+  (plain void) or written off (all lines through `writeOffLines`). A written-off entry stays linked to the voided invoice, which is
   what keeps it out of the uninvoiced pool; voiding never releases one.
   Nobody pays that amount, so its charge's ledger entries no longer sum to
   the charge total. That is the only way to redo part of an
