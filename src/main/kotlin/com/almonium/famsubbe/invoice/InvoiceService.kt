@@ -198,7 +198,8 @@ class InvoiceService(
             emailSent = emailSent,
             notes = notes,
             origin = origin.name,
-            paidByBankTransactionId = paidByBankTransactionId
+            paidByBankTransactionId = paidByBankTransactionId,
+            paidByCreditNoteId = paidByCreditNoteId
         )
 
     private fun initialInvoiceStatus(subscriber: Subscriber): InvoiceStatus =
@@ -222,7 +223,8 @@ class InvoiceService(
         // Voiding has to release the ledger entries, so it never goes through a
         // bare status write.
         if (status == InvoiceStatus.VOID) {
-            return InvoiceStatusChange(voidInvoice(invoiceId, null), balanceRefunded = null)
+            val voided = voidInvoice(invoiceId, null)
+            return InvoiceStatusChange(voided.invoice, balanceRefunded = voided.balanceCredited)
         }
 
         val invoice = invoiceRepository.findById(invoiceId)
@@ -244,7 +246,10 @@ class InvoiceService(
             invoice.balancePaidAmount = null
         }
 
-        if (status != InvoiceStatus.PAID) invoice.paidByBankTransactionId = null
+        if (status != InvoiceStatus.PAID) {
+            invoice.paidByBankTransactionId = null
+            invoice.paidByCreditNoteId = null
+        }
         invoice.transitionTo(status)
         val updatedInvoice = invoiceRepository.save(invoice)
 
@@ -445,11 +450,16 @@ class InvoiceService(
      * meant, then the rest oldest first, stopping at the first one the balance
      * cannot cover so newer invoices never jump older debt. Whatever is left
      * stays as credit.
+     *
+     * The money came either by [bankTransactionId] or by [creditNoteId], a
+     * subscriber paying something on the group's behalf; the invoices it pays
+     * are linked to it so it can be undone.
      */
     fun applyIncomingPayment(
         subscriber: Subscriber,
         amount: BigDecimal,
-        bankTransactionId: UUID? = null
+        bankTransactionId: UUID? = null,
+        creditNoteId: UUID? = null
     ): IncomingPaymentResult {
         require(amount > BigDecimal.ZERO) { "Payment amount must be positive" }
 
@@ -467,6 +477,7 @@ class InvoiceService(
         for (invoice in settlementOrder) {
             if ((subscriber.balance ?: BigDecimal.ZERO) < requireNotNull(invoice.totalAmount)) break
             invoice.paidByBankTransactionId = bankTransactionId
+            invoice.paidByCreditNoteId = creditNoteId
             settled += payInvoiceFromBalance(invoice)
         }
 
@@ -558,13 +569,31 @@ class InvoiceService(
         return updatedInvoice.toResponse()
     }
 
-    fun voidInvoice(invoiceId: UUID, reason: String?): InvoiceResponse {
+    /**
+     * Takes an invoice back: it stays in the list as VOID, stops counting toward
+     * the debt, and gives its ledger entries back to the uninvoiced pool.
+     *
+     * A PAID invoice can be voided too. The money it took is credited to the
+     * subscriber's balance, unless it was only a billing-exempt waiver, where
+     * no money ever moved. A bank payment that paid it stays linked, so undoing
+     * that payment later still debits the right amount.
+     */
+    fun voidInvoice(invoiceId: UUID, reason: String?): InvoiceVoidResult {
         val invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
 
         check(invoice.status != InvoiceStatus.VOID) { "Invoice is already voided" }
-        check(invoice.status != InvoiceStatus.PAID) { "PAID invoices cannot be voided" }
         val wasSent = invoice.status == InvoiceStatus.SENT
+        val subscriber = requireNotNull(invoice.subscriber)
+
+        val credit = requireNotNull(invoice.totalAmount).takeIf {
+            invoice.status == InvoiceStatus.PAID && !wasWaived(invoice, subscriber) && it.signum() > 0
+        }
+        if (credit != null) {
+            subscriber.balance = (subscriber.balance ?: BigDecimal.ZERO).add(credit)
+            subscriberRepository.save(subscriber)
+        }
+        invoice.balancePaidAmount = null
 
         val normalizedReason = reason?.trim()?.takeIf { it.isNotEmpty() }
         if (normalizedReason != null) {
@@ -582,9 +611,15 @@ class InvoiceService(
             ledgerEntryRepository.saveAll(releasedEntries)
         }
 
+        // The cancellation email says "don't pay it"; a paid invoice's credit
+        // shows up in the next situation email instead.
         if (wasSent) events.publishEvent(SentInvoiceVoidedEvent(invoiceId))
-        return invoiceRepository.save(invoice).toResponse()
+        return InvoiceVoidResult(invoiceRepository.save(invoice).toResponse(), balanceCredited = credit)
     }
+
+    /** A billing-exempt subscriber's invoice is PAID by waiver: no money to give back. */
+    private fun wasWaived(invoice: Invoice, subscriber: Subscriber): Boolean =
+        subscriber.billingExempt || invoice.notes.orEmpty().lines().any { it.contains(BILLING_EXEMPT_NOTE) }
 
     fun deleteInvoice(invoiceId: UUID): String {
         val invoice = invoiceRepository.findById(invoiceId)

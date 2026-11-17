@@ -345,10 +345,12 @@ class AdminInvoiceController(
         @PathVariable invoiceId: UUID,
         @RequestBody(required = false) request: InvoiceVoidRequest?,
         authentication: Authentication
-    ): ResponseEntity<InvoiceResponse> {
+    ): ResponseEntity<InvoiceVoidResult> {
         val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
         val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
-        val updatedInvoice = invoiceService.voidInvoice(invoiceId, request?.reason)
+        val result = invoiceService.voidInvoice(invoiceId, request?.reason)
+        val updatedInvoice = result.invoice
+        val creditSummary = result.balanceCredited?.let { " and credited $it to balance" }.orEmpty()
         adminAuditLogService.log(
             createdByAccountId = performedByAccountId,
             actionType = AdminActionType.INVOICE_VOIDED,
@@ -357,15 +359,16 @@ class AdminInvoiceController(
             subscriberId = updatedInvoice.subscriberId,
             fromMonth = updatedInvoice.fromMonth,
             toMonth = updatedInvoice.toMonth,
-            summary = "Voided invoice $invoiceId",
+            summary = "Voided invoice $invoiceId$creditSummary",
             metadata = mapOf(
                 "origin" to updatedInvoice.origin,
                 "statusBefore" to invoiceBefore.status,
                 "statusAfter" to updatedInvoice.status,
                 "totalAmount" to updatedInvoice.totalAmount,
+                "balanceCredited" to result.balanceCredited,
                 "reason" to request?.reason
             )
         )
-        return ResponseEntity.ok(updatedInvoice)
+        return ResponseEntity.ok(result)
     }
 }

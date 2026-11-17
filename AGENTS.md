@@ -225,7 +225,11 @@ deliberate, or they need their own commit and a decision from the owner.
 - An invoice can reach VOID only through `voidInvoice`, including when the
   status endpoint is asked for VOID, and it can never leave VOID. Voiding a
   ledger invoice releases its ledger entries back to the uninvoiced
-  pool so the cost can be regenerated. That is the only way to redo part of an
+  pool so the cost can be regenerated. Any status can be voided: a PAID
+  invoice credits its amount to the subscriber's balance (not when it was a
+  billing-exempt waiver) and keeps `paidByBankTransactionId`, so undoing
+  that bank payment still debits it; only a SENT one gets the "don't pay
+  it" cancellation email. That is the only way to redo part of an
   invoice run after it has gone out — `RecoveryService.undoInvoiceRun` requires
   every invoice in the run to still be DRAFT.
 

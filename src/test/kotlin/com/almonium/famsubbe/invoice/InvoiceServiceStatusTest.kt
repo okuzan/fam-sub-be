@@ -111,6 +111,65 @@ class InvoiceServiceStatusTest {
         assertEquals(BigDecimal("20.00"), subscriber.balance)
     }
 
+    @Test
+    fun `voiding a paid invoice credits its amount to the balance and releases the ledger`() {
+        subscriber.balance = BigDecimal("20.00")
+        val bankTransactionId = UUID.randomUUID()
+        val invoice = invoice(InvoiceStatus.PAID).apply {
+            sentAt = Instant.now()
+            balancePaidAmount = BigDecimal("100.00")
+            paidByBankTransactionId = bankTransactionId
+        }
+        val entry = LedgerEntry().apply { this.invoice = invoice }
+        `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
+        `when`(ledgerEntryRepository.findByInvoice(invoice)).thenReturn(listOf(entry))
+
+        val result = service.voidInvoice(invoice.id!!, "Charged twice")
+
+        assertEquals(BigDecimal("100.00"), result.balanceCredited)
+        assertEquals(BigDecimal("120.00"), subscriber.balance)
+        assertEquals(InvoiceStatus.VOID, invoice.status)
+        assertNull(invoice.balancePaidAmount)
+        assertNull(entry.invoice)
+        // Kept so undoing that bank payment still debits what it credited.
+        assertEquals(bankTransactionId, invoice.paidByBankTransactionId)
+        // "Please don't pay it" would be wrong for an invoice already paid.
+        assertEquals(emptyList(), events)
+    }
+
+    @Test
+    fun `voiding a paid invoice of a billing-exempt subscriber credits nothing`() {
+        subscriber.billingExempt = true
+        val invoice = invoice(InvoiceStatus.PAID)
+        `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
+
+        val result = service.voidInvoice(invoice.id!!, null)
+
+        assertNull(result.balanceCredited)
+        assertEquals(BigDecimal.ZERO, subscriber.balance)
+        assertEquals(InvoiceStatus.VOID, invoice.status)
+    }
+
+    @Test
+    fun `voiding a waived invoice credits nothing even after the exemption ends`() {
+        val invoice = invoice(InvoiceStatus.PAID).apply { notes = InvoiceService.BILLING_EXEMPT_NOTE }
+        `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
+
+        assertNull(service.voidInvoice(invoice.id!!, null).balanceCredited)
+        assertEquals(BigDecimal.ZERO, subscriber.balance)
+    }
+
+    @Test
+    fun `setting VOID on a paid invoice through the status endpoint reports the credit`() {
+        val invoice = invoice(InvoiceStatus.PAID)
+        `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
+
+        val change = service.updateStatus(invoice.id!!, InvoiceStatus.VOID)
+
+        assertEquals(BigDecimal("100.00"), change.balanceRefunded)
+        assertEquals(BigDecimal("100.00"), subscriber.balance)
+    }
+
     private fun invoice(status: InvoiceStatus) = Invoice().apply {
         id = UUID.randomUUID()
         subscriber = this@InvoiceServiceStatusTest.subscriber
