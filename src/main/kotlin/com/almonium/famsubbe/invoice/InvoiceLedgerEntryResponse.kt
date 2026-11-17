@@ -16,5 +16,8 @@ data class InvoiceLedgerEntryResponse(
     /** This subscriber's weight out of [totalWeight]; equal to 1 of participantCount for an even split. */
     val shareWeight: Int,
     val totalWeight: Int,
-    val calculatedAt: Instant
+    val calculatedAt: Instant,
+    /** Set when this line was written off: the invoice was voided and reissued without it. */
+    val writtenOffAt: Instant? = null,
+    val writtenOffReason: String? = null
 )

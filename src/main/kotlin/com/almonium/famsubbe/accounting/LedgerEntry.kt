@@ -82,4 +82,11 @@ class LedgerEntry {
 
     @Column(name = "notes", updatable = false)
     var notes: String? = null
+
+    /** Set when the admin took this line off its invoice for good: nobody pays it. */
+    @Column(name = "written_off_at")
+    var writtenOffAt: Instant? = null
+
+    @Column(name = "written_off_reason")
+    var writtenOffReason: String? = null
 }

@@ -56,6 +56,20 @@ class InvoiceDeliveryService(
     fun duplicate(invoiceId: UUID, request: InvoiceDuplicateRequest, performedByAccountId: UUID): InvoiceResponse =
         deliverIfRequested(invoiceService.duplicateInvoice(invoiceId, request, performedByAccountId), request.sendEmail)
 
+    /**
+     * Writes lines off an invoice ([InvoiceService.writeOffLines]). When the
+     * original had been emailed, the subscriber gets the cancellation email
+     * (on commit) and then the reissued invoice; a draft stays quiet.
+     */
+    fun writeOff(invoiceId: UUID, request: InvoiceWriteOffRequest, performedByAccountId: UUID): InvoiceWriteOffResult {
+        val wasSent = invoiceService.getInvoice(invoiceId).invoice.status == InvoiceStatus.SENT.name
+        val result = invoiceService.writeOffLines(invoiceId, request.ledgerEntryIds, request.reason, performedByAccountId)
+        val reissued = result.reissuedInvoice
+        if (!wasSent || reissued == null || reissued.notes == InvoiceService.BILLING_EXEMPT_NOTE) return result
+        deliverQuietly(reissued.id)
+        return result.copy(reissuedInvoice = invoiceService.getInvoice(reissued.id).invoice)
+    }
+
     /** Emails one invoice. True when the mail went out (or would have, in dry-run). */
     fun send(invoiceId: UUID): Boolean = deliver(invoiceId).sent
 

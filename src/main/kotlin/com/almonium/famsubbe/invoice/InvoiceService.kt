@@ -216,7 +216,9 @@ class InvoiceService(
             participantCount = participantCount,
             shareWeight = shareWeight,
             totalWeight = totalWeight,
-            calculatedAt = requireNotNull(calculatedAt)
+            calculatedAt = requireNotNull(calculatedAt),
+            writtenOffAt = writtenOffAt,
+            writtenOffReason = writtenOffReason
         )
 
     fun updateStatus(invoiceId: UUID, status: InvoiceStatus): InvoiceStatusChange {
@@ -605,7 +607,8 @@ class InvoiceService(
         // Release the ledger entries back into the uninvoiced pool. Without this a
         // voided invoice keeps its entries forever and the cost silently
         // disappears: generation only ever picks up entries with no invoice.
-        val releasedEntries = ledgerEntryRepository.findByInvoice(invoice)
+        // A written-off line stays on the voided invoice: nobody is to pay it.
+        val releasedEntries = ledgerEntryRepository.findByInvoice(invoice).filter { it.writtenOffAt == null }
         if (releasedEntries.isNotEmpty()) {
             releasedEntries.forEach { it.invoice = null }
             ledgerEntryRepository.saveAll(releasedEntries)
@@ -616,6 +619,84 @@ class InvoiceService(
         if (wasSent) events.publishEvent(SentInvoiceVoidedEvent(invoiceId))
         return InvoiceVoidResult(invoiceRepository.save(invoice).toResponse(), balanceCredited = credit)
     }
+
+    /**
+     * Takes some lines off an unpaid ledger invoice for good. The invoice is
+     * voided (kept in history, with the written-off lines still on it), and
+     * the remaining lines go onto a new invoice for the same period, dated
+     * today. The new one is a DRAFT, or PAID at once when credit covers it,
+     * like a generated invoice. Emailing it is up to the caller.
+     */
+    fun writeOffLines(
+        invoiceId: UUID,
+        ledgerEntryIds: Set<UUID>,
+        reason: String,
+        performedByAccountId: UUID
+    ): InvoiceWriteOffResult {
+        val invoice = invoiceRepository.findById(invoiceId)
+            .orElseThrow { IllegalArgumentException("Invoice not found: $invoiceId") }
+        check(invoice.origin == InvoiceOrigin.SUBSCRIPTION_LEDGER) { "Only ledger invoices have lines to write off" }
+        check(invoice.status == InvoiceStatus.DRAFT || invoice.status == InvoiceStatus.SENT) {
+            "Only unpaid invoices can have lines written off; void a paid one instead"
+        }
+        val normalizedReason = reason.trim()
+        require(normalizedReason.isNotEmpty()) { "A reason is required to write off a line" }
+        require(ledgerEntryIds.isNotEmpty()) { "Choose at least one line to write off" }
+
+        val entries = ledgerEntryRepository.findByInvoice(invoice)
+        val (writtenOff, remaining) = entries.partition { it.id in ledgerEntryIds }
+        val unknown = ledgerEntryIds - writtenOff.mapNotNull { it.id }.toSet()
+        require(unknown.isEmpty()) { "Not lines of this invoice: ${unknown.joinToString()}" }
+
+        val now = Instant.now()
+        writtenOff.forEach {
+            it.writtenOffAt = now
+            it.writtenOffReason = normalizedReason
+        }
+        ledgerEntryRepository.saveAll(writtenOff)
+
+        val removed = writtenOff.joinToString(", ") { it.lineLabel() }
+        // Releases the remaining lines; the written-off ones stay on it.
+        val voided = voidInvoice(invoiceId, "$removed removed: $normalizedReason").invoice
+
+        val subscriber = requireNotNull(invoice.subscriber)
+        val reissued = remaining.takeIf { it.isNotEmpty() }?.let { lines ->
+            val total = lines.map { requireNotNull(it.amount) }.fold(BigDecimal.ZERO, BigDecimal::add)
+            val exempt = subscriber.billingExempt
+            val newInvoice = invoiceRepository.save(
+                Invoice().apply {
+                    this.subscriber = subscriber
+                    this.fromMonth = invoice.fromMonth
+                    this.toMonth = invoice.toMonth
+                    this.invoiceDate = BillingTime.dateOf(now)
+                    this.totalAmount = total
+                    this.status = initialInvoiceStatus(subscriber)
+                    this.createdAt = now
+                    this.statusChangedAt = now
+                    this.createdByAccountId = performedByAccountId
+                    this.notes = BILLING_EXEMPT_NOTE.takeIf { exempt }
+                    this.origin = InvoiceOrigin.SUBSCRIPTION_LEDGER
+                }
+            )
+            lines.forEach { it.invoice = newInvoice }
+            ledgerEntryRepository.saveAll(lines)
+            if (!exempt && (subscriber.balance ?: BigDecimal.ZERO) >= total) {
+                newInvoice.notes = PAID_FROM_CREDIT_NOTE
+                payInvoiceFromBalance(newInvoice)
+            }
+            newInvoice.toResponse()
+        }
+
+        return InvoiceWriteOffResult(
+            voidedInvoice = voided,
+            reissuedInvoice = reissued,
+            writtenOffAmount = writtenOff.map { requireNotNull(it.amount) }.fold(BigDecimal.ZERO, BigDecimal::add),
+            writtenOffLines = writtenOff.map { it.lineLabel() }
+        )
+    }
+
+    private fun LedgerEntry.lineLabel(): String =
+        "${subscriptionService?.name.orEmpty()} ${EmailFormat.month(requireNotNull(recordedMonth))}".trim()
 
     /** A billing-exempt subscriber's invoice is PAID by waiver: no money to give back. */
     private fun wasWaived(invoice: Invoice, subscriber: Subscriber): Boolean =

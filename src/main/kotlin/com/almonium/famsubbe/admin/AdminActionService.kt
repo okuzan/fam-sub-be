@@ -48,7 +48,8 @@ class AdminActionService(
             AdminActionType.INVOICE_STATUS_UPDATED,
             AdminActionType.INVOICE_PAID_FROM_BALANCE,
             AdminActionType.INVOICE_EMAIL_SENT,
-            AdminActionType.INVOICE_VOIDED
+            AdminActionType.INVOICE_VOIDED,
+            AdminActionType.INVOICE_LINES_WRITTEN_OFF
         )
 
         return adminActionRepository

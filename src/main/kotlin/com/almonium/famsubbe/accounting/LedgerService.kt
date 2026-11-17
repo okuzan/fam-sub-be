@@ -69,7 +69,9 @@ class LedgerService(
         generatedByAccountId = calculationBatch!!.createdByAccountId!!,
         generatedByAccountName = calculationBatch!!.createdByAccount?.email,
         invoiceId = invoice?.id,
-        notes = notes
+        notes = notes,
+        writtenOffAt = writtenOffAt,
+        writtenOffReason = writtenOffReason
     )
 
     private fun CostCalculationBatch.toLedgerCalculationBatchResponse(): LedgerCalculationBatchResponse {

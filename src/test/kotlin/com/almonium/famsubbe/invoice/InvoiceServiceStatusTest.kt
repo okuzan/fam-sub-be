@@ -4,6 +4,7 @@ import com.almonium.famsubbe.accounting.LedgerEntry
 import com.almonium.famsubbe.accounting.LedgerEntryRepository
 import com.almonium.famsubbe.subscriber.Subscriber
 import com.almonium.famsubbe.subscriber.SubscriberRepository
+import com.almonium.famsubbe.subscription.SubscriptionService
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
@@ -168,6 +169,77 @@ class InvoiceServiceStatusTest {
 
         assertEquals(BigDecimal("100.00"), change.balanceRefunded)
         assertEquals(BigDecimal("100.00"), subscriber.balance)
+    }
+
+    @Test
+    fun `writing off a line voids the invoice and reissues the rest`() {
+        val invoice = invoice(InvoiceStatus.SENT).apply {
+            origin = InvoiceOrigin.SUBSCRIPTION_LEDGER
+            totalAmount = BigDecimal("2185.43")
+        }
+        val claude = line(invoice, "Claude", "1830.00")
+        val chatGpt = line(invoice, "ChatGPT", "230.30")
+        val youTube = line(invoice, "YouTube", "125.13")
+        `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
+        `when`(ledgerEntryRepository.findByInvoice(invoice)).thenReturn(listOf(claude, chatGpt, youTube))
+
+        val result = service.writeOffLines(invoice.id!!, setOf(claude.id!!), "Left Claude in October", UUID.randomUUID())
+
+        assertEquals(InvoiceStatus.VOID, invoice.status)
+        assertEquals("Claude November 2026 removed: Left Claude in October", voidReason(invoice))
+        // The written-off line stays on the voided invoice, so it is never billed again.
+        assertEquals(invoice, claude.invoice)
+        assertEquals("Left Claude in October", claude.writtenOffReason)
+        val reissued = requireNotNull(result.reissuedInvoice)
+        assertEquals(BigDecimal("355.43"), reissued.totalAmount)
+        assertEquals(InvoiceStatus.DRAFT.name, reissued.status)
+        assertEquals(reissued.id, chatGpt.invoice?.id)
+        assertEquals(reissued.id, youTube.invoice?.id)
+        assertNull(chatGpt.writtenOffAt)
+        assertEquals(BigDecimal("1830.00"), result.writtenOffAmount)
+        assertEquals(listOf<Any>(SentInvoiceVoidedEvent(invoice.id!!)), events)
+    }
+
+    @Test
+    fun `writing off every line only voids the invoice`() {
+        val invoice = invoice(InvoiceStatus.DRAFT).apply { origin = InvoiceOrigin.SUBSCRIPTION_LEDGER }
+        val only = line(invoice, "Claude", "100.00")
+        `when`(invoiceRepository.findById(invoice.id!!)).thenReturn(Optional.of(invoice))
+        `when`(ledgerEntryRepository.findByInvoice(invoice)).thenReturn(listOf(only))
+
+        val result = service.writeOffLines(invoice.id!!, setOf(only.id!!), "Not his", UUID.randomUUID())
+
+        assertNull(result.reissuedInvoice)
+        assertEquals(InvoiceStatus.VOID, invoice.status)
+        assertEquals(invoice, only.invoice)
+        assertEquals(emptyList(), events)
+    }
+
+    @Test
+    fun `lines of a paid invoice or of another invoice cannot be written off`() {
+        val paid = invoice(InvoiceStatus.PAID).apply { origin = InvoiceOrigin.SUBSCRIPTION_LEDGER }
+        val sent = invoice(InvoiceStatus.SENT).apply { origin = InvoiceOrigin.SUBSCRIPTION_LEDGER }
+        val line = line(sent, "Claude", "100.00")
+        listOf(paid, sent).forEach { `when`(invoiceRepository.findById(it.id!!)).thenReturn(Optional.of(it)) }
+        `when`(ledgerEntryRepository.findByInvoice(sent)).thenReturn(listOf(line))
+
+        assertFailsWith<IllegalStateException> {
+            service.writeOffLines(paid.id!!, setOf(line.id!!), "x", UUID.randomUUID())
+        }
+        assertFailsWith<IllegalArgumentException> {
+            service.writeOffLines(sent.id!!, setOf(UUID.randomUUID()), "x", UUID.randomUUID())
+        }
+        assertEquals(InvoiceStatus.SENT, sent.status)
+        assertNull(line.writtenOffAt)
+    }
+
+    private fun line(invoice: Invoice, serviceName: String, amount: String) = LedgerEntry().apply {
+        id = UUID.randomUUID()
+        this.invoice = invoice
+        subscriber = this@InvoiceServiceStatusTest.subscriber
+        subscriptionService = SubscriptionService().apply { name = serviceName }
+        recordedMonth = YearMonth.of(2026, 11)
+        this.amount = BigDecimal(amount)
     }
 
     private fun invoice(status: InvoiceStatus) = Invoice().apply {

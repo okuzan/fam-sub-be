@@ -189,6 +189,42 @@ class AdminInvoiceController(
         return ResponseEntity.ok(invoice)
     }
 
+    @PostMapping("/{invoiceId}/write-off")
+    fun writeOffLines(
+        @PathVariable invoiceId: UUID,
+        @Valid @RequestBody request: InvoiceWriteOffRequest,
+        authentication: Authentication
+    ): ResponseEntity<InvoiceWriteOffResult> {
+        val performedByAccountId = AuthenticationUtil.resolveAccountId(authentication, accountService)
+        val invoiceBefore = invoiceService.getInvoice(invoiceId).invoice
+        val result = invoiceDeliveryService.writeOff(invoiceId, request, performedByAccountId)
+        val voided = result.voidedInvoice
+        val reissued = result.reissuedInvoice
+        adminAuditLogService.log(
+            createdByAccountId = performedByAccountId,
+            actionType = AdminActionType.INVOICE_LINES_WRITTEN_OFF,
+            targetType = AdminActionTargetType.INVOICE,
+            targetId = invoiceId,
+            subscriberId = voided.subscriberId,
+            fromMonth = voided.fromMonth,
+            toMonth = voided.toMonth,
+            summary = "Wrote off ${result.writtenOffLines.joinToString()} (${result.writtenOffAmount}) " +
+                "from invoice $invoiceId for ${voided.subscriberName}" +
+                (reissued?.let { " and reissued it as ${it.id} (${it.totalAmount})" } ?: " and voided it"),
+            metadata = mapOf(
+                "statusBefore" to invoiceBefore.status,
+                "statusAfter" to voided.status,
+                "ledgerEntryIds" to request.ledgerEntryIds,
+                "writtenOffAmount" to result.writtenOffAmount,
+                "reason" to request.reason,
+                "reissuedInvoiceId" to reissued?.id,
+                "reissuedTotalAmount" to reissued?.totalAmount,
+                "reissuedStatus" to reissued?.status
+            )
+        )
+        return ResponseEntity.ok(result)
+    }
+
     @PostMapping("/{invoiceId}/pay-from-balance")
     fun payFromBalance(
         @PathVariable invoiceId: UUID,

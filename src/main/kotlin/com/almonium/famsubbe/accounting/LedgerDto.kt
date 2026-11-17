@@ -27,7 +27,10 @@ data class LedgerEntryResponse(
     val generatedByAccountId: UUID,
     val generatedByAccountName: String?,
     val invoiceId: UUID?,
-    val notes: String?
+    val notes: String?,
+    /** Set when the line was taken off its invoice for good; it stays on the voided invoice. */
+    val writtenOffAt: Instant? = null,
+    val writtenOffReason: String? = null
 )
 
 data class LedgerEntryFilterRequest(

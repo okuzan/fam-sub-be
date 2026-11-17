@@ -239,7 +239,14 @@ deliberate, or they need their own commit and a decision from the owner.
   invoice credits its amount to the subscriber's balance (not when it was a
   billing-exempt waiver) and keeps `paidByBankTransactionId`, so undoing
   that bank payment still debits it; only a SENT one gets the "don't pay
-  it" cancellation email. That is the only way to redo part of an
+  it" cancellation email.
+- To drop one line from an unpaid invoice, `InvoiceService.writeOffLines`
+  marks that `LedgerEntry` written off (`writtenOffAt`, `writtenOffReason`),
+  voids the invoice, and reissues the other lines as a new invoice dated
+  today. A written-off entry stays linked to the voided invoice, which is
+  what keeps it out of the uninvoiced pool; voiding never releases one.
+  Nobody pays that amount, so its charge's ledger entries no longer sum to
+  the charge total. That is the only way to redo part of an
   invoice run after it has gone out — `RecoveryService.undoInvoiceRun` requires
   every invoice in the run to still be DRAFT.
 
