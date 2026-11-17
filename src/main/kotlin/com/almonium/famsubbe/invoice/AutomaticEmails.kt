@@ -3,6 +3,7 @@ package com.almonium.famsubbe.invoice
 import com.almonium.famsubbe.payment.PaymentDetails
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 /** An invoice the subscriber had already been emailed was voided; they get told once the void commits. */
@@ -21,6 +22,27 @@ data class PaymentReceivedEmail(
     /** Invoices still unpaid after it, oldest first. */
     val stillOpen: List<EmailInvoiceLine>,
     /** Credit the subscriber already held that went into the invoices this transfer paid. */
+    val creditUsed: BigDecimal,
+    val balanceAfter: BigDecimal,
+    val toPay: BigDecimal,
+    val payment: PaymentDetails
+)
+
+/**
+ * What the credit note email says: the subscriber paid [amount] on the group's
+ * behalf on [occurredOn] for [reason], and it is now credit that paid these.
+ */
+data class CreditNoteEmail(
+    val toEmail: String,
+    val name: String,
+    val amount: BigDecimal,
+    val occurredOn: LocalDate,
+    val reason: String,
+    /** The invoices this credit paid, oldest first. */
+    val settled: List<EmailInvoiceLine>,
+    /** Invoices still unpaid after it, oldest first. */
+    val stillOpen: List<EmailInvoiceLine>,
+    /** Credit the subscriber already held that went into the invoices this paid. */
     val creditUsed: BigDecimal,
     val balanceAfter: BigDecimal,
     val toPay: BigDecimal,

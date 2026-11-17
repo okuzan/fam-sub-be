@@ -284,6 +284,67 @@ class DefaultInvoiceEmailService(
         }
     }
 
+    override fun sendCreditNoteEmail(email: CreditNoteEmail): Boolean {
+        return try {
+            val credited = EmailFormat.money(email.amount)
+            val settledTitles = EmailFormat.joinNatural(email.settled.map { it.title })
+            val settledCount = email.settled.size
+            val openCount = email.stillOpen.size
+            val oldest = email.stillOpen.firstOrNull()
+            // The reason has its own box in the email, so the lead only says what happened to the money.
+            val what = "You paid $credited on ${EmailFormat.date(email.occurredOn)}, so it’s now credit on your FamSub account."
+
+            val (subject, preheader, after) = when {
+                settledCount > 0 && openCount == 0 -> Triple(
+                    "Thanks for covering it: $credited credited, all paid up",
+                    "It settled $settledTitles. Nothing left to pay.",
+                    "It settled " + when (settledCount) {
+                        1 -> "your $settledTitles invoice"
+                        2 -> "both of your open invoices"
+                        else -> "all $settledCount of your open invoices"
+                    } + ", so there’s nothing left to pay."
+                )
+                settledCount > 0 -> Triple(
+                    "Thanks for covering it: $credited credited",
+                    "It settled $settledTitles. ${EmailFormat.money(email.toPay)} is still open.",
+                    "It settled " + (if (settledCount == 1) "your $settledTitles invoice" else "$settledCount of your invoices") +
+                        ". " + if (openCount == 1) "${oldest!!.title} is still open." else "$openCount invoices are still open."
+                )
+                oldest != null -> Triple(
+                    "Thanks for covering it: $credited credited",
+                    "It’s held as credit toward your ${oldest.title} invoice.",
+                    "It’s a bit less than your oldest invoice, so it’s held as credit toward ${oldest.title} for now."
+                )
+                else -> Triple(
+                    "Thanks for covering it: $credited credited",
+                    "You had nothing open, so it’s held as credit for your next invoice.",
+                    "You had nothing open, so it’s held as credit for your next invoice."
+                )
+            }
+
+            val context = emailContext(subject, preheader, webDomain)
+            context.setVariable("email", email)
+            context.setVariable("lead", "$what $after")
+            context.setVariable(
+                "badge", when {
+                    settledCount > 0 && openCount == 0 -> "ALL PAID"
+                    settledCount == 0 -> "HELD AS CREDIT"
+                    else -> null
+                }
+            )
+            context.setVariable("heldFor", oldest?.let { "Goes toward ${it.title} first" } ?: "Goes toward your next invoice")
+            context.setVariable("toPay", email.toPay)
+            context.setVariable("payment", email.payment)
+            context.setVariable("cabinetUrl", cabinetUrl)
+
+            val htmlContent = templateEngine.process("credit-note-email", context)
+            sendEmail(email.toEmail, email.name, subject, htmlContent)
+        } catch (e: Exception) {
+            log.error("Failed to send credit note email to {}", email.toEmail, e)
+            false
+        }
+    }
+
     override fun sendInvoiceCancelledEmail(invoice: Invoice, totalAmountOwed: BigDecimal): Boolean {
         val subscriber = invoice.subscriber ?: return false
         val toEmail = subscriber.email ?: return false

@@ -15,5 +15,6 @@ enum class AdminActionTargetType {
     BANK_TRANSACTION,
     BANK_SENDER,
     BANK_DEBIT,
-    BANK_MERCHANT_RULE
+    BANK_MERCHANT_RULE,
+    CREDIT_NOTE
 }

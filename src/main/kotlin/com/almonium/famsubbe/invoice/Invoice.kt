@@ -86,6 +86,10 @@ class Invoice {
     @Column(name = "paid_by_bank_transaction_id")
     var paidByBankTransactionId: UUID? = null
 
+    /** The credit note that settled this invoice; cleared if it leaves PAID. */
+    @Column(name = "paid_by_credit_note_id")
+    var paidByCreditNoteId: UUID? = null
+
     @Enumerated(EnumType.STRING)
     @Column(name = "origin", nullable = false)
     var origin: InvoiceOrigin = InvoiceOrigin.SUBSCRIPTION_LEDGER

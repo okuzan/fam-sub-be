@@ -13,6 +13,8 @@ import com.almonium.famsubbe.accounting.ChargeUpdateRequest
 import com.almonium.famsubbe.accounting.CostCalculationService
 import com.almonium.famsubbe.accounting.LedgerService
 import com.almonium.famsubbe.accounting.RecoveryService
+import com.almonium.famsubbe.credit.CreditNoteCreateRequest
+import com.almonium.famsubbe.credit.CreditNoteService
 import com.almonium.famsubbe.finance.FinanceSummaryService
 import com.almonium.famsubbe.invoice.InvoiceDeliveryService
 import com.almonium.famsubbe.invoice.InvoiceGenerationRequest
@@ -61,6 +63,7 @@ class WriteFlowSmokeTest {
     @Autowired lateinit var bank: BankPaymentService
     @Autowired lateinit var delivery: InvoiceDeliveryService
     @Autowired lateinit var recovery: RecoveryService
+    @Autowired lateinit var creditNotes: CreditNoteService
 
     @Test
     fun `create, edit, split, invoice and pay end to end`() {
@@ -143,5 +146,16 @@ class WriteFlowSmokeTest {
         assertTrue(recovery.previewInvoiceRunUndo(run.runId).allowed)
         recovery.undoInvoiceRun(run.runId, admin, "smoke")
         assertEquals(0, BigDecimal("1000.00").compareTo(standing.getDetails(alice.id).balance))
+
+        // A credit note for something Bob paid on the group's behalf: recorded, listed, undone.
+        val note = creditNotes.create(
+            CreditNoteCreateRequest(bob.id, BigDecimal("75.50"), LocalDate.of(2026, 1, 20), "Paid for the admin's dinner"),
+            admin
+        ).creditNote
+        val bobBefore = standing.getDetails(bob.id).balance
+        assertEquals(note.id, creditNotes.getCreditNotes(bob.id).single().id)
+        creditNotes.undo(note.id, admin)
+        assertEquals(0, bobBefore.subtract(BigDecimal("75.50")).compareTo(standing.getDetails(bob.id).balance))
+        assertTrue(creditNotes.getCreditNotes(null).single { it.id == note.id }.undoneAt != null)
     }
 }

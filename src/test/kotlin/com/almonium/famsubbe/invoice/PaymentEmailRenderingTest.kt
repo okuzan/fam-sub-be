@@ -141,6 +141,28 @@ class PaymentEmailRenderingTest {
     }
 
     @Test
+    fun `a credit note email shows what they paid for and what it settled`() {
+        val payment = paymentDetailsService.forSubscriber(subscriber, BigDecimal("372.00"))
+        val aug = EmailInvoiceLine("Aug 2026", "Netflix Premium, Spotify Family", BigDecimal("186.00"))
+        val sepOct = EmailInvoiceLine("Sep–Oct 2026", "Netflix Premium, Spotify Family · sent 1 Nov", BigDecimal("372.00"))
+        fun note(settled: List<EmailInvoiceLine>, open: List<EmailInvoiceLine>, balance: String, toPay: String) =
+            CreditNoteEmail(
+                "polina@example.com", "Поліна", BigDecimal("200.00"), LocalDate.of(2026, 11, 14),
+                "Paid for Oleh's dinner at Kanapa", settled, open, BigDecimal.ZERO, BigDecimal(balance), BigDecimal(toPay), payment
+            )
+
+        assertTrue(emailService.sendCreditNoteEmail(note(listOf(aug), emptyList(), "14.00", "0")))
+        emailService.sendCreditNoteEmail(note(emptyList(), listOf(sepOct), "200.00", "172.00"))
+
+        assertContains(rendered[0], "Paid for Oleh&#39;s dinner at Kanapa")
+        assertContains(rendered[0], "You paid 200,00\u00a0₴ on 14 Nov 2026")
+        assertContains(rendered[0], "nothing left to pay")
+        assertFalse("/pay/" in rendered[0])
+        assertContains(rendered[1], "held as credit toward Sep–Oct 2026")
+        assertContains(rendered[1], "https://famsub.example/pay/token123")
+    }
+
+    @Test
     fun `a cancelled invoice email shows the reason and the new total`() {
         val voided = invoice(InvoiceStatus.VOID).apply { notes = "Voided: The Netflix price was wrong" }
 

@@ -43,5 +43,7 @@ internal class FakeInvoiceEmailService : InvoiceEmailService {
 
     override fun sendPaymentReceivedEmail(email: PaymentReceivedEmail) = succeeds
 
+    override fun sendCreditNoteEmail(email: CreditNoteEmail) = succeeds
+
     override fun sendInvoiceCancelledEmail(invoice: Invoice, totalAmountOwed: BigDecimal) = succeeds
 }

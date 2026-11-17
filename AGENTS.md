@@ -116,6 +116,16 @@ transfer to review. It refuses when the credit has since paid something else. A 
 already recorded by hand is filed with `markAlreadyRecorded`: IGNORED, but
 linked to the subscriber, with their balance untouched.
 
+Money a subscriber spent on the group's or the admin's behalf is a
+`CreditNote` (`/admin/credit-notes`): an invoice the other way round, with an
+amount, the day they paid and a required reason. It goes through
+`applyIncomingPayment` like a transfer, links the invoices it paid by
+`Invoice.paidByCreditNoteId`, and emails the subscriber after commit
+(`credit-note-email`). Undo mirrors `BankPaymentService.undo` and stamps
+`undoneAt` rather than deleting. Prefer it to editing `Subscriber.balance`,
+which records no reason. Billing-exempt subscribers are refused: they have no
+balance.
+
 Outgoing bills are read from the same statement. Every subscription is paid
 from that Mono card, and each card payment carries the merchant's own amount
 and currency (`$100.00`, `€9.99`) next to the UAH that left the card.
